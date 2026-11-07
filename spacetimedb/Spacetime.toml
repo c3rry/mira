@@ -1,0 +1,5 @@
+# spacetimedb module configuration for mira
+[module]
+name = "mira_world"
+version = "0.1.0"
+language = "typescript"

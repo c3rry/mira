@@ -1,0 +1,49 @@
+# local isolated deployment orchestration for mira 3d rpg engine
+services:
+  # spacetimedb authoritative reactive state engine
+  spacetimedb:
+    image: clockworklabs/spacetimedb:latest
+    container_name: mira_spacetimedb
+    ports:
+      - "3001:3000"
+    command: ["start", "--listen-addr", "0.0.0.0:3000"]
+    restart: unless-stopped
+
+  # fastapi ai gateway and vision grounding orchestrator
+  backend:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    container_name: mira_backend
+    ports:
+      - "8000:8000"
+    env_file:
+      - backend/.env
+    environment:
+      - SHARED_PATH=/app/shared/mock_world.json
+      - PORT=8000
+      - HOST=0.0.0.0
+      - NEXT_PUBLIC_SPACETIMEDB_HOST=spacetimedb:3000
+    volumes:
+      - ./shared:/app/shared
+      - ./backend:/app/backend
+    depends_on:
+      - spacetimedb
+    restart: unless-stopped
+
+  # next.js 15 hud and three.js webgl canvas
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: mira_frontend
+    ports:
+      - "3000:3000"
+    environment:
+      - NEXT_PUBLIC_API_URL=http://localhost:8000
+      - NEXT_PUBLIC_SPACETIMEDB_HOST=localhost:3001
+      - NEXT_PUBLIC_USE_CACHE=false
+    depends_on:
+      - backend
+      - spacetimedb
+    restart: unless-stopped
