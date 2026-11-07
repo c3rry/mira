@@ -18,7 +18,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 # install python dependencies
 RUN pip install --upgrade pip && \
     pip install \
-    google-genai==0.1.1 \
+    google-genai>=0.7.0 \
     fastapi==0.110.0 \
     uvicorn[standard]==0.28.0 \
     pydantic==2.6.4 \
