@@ -1,0 +1,66 @@
+{
+  "version": "1.0.0",
+  "generated_at": "2026-11-06T12:00:00Z",
+  "biomes": {
+    "cyberpunk_alley": {
+      "name": "Cyberpunk Alleyway",
+      "prompt": "360 equirectangular panorama of a neon-lit cyberpunk alleyway at night, holographic signs, wet asphalt reflections, hyperdetailed 8k photorealistic",
+      "panorama": "/cached_worlds/cyberpunk_alley/panorama.webp",
+      "depth": "/cached_worlds/cyberpunk_alley/depth.png",
+      "props": [
+        "/models/props/neon_sign.glb",
+        "/models/props/dumpster.glb",
+        "/models/props/vending_machine.glb"
+      ],
+      "audio": "/audio/cyberpunk_ambient.mp3"
+    },
+    "medieval_tavern": {
+      "name": "Medieval Tavern",
+      "prompt": "360 equirectangular panorama of a cozy medieval fantasy tavern interior, timber beams, stone fireplace with fire, wooden tables and tankards, cinematic lighting",
+      "panorama": "/cached_worlds/medieval_tavern/panorama.webp",
+      "depth": "/cached_worlds/medieval_tavern/depth.png",
+      "props": [
+        "/models/props/wooden_table.glb",
+        "/models/props/wooden_chair.glb",
+        "/models/props/beer_stein.glb"
+      ],
+      "audio": "/audio/tavern_ambient.mp3"
+    },
+    "space_station": {
+      "name": "Sci-Fi Space Station",
+      "prompt": "360 equirectangular panorama of an orbital space station interior corridor, airlock, viewport showing earth from space, clean futuristic panels, volumetric blue lights",
+      "panorama": "/cached_worlds/space_station/panorama.webp",
+      "depth": "/cached_worlds/space_station/depth.png",
+      "props": [
+        "/models/props/airlock_terminal.glb",
+        "/models/props/crate_scifi.glb",
+        "/models/props/server_rack.glb"
+      ],
+      "audio": "/audio/scifi_hum.mp3"
+    },
+    "desert_oasis": {
+      "name": "Desert Oasis",
+      "prompt": "360 equirectangular panorama of a serene desert oasis, clear water spring, palm trees, sand dunes, ancient sandstone ruins, golden sunset lighting",
+      "panorama": "/cached_worlds/desert_oasis/panorama.webp",
+      "depth": "/cached_worlds/desert_oasis/depth.png",
+      "props": [
+        "/models/props/sandstone_pillar.glb",
+        "/models/props/palm_frond.glb",
+        "/models/props/clay_urn.glb"
+      ],
+      "audio": "/audio/desert_wind.mp3"
+    },
+    "enchanted_forest": {
+      "name": "Enchanted Forest",
+      "prompt": "360 equirectangular panorama of a magical enchanted forest, bioluminescent mushrooms, ancient twisting oak trees, glowing crystal cave opening, ethereal fog",
+      "panorama": "/cached_worlds/enchanted_forest/panorama.webp",
+      "depth": "/cached_worlds/enchanted_forest/depth.png",
+      "props": [
+        "/models/props/crystal_cluster.glb",
+        "/models/props/glowing_mushroom.glb",
+        "/models/props/stone_altar.glb"
+      ],
+      "audio": "/audio/forest_mystic.mp3"
+    }
+  }
+}
