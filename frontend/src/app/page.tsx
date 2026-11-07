@@ -5,6 +5,8 @@ import dynamic from "next/dynamic";
 import { useWorldStore } from "@/store/useWorldStore";
 import { AudioManager } from "@/audio/AudioManager";
 import { FallbackStatusBadge } from "@/components/hud/FallbackStatusBadge";
+import { DialogueModal } from "@/components/hud/DialogueModal";
+import { GodModePalette } from "@/components/GodModePalette";
 import { MinimapTopology } from "@/components/minimap/MinimapTopology";
 import { PromptRefinementChat } from "@/components/chat/PromptRefinementChat";
 import { MutationControls } from "@/components/MutationControls";
@@ -26,6 +28,7 @@ export default function Home() {
     hydrateFromMockWorld,
     initializeSync,
     setCurrentRoom,
+    toggleGodMode,
   } = useWorldStore();
 
   const [backendHealth, setBackendHealth] = useState<string>("checking...");
@@ -153,9 +156,44 @@ export default function Home() {
     }
   }, [currentRoomId, activeRoom]);
 
+  // unlock audio on first document interaction or button click
+  useEffect(() => {
+    const handleFirstGesture = async () => {
+      const audioMgr = AudioManager.getInstance();
+      if (!audioMgr.isAudioUnlocked()) {
+        const ok = await audioMgr.unlockAudio();
+        setAudioActive(ok);
+        if (ok && activeRoom) {
+          const trackUrl = `/audio/tracks/${activeRoom.biome_type || "ambient"}.mp3`;
+          audioMgr.fadeToTrack(trackUrl, 0.6, 1.0, true);
+        }
+      }
+      window.removeEventListener("pointerdown", handleFirstGesture);
+      window.removeEventListener("keydown", handleFirstGesture);
+    };
+
+    window.addEventListener("pointerdown", handleFirstGesture);
+    window.addEventListener("keydown", handleFirstGesture);
+
+    return () => {
+      window.removeEventListener("pointerdown", handleFirstGesture);
+      window.removeEventListener("keydown", handleFirstGesture);
+    };
+  }, [activeRoom]);
+
   const toggleAudioUnlock = async () => {
-    const ok = await AudioManager.getInstance().unlockAudio();
-    setAudioActive(ok);
+    const audioMgr = AudioManager.getInstance();
+    if (!audioMgr.isAudioUnlocked()) {
+      const ok = await audioMgr.unlockAudio();
+      setAudioActive(ok);
+      if (ok && activeRoom) {
+        const trackUrl = `/audio/tracks/${activeRoom.biome_type || "ambient"}.mp3`;
+        await audioMgr.fadeToTrack(trackUrl, 0.6, 1.0, true);
+      }
+    } else {
+      const isMuted = audioMgr.toggleMute();
+      setAudioActive(!isMuted);
+    }
   };
 
   return (
@@ -205,30 +243,23 @@ export default function Home() {
           >
             {isTicking ? "Ticking..." : "⚡ World Tick"}
           </button>
+
+          {/* god mode toggle button */}
+          <button
+            onClick={toggleGodMode}
+            className="px-3 py-1 rounded bg-cyan-950/80 border border-cyan-500/50 text-cyan-300 hover:bg-cyan-900/80 hover:text-white transition-colors font-mono"
+            title="Press 'G' or click to open God Mode"
+          >
+            🛠️ God Mode (G)
+          </button>
         </div>
       </header>
 
-      {/* active npc dialogue / status overlay */}
-      {selectedNpc && (
-        <aside className="absolute top-16 right-6 z-20 w-80 bg-black/80 backdrop-blur-md p-4 rounded-xl border border-cyan-500/40 shadow-2xl pointer-events-auto">
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-sm font-bold text-cyan-300">{selectedNpc.name}</span>
-            <button
-              onClick={() => selectNPC(null)}
-              className="text-xs text-neutral-400 hover:text-white px-1.5 py-0.5 rounded hover:bg-white/10"
-            >
-              ✕
-            </button>
-          </div>
-          <p className="text-xs text-neutral-300 mb-3">{selectedNpc.persona_description}</p>
-          {selectedNpc.thought_log && selectedNpc.thought_log.length > 0 && (
-            <div className="bg-cyan-950/50 border border-cyan-500/30 p-2.5 rounded-lg text-[11px] font-mono text-cyan-200">
-              <span className="text-cyan-400 font-semibold block mb-1">NPC Thought Trace:</span>
-              &ldquo;{selectedNpc.thought_log[selectedNpc.thought_log.length - 1]}&rdquo;
-            </div>
-          )}
-        </aside>
-      )}
+      {/* interactive npc dialogue modal with 4-phase cognitive thought inspection */}
+      <DialogueModal />
+
+      {/* god mode telemetry and provider simulation palette */}
+      <GodModePalette />
 
       {/* 3d canvas viewport container */}
       <div id="mira-canvas-container" className="absolute inset-0 z-0">

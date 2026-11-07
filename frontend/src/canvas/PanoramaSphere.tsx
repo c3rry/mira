@@ -33,9 +33,9 @@ export function PanoramaSphere({
       }
     });
 
-    // load 16-bit depth map if provided
+    // load depth displacement map if provided
     if (depthUrl) {
-      loadPanoramaTexture(depthUrl).then((loadedDepth) => {
+      loadPanoramaTexture(depthUrl, "/cached_worlds/cyberpunk_alley/depth.png").then((loadedDepth) => {
         if (isMounted) {
           setDepthTexture(loadedDepth);
         }
@@ -61,8 +61,16 @@ export function PanoramaSphere({
     });
   }, [texture, depthTexture, displacementScale, mutationFactor]);
 
+  // explicitly update mesh material on three.js instance
+  useEffect(() => {
+    if (meshRef.current && shaderMaterial) {
+      meshRef.current.material = shaderMaterial;
+      meshRef.current.material.needsUpdate = true;
+    }
+  }, [shaderMaterial]);
+
   return (
-    <mesh ref={meshRef} scale={[-1, 1, 1]}>
+    <mesh ref={meshRef} scale={[-1, 1, 1]} key={texture ? "loaded" : "loading"}>
       {/* 500 radius sphere with 128x64 segments per specification */}
       <sphereGeometry args={[500, 128, 64]} />
       {shaderMaterial ? (

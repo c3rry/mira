@@ -224,6 +224,27 @@ export const useWorldStore = create<WorldState>((set, get) => ({
         .catch((err) => {
           console.warn("failed to load local manifest:", err);
         });
+    } else if (typeof window !== "undefined") {
+      // attempt reactive spacetimedb websocket subscription with transparent fallback
+      try {
+        const spacetimeHost =
+          process.env.NEXT_PUBLIC_SPACETIMEDB_HOST || "localhost:3001";
+        const wsProtocol = window.location.protocol === "https:" ? "wss:" : "ws:";
+        const ws = new WebSocket(`${wsProtocol}//${spacetimeHost}/database/subscribe`);
+
+        ws.onopen = () => {
+          set({ isSpacetimeConnected: true });
+          console.log("[SpacetimeDB] Reactive sync connected:", spacetimeHost);
+        };
+        ws.onerror = () => {
+          set({ isSpacetimeConnected: false });
+        };
+        ws.onclose = () => {
+          set({ isSpacetimeConnected: false });
+        };
+      } catch (err) {
+        set({ isSpacetimeConnected: false });
+      }
     }
   },
 }));
