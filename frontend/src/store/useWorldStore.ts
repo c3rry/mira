@@ -7,6 +7,15 @@ export interface SphericalCoord {
   phi: number;
 }
 
+export interface PropItem {
+  prop_id: string;
+  name: string;
+  mesh_url: string;
+  position: SphericalCoord;
+  scale?: number;
+  interactive?: boolean;
+}
+
 export interface WorldRoom {
   room_id: string;
   name: string;
@@ -15,6 +24,7 @@ export interface WorldRoom {
   adjacent_room_ids: string[];
   mutation_level: number;
   biome_type: string;
+  props?: PropItem[];
 }
 
 export interface NPCAgent {
@@ -54,9 +64,11 @@ export interface WorldState {
   isSpacetimeConnected: boolean;
   simulatedProvider: "nemotron_70b" | "gemini_flash" | "offline_mock" | null;
   isGodModeOpen: boolean;
+  selectedNpcId: string | null;
 
   // actions
   setCurrentRoom: (roomId: string) => void;
+  selectNPC: (npcId: string | null) => void;
   setMutationLevel: (roomId: string, level: number) => void;
   appendThoughtLog: (npcId: string, thought: string) => void;
   setLastTelemetry: (telemetry: TelemetryMetadata) => void;
@@ -80,12 +92,17 @@ export const useWorldStore = create<WorldState>((set, get) => ({
   isSpacetimeConnected: false,
   simulatedProvider: null,
   isGodModeOpen: false,
+  selectedNpcId: null,
 
   setCurrentRoom: (roomId: string) => {
     const { rooms } = get();
     if (rooms[roomId]) {
       set({ currentRoomId: roomId });
     }
+  },
+
+  selectNPC: (npcId: string | null) => {
+    set({ selectedNpcId: npcId });
   },
 
   setMutationLevel: (roomId: string, level: number) => {
@@ -147,6 +164,7 @@ export const useWorldStore = create<WorldState>((set, get) => ({
         adjacent_room_ids: r.adjacent_room_ids || [],
         mutation_level: r.mutation_level || 0.0,
         biome_type: r.biome_type || "default",
+        props: r.props || [],
       };
 
       if (Array.isArray(r.npcs)) {

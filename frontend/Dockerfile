@@ -14,6 +14,7 @@ COPY . .
 ENV NEXT_TELEMETRY_DISABLED=1
 ENV PORT=3000
 ENV HOSTNAME="0.0.0.0"
+ENV BACKEND_INTERNAL_URL="http://backend:8000"
 
 # build application
 RUN npm run build

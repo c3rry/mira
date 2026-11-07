@@ -40,7 +40,7 @@ services:
     ports:
       - "3000:3000"
     environment:
-      - NEXT_PUBLIC_API_URL=http://localhost:8000
+      - BACKEND_INTERNAL_URL=http://backend:8000
       - NEXT_PUBLIC_SPACETIMEDB_HOST=localhost:3001
       - NEXT_PUBLIC_USE_CACHE=false
     depends_on:

@@ -1,0 +1,34 @@
+{
+  "profiles": {
+    "cyberpunk_alley": {
+      "name": "Neon Rain and Drone Hum",
+      "track": "/audio/tracks/cyberpunk_ambient.mp3",
+      "volume": 0.6
+    },
+    "medieval_tavern": {
+      "name": "Hearth Fire and Lute",
+      "track": "/audio/tracks/tavern_ambient.mp3",
+      "volume": 0.65
+    },
+    "space_station": {
+      "name": "Orbital Air Circulation",
+      "track": "/audio/tracks/station_hum.mp3",
+      "volume": 0.5
+    },
+    "desert_oasis": {
+      "name": "Desert Wind and Flowing Spring",
+      "track": "/audio/tracks/desert_wind.mp3",
+      "volume": 0.6
+    },
+    "enchanted_forest": {
+      "name": "Bioluminescent Canopy Breeze",
+      "track": "/audio/tracks/forest_birds.mp3",
+      "volume": 0.55
+    }
+  },
+  "spatial_sfx": {
+    "terminal_hum": "/audio/sfx/terminal_hum.mp3",
+    "stasis_vent": "/audio/sfx/stasis_vent.mp3",
+    "cipher_whisper": "/audio/sfx/cipher_whisper.mp3"
+  }
+}

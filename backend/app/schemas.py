@@ -114,6 +114,20 @@ class WorldCompileRequest(BaseModel):
     biome_hint: Optional[str] = None
 
 
+class GenerationMetadata(BaseModel):
+    # telemetry on generation provenance
+    source: Literal["live_generative", "cache_fallback"]
+    provider: Optional[str] = "gemini_flash"
+    latency_ms: float
+    reason: Optional[str] = None
+
+
+class WorldCompileResponse(BaseModel):
+    # compiled world graph with generation telemetry
+    world_graph: WorldGraph
+    generation_metadata: GenerationMetadata
+
+
 class WorldTickRequest(BaseModel):
     # world loop tick simulation
     world_id: str

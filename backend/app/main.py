@@ -4,7 +4,7 @@ import json
 import os
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from backend.app.routes import health
+from backend.app.routes import health, tick, vision, world
 from backend.app.schemas import WorldGraph
 
 
@@ -51,6 +51,9 @@ app.add_middleware(
 
 # mount routers directly without /api prefix per project contract
 app.include_router(health.router)
+app.include_router(world.router)
+app.include_router(vision.router)
+app.include_router(tick.router)
 
 
 @app.get("/")
