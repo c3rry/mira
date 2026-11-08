@@ -114,7 +114,7 @@ export function GodModePalette() {
               className="text-xs font-bold uppercase tracking-[0.2em] mb-3"
               style={{ color: theme.accentColor }}
             >
-              Section I — Inference Cascade Selection
+              Section I :  Inference Cascade Selection
             </h3>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
@@ -151,7 +151,7 @@ export function GodModePalette() {
               className="text-xs font-bold uppercase tracking-[0.2em] mb-3"
               style={{ color: theme.accentColor }}
             >
-              Section II — Diagnostic Telemetry
+              Section II :  Diagnostic Telemetry
             </h3>
 
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
@@ -198,7 +198,7 @@ export function GodModePalette() {
               className="text-xs font-bold uppercase tracking-[0.2em] mb-3"
               style={{ color: theme.accentColor }}
             >
-              Section III — Chamber Index & Direct Passage
+              Section III :  Chamber Index & Direct Passage
             </h3>
 
             <div className="flex flex-wrap gap-2">

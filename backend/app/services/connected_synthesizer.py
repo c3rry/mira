@@ -198,218 +198,113 @@ def synthesize_connected_room_assets(
     ):
         return pano_url, depth_url
 
-    w, h = 2048, 1024
-    horizon_y = h // 2
-
-    # Extract parent state
-    from_x = from_room.worldX if (from_room and from_room.worldX is not None) else 0.0
-    from_z = from_room.worldZ if (from_room and from_room.worldZ is not None) else 0.0
-    from_name = from_room.name if from_room else "Parent Sanctuary"
-    from_pal = getattr(from_room, "visual_palette", None)
-
-    # Derive RGB colors
-    sky_rgb = hex_to_rgb(getattr(from_pal, "sky_tone", None), (30, 41, 59))
-    floor_rgb = hex_to_rgb(getattr(from_pal, "floor_tone", None), (15, 23, 42))
-    dominant_rgb = hex_to_rgb(getattr(from_pal, "dominant_color", None), (217, 119, 6))
-    accent_rgb = hex_to_rgb(getattr(from_pal, "accent_color", None), (251, 191, 36))
-
-    # Calculate exact bearings and UVs
-    _, _, theta_fwd, theta_back, u_fwd, u_back = compute_inter_room_bearing(
-        from_x, from_z, target_x, target_z
-    )
-
-    portal_cx = int(round(u_back * w)) % w
-    forward_cx = int(round(u_fwd * w)) % w
-
-    img = Image.new("RGB", (w, h))
-    draw = ImageDraw.Draw(img)
-
-    # 1. Sky Dome (Preserves celestial alignment with parent room)
-    for y in range(horizon_y):
-        t = y / float(horizon_y)
-        r = int(sky_rgb[0] * (0.6 + 0.4 * t))
-        g = int(sky_rgb[1] * (0.6 + 0.4 * t))
-        b = int(sky_rgb[2] * (0.7 + 0.3 * t))
-        draw.line([(0, y), (w, y)], fill=(min(255, r), min(255, g), min(255, b)))
-
-    # Sun / Celestial body at consistent global azimuth (-0.35 rad)
-    sun_x = int(((-0.35 / (2.0 * math.pi) + 0.5) % 1.0) * w)
-    sun_y = horizon_y - 180
-    is_space = "space" in biome_type or "space" in (world_prompt or "").lower()
-    if is_space:
-        # Starfield & glowing celestial nebula ribbon
-        for sx_i in range(0, w, 48):
-            sy_i = (sx_i * 7 + 13) % (horizon_y - 30)
-            draw.ellipse([sx_i - 1, sy_i - 1, sx_i + 1, sy_i + 1], fill=(240, 248, 255))
-        # Blue/violet planet on horizon
-        draw.ellipse([sun_x - 160, sun_y - 160, sun_x + 160, sun_y + 160], fill=(59, 130, 246), outline=(147, 197, 253))
-    else:
-        # Golden solar disc with atmospheric halo
-        for rad, col in [(130, (255, 240, 190)), (75, (255, 248, 215)), (38, (255, 255, 245))]:
-            draw.ellipse([sun_x - rad, sun_y - rad, sun_x + rad, sun_y + rad], fill=col)
-
-    # 2. Floor / Ground Surface (Continuous from parent room)
-    for y in range(horizon_y, h):
-        t = (y - horizon_y) / float(h - horizon_y)
-        r = int(floor_rgb[0] * (1.12 - 0.22 * t))
-        g = int(floor_rgb[1] * (1.12 - 0.22 * t))
-        b = int(floor_rgb[2] * (1.12 - 0.22 * t))
-        draw.line([(0, y), (w, y)], fill=(min(255, r), min(255, g), min(255, b)))
-
-    # Perspective radial paving lines converging at horizon
-    grid_col = (
-        min(255, int(dominant_rgb[0] * 0.75)),
-        min(255, int(dominant_rgb[1] * 0.75)),
-        min(255, int(dominant_rgb[2] * 0.75)),
-    )
-    for angle_deg in range(0, 360, 12):
-        rad_ang = math.radians(angle_deg)
-        fx = int(((rad_ang / (2.0 * math.pi) + 0.5) % 1.0) * w)
-        draw.line(
-            [(fx, horizon_y), (int(fx + math.sin(rad_ang) * 450), h)],
-            fill=grid_col,
-            width=2,
+    # 1. Primary engine: Real JoPano Diffusion on GPU
+    try:
+        from backend.app.services.local_diffusion import generate_room_panorama_and_depth
+        gpu_assets = generate_room_panorama_and_depth(
+            world_id=world_id,
+            room_id=new_room_id,
+            room_name=new_room_name,
+            world_prompt=world_prompt,
+            biome_type=biome_type,
+            ambient_color=getattr(getattr(from_room, "lighting", None), "ambient_color", "") or "",
+            fog_color=getattr(getattr(from_room, "lighting", None), "fog_color", "") or "",
+            force_regenerate=force_regenerate,
+            from_room_name=from_room.name if from_room else None,
+            direction=direction,
+            target_x=target_x,
+            target_z=target_z,
+            from_x=from_room.worldX if from_room else 0.0,
+            from_z=from_room.worldZ if from_room else 0.0,
         )
+        if gpu_assets is not None:
+            return gpu_assets
+    except Exception as diff_err:
+        logger.warning(f"GPU diffusion generation attempt: {diff_err}")
 
-    # 3. Reciprocal Portal Archway (Facing back toward from_room at portal_cx)
-    p_half_w = 95
-    p_top_y = horizon_y - 250
-    p_bot_y = horizon_y + 130
+    # 2. Secondary engine: Photographic Panorama Fusion from high-resolution equirectangular assets
+    # Map biomes to high-fidelity cached equirectangular photographic worlds
+    biome_map = {
+        "neon_city": ["neon_alley_01", "neon_alley_02", "neon_alley_03", "cyberpunk_alley", "cyber_lab_01"],
+        "cyberpunk_alley": ["cyberpunk_alley", "neon_alley_01", "neon_alley_02", "cyber_lab_01", "cyber_lab_02"],
+        "space_base": ["space_station", "cyber_lab_01", "cyber_lab_02", "cyber_lab_03"],
+        "space_station": ["space_station", "cyber_lab_01", "cyber_lab_02", "cyber_lab_03"],
+        "ancient_castle": ["ruins_01", "ruins_02", "ruins_03", "medieval_tavern", "spire_01"],
+        "medieval_tavern": ["medieval_tavern", "ruins_01", "spire_01", "ruins_02"],
+        "magic_forest": ["enchanted_forest", "cavern_01", "cavern_02", "ruins_01"],
+        "enchanted_forest": ["enchanted_forest", "cavern_01", "cavern_02", "ruins_01"],
+        "desert_oasis": ["desert_oasis", "ruins_01", "spire_01", "cavern_01"],
+        "cavern": ["cavern_01", "cavern_02", "cavern_03"],
+    }
+    candidate_biomes = biome_map.get(biome_type, [biome_type, "neon_alley_01", "ruins_01", "space_station", "desert_oasis"])
+    # Pick variant based on room ID hash for deterministic consistency
+    room_hash = int(hashlib.md5(f"{safe_world}:{safe_room}".encode("utf-8")).hexdigest()[:6], 16)
+    chosen_sub = candidate_biomes[room_hash % len(candidate_biomes)]
+    
+    cand_dir = project_root / "frontend" / "public" / "cached_worlds" / chosen_sub
+    cand_pano = cand_dir / "panorama.webp"
+    cand_depth = cand_dir / "depth.png"
+    if not cand_pano.exists():
+        # Fallback to root cached files if subfolder doesn't exist
+        cand_pano = project_root / "frontend" / "public" / "cached_worlds" / f"{chosen_sub}_panorama.webp"
+        cand_depth = project_root / "frontend" / "public" / "cached_worlds" / f"{chosen_sub}_depth.png"
+    if not cand_pano.exists():
+        cand_pano = project_root / "frontend" / "public" / "cached_worlds" / "desert_oasis_panorama.webp"
+        cand_depth = project_root / "frontend" / "public" / "cached_worlds" / "desert_oasis_depth.png"
 
-    # Directional light spill pouring forward onto the new room's floor
-    spill_h = 170
-    for dy in range(spill_h):
-        prog = dy / float(spill_h)
-        sw = int(p_half_w * (1.0 + 1.9 * prog))
-        sy = p_bot_y + dy
-        if sy < h:
-            for dx_p in range(-sw, sw + 1):
-                px = (portal_cx + dx_p) % w
-                alpha = (1.0 - prog) * 0.52 * (1.0 - abs(dx_p) / float(sw))
-                cur = img.getpixel((px, sy))
-                blended = (
-                    min(255, int(cur[0] * (1.0 - alpha) + dominant_rgb[0] * alpha)),
-                    min(255, int(cur[1] * (1.0 - alpha) + dominant_rgb[1] * alpha)),
-                    min(255, int(cur[2] * (1.0 - alpha) + dominant_rgb[2] * alpha)),
-                )
-                img.putpixel((px, sy), blended)
+    try:
+        base_img = Image.open(cand_pano).convert("RGB")
+        base_dep = Image.open(cand_depth).convert("L") if cand_depth.exists() else None
 
-    # Portal opening interior (showing the lit chamber of from_room)
-    for dx_p in range(-p_half_w + 24, p_half_w - 23):
-        px = (portal_cx + dx_p) % w
-        for py in range(p_top_y + 24, p_bot_y):
-            if py < horizon_y:
-                ratio = (py - p_top_y) / float(horizon_y - p_top_y)
-                pr = int(dominant_rgb[0] * 0.85 + 35.0 * ratio)
-                pg = int(dominant_rgb[1] * 0.85 + 25.0 * ratio)
-                pb = int(dominant_rgb[2] * 0.85 + 15.0 * ratio)
-            else:
-                ratio = (py - horizon_y) / float(p_bot_y - horizon_y)
-                pr = int(floor_rgb[0] * (1.25 - 0.25 * ratio))
-                pg = int(floor_rgb[1] * (1.25 - 0.25 * ratio))
-                pb = int(floor_rgb[2] * (1.25 - 0.25 * ratio))
-            img.putpixel((px, py), (min(255, pr), min(255, pg), min(255, pb)))
+        w, h = 2048, 1024
+        base_img = base_img.resize((w, h), Image.Resampling.LANCZOS)
+        if base_dep:
+            base_dep = base_dep.resize((w, h), Image.Resampling.NEAREST)
 
-    # Monumental Archway Pylons & Lintel
-    frame_col = (
-        min(255, int(dominant_rgb[0] * 1.15)),
-        min(255, int(dominant_rgb[1] * 1.15)),
-        min(255, int(dominant_rgb[2] * 1.15)),
-    )
-    gold_col = (
-        min(255, int(accent_rgb[0] * 1.15)),
-        min(255, int(accent_rgb[1] * 1.15)),
-        min(255, int(accent_rgb[2] * 1.15)),
-    )
-    shadow_col = (
-        max(0, int(dominant_rgb[0] * 0.45)),
-        max(0, int(dominant_rgb[1] * 0.45)),
-        max(0, int(dominant_rgb[2] * 0.45)),
-    )
+        # Spherical azimuth shift to align novel room orientation with navigational bearing
+        from_x = from_room.worldX if (from_room and from_room.worldX is not None) else 0.0
+        from_z = from_room.worldZ if (from_room and from_room.worldZ is not None) else 0.0
+        _, _, theta_fwd, _, u_fwd, _ = compute_inter_room_bearing(from_x, from_z, target_x, target_z)
+        shift_pixels = int(round(u_fwd * w)) % w
+        
+        arr_img = np.array(base_img, dtype=np.float32)
+        arr_img = np.roll(arr_img, shift_pixels, axis=1)
 
-    # Left pylon
-    for dx_p in range(-p_half_w, -p_half_w + 25):
-        px = (portal_cx + dx_p) % w
-        for py in range(p_top_y, p_bot_y + 16):
-            col = frame_col if py % 26 > 3 else shadow_col
-            img.putpixel((px, py), col)
+        # Apply subtle atmospheric grading from palette
+        from_pal = getattr(from_room, "visual_palette", None) if from_room else None
+        if from_pal:
+            sky_rgb = hex_to_rgb(getattr(from_pal, "sky_tone", None), (30, 41, 59))
+            floor_rgb = hex_to_rgb(getattr(from_pal, "floor_tone", None), (15, 23, 42))
+            horizon_y = h // 2
+            # Sky subtle tint
+            tint_sky = np.array(sky_rgb, dtype=np.float32) / 255.0
+            arr_img[:horizon_y, :] = arr_img[:horizon_y, :] * 0.88 + tint_sky * 0.12 * arr_img[:horizon_y, :]
+            # Floor subtle tint
+            tint_floor = np.array(floor_rgb, dtype=np.float32) / 255.0
+            arr_img[horizon_y:, :] = arr_img[horizon_y:, :] * 0.90 + tint_floor * 0.10 * arr_img[horizon_y:, :]
 
-    # Right pylon
-    for dx_p in range(p_half_w - 24, p_half_w + 1):
-        px = (portal_cx + dx_p) % w
-        for py in range(p_top_y, p_bot_y + 16):
-            col = frame_col if py % 26 > 3 else shadow_col
-            img.putpixel((px, py), col)
+        arr_img = blend_horizontal_seam_fast(arr_img, blend_width=32)
+        fused_pano = Image.fromarray(np.clip(arr_img, 0, 255).astype(np.uint8))
+        fused_pano.save(pano_file, "WEBP", quality=92)
 
-    # Overhead Lintel & Cornice
-    for dx_p in range(-p_half_w - 14, p_half_w + 15):
-        px = (portal_cx + dx_p) % w
-        for py in range(p_top_y - 30, p_top_y + 25):
-            is_border = (py <= p_top_y - 26 or py >= p_top_y + 20)
-            img.putpixel((px, py), gold_col if is_border else frame_col)
+        if base_dep:
+            arr_dep = np.array(base_dep, dtype=np.float32)
+            arr_dep = np.roll(arr_dep, shift_pixels, axis=1)
+            arr_dep = blend_horizontal_seam_fast(arr_dep, blend_width=32)
+            fused_dep = Image.fromarray(np.clip(arr_dep, 0, 255).astype(np.uint8))
+            fused_dep.save(depth_file, "PNG")
+        else:
+            # Fallback simple metric gradient depth
+            depth_arr = np.zeros((h, w), dtype=np.uint8)
+            depth_arr.fill(128)
+            Image.fromarray(depth_arr, mode="L").save(depth_file, "PNG")
 
-    # 4. Unique Forward Landmarks of New Room (at forward_cx)
-    # Flanking colonnade arcade
-    for col_dx in [-360, -200, 200, 360]:
-        cx_c = (forward_cx + col_dx) % w
-        col_w = 28
-        col_top = horizon_y - 290
-        col_bot = horizon_y + 75
-        for dx_c in range(-col_w // 2, col_w // 2):
-            px = (cx_c + dx_c) % w
-            for py in range(col_top, col_bot):
-                flute = (dx_c % 6 < 4)
-                cr = int(dominant_rgb[0] * (1.08 if flute else 0.82))
-                cg = int(dominant_rgb[1] * (1.08 if flute else 0.82))
-                cb = int(dominant_rgb[2] * (1.08 if flute else 0.82))
-                img.putpixel((px, py), (min(255, cr), min(255, cg), min(255, cb)))
-
-    # Central Monument / Pylon at forward_cx
-    pylon_w = 150
-    pylon_h = 370
-    for dx_c in range(-pylon_w, pylon_w):
-        px = (forward_cx + dx_c) % w
-        prog_x = abs(dx_c) / float(pylon_w)
-        cur_h = int(pylon_h * (1.0 - 0.28 * prog_x))
-        for py in range(horizon_y - cur_h, horizon_y + 45):
-            is_rim = (abs(dx_c) >= pylon_w - 5 or py <= horizon_y - cur_h + 6)
-            pr = int(accent_rgb[0] if is_rim else dominant_rgb[0] * 1.12)
-            pg = int(accent_rgb[1] if is_rim else dominant_rgb[1] * 1.12)
-            pb = int(accent_rgb[2] if is_rim else dominant_rgb[2] * 1.12)
-            img.putpixel((px, py), (min(255, pr), min(255, pg), min(255, pb)))
-
-    # 5. Seamless Seam Blending
-    rgb_arr = np.array(img, dtype=np.float32)
-    rgb_arr = blend_horizontal_seam_fast(rgb_arr, blend_width=32)
-    final_img = Image.fromarray(np.clip(rgb_arr, 0, 255).astype(np.uint8))
-    final_img.save(pano_file, "WEBP", quality=90)
-
-    # 6. Generate Metric Depth Map (Portal frame near ~210, floor ramp, monuments ~115, sky ~15)
-    depth_arr = np.zeros((h, w), dtype=np.float32)
-    y_coords = np.linspace(0.0, 1.0, horizon_y, dtype=np.float32)[:, None]
-    depth_arr[:horizon_y, :] = 12.0 + 20.0 * y_coords
-
-    y_floor = np.linspace(0.0, 1.0, h - horizon_y, dtype=np.float32)[:, None]
-    depth_arr[horizon_y:, :] = 45.0 + 95.0 * (y_floor ** 1.3)
-
-    # Portal Frame Depth
-    for dx_p in range(-p_half_w - 14, p_half_w + 15):
-        px = (portal_cx + dx_p) % w
-        is_pylon = abs(dx_p) >= p_half_w - 26 or abs(dx_p) <= p_half_w + 14
-        if is_pylon:
-            depth_arr[p_top_y - 30:p_bot_y + 16, px] = 210.0
-
-    # Forward Monument Depth
-    for dx_c in range(-pylon_w - 20, pylon_w + 20):
-        px = (forward_cx + dx_c) % w
-        depth_arr[horizon_y - 330:horizon_y + 45, px] = np.maximum(
-            depth_arr[horizon_y - 330:horizon_y + 45, px], 115.0
-        )
-
-    depth_arr = blend_horizontal_seam_fast(depth_arr, blend_width=32)
-    depth_u8 = np.clip(depth_arr, 0, 255).astype(np.uint8)
-    depth_img = Image.fromarray(depth_u8, mode="L").filter(ImageFilter.GaussianBlur(radius=2.5))
-    depth_img.save(depth_file, "PNG")
-
-    logger.info(f"Synthesized connected room assets for {new_room_name}: {pano_file} & {depth_file}")
-    return pano_url, depth_url
+        logger.info(f"Photographic fusion synthesized for {new_room_name}: {pano_file}")
+        return pano_url, depth_url
+    except Exception as fuse_err:
+        logger.error(f"Error during photographic fusion synthesis: {fuse_err}")
+        import shutil
+        shutil.copyfile(cand_pano, pano_file)
+        if cand_depth.exists():
+            shutil.copyfile(cand_depth, depth_file)
+        return pano_url, depth_url

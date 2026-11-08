@@ -80,7 +80,8 @@ async def test_circuit_breaker_timeout():
     async def mock_timeout(*args, **kwargs):
         raise asyncio.TimeoutError()
 
-    with patch("backend.app.services.nemotron_cascade.call_nemotron_tier", side_effect=mock_timeout):
+    with patch("backend.app.services.nemotron_cascade.call_nemotron_tier", side_effect=mock_timeout), \
+         patch("backend.app.services.nemotron_cascade.call_gemini_tier", return_value={"thought": "Analysis", "utterance": "Decoded.", "suggested_item": None, "state_mutations": {}}):
         t0 = time.perf_counter()
         res = await execute_npc_cascade(req)
         total_time = time.perf_counter() - t0

@@ -333,7 +333,7 @@ export function PromptRefinementChat() {
                             fontWeight: isSelected ? "bold" : "normal",
                           }}
                         >
-                          {isSelected ? "✓ " : "+ "}
+                          {isSelected ? "" : "+ "}
                           {opt.label}
                         </button>
                       );

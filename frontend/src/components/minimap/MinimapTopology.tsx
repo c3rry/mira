@@ -17,6 +17,10 @@ export function MinimapTopology() {
     topologyType,
     isExpanding,
     renderedRoomIds,
+    checkpoints,
+    activeCheckpoint,
+    checkpointStatusText,
+    saveCheckpoint,
     setCurrentRoom,
     selectNPC,
     expandWorld,
@@ -33,7 +37,7 @@ export function MinimapTopology() {
     return isNaturalBiomeContext(ctx) || activeTopology === "nature_open";
   }, [worldTitle, activeRoom, activeTopology]);
 
-  // keyboard shortcuts: 'M' for toggle map expand, 'E' for continuous world expansion
+  // keyboard shortcuts: 'M' for toggle map expand, 'E' for continuous world expansion, 'C' for save checkpoint
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       const el = document.activeElement as HTMLElement | null;
@@ -46,10 +50,13 @@ export function MinimapTopology() {
       if ((e.key === "e" || e.key === "E") && !isExpanding) {
         expandWorld(currentRoomId);
       }
+      if (e.key === "c" || e.key === "C") {
+        saveCheckpoint();
+      }
     };
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [isExpanding, currentRoomId, expandWorld]);
+  }, [isExpanding, currentRoomId, expandWorld, saveCheckpoint]);
 
   // map 3D world coordinates (worldX, worldZ) to dynamic auto-scaling SVG coordinates
   const spatialLayout = useMemo(() => {
@@ -198,9 +205,22 @@ export function MinimapTopology() {
           className="text-[9px] font-bold uppercase tracking-[0.14em] px-1.5 py-0.5 border bg-black/80 truncate max-w-[240px]"
           style={{ borderColor: `${theme.panelBorder}66`, color: theme.accentColor }}
         >
-          {activeTopology === "linear" ? "TRANSIT LINE (1D)" : isNature ? "NATURE EXPEDITION (4-WAY)" : "FLOORPLAN CAD (2D)"} • {worldTitle.split("—")[0].trim().toUpperCase()}
+          {activeTopology === "linear" ? "TRANSIT LINE (1D)" : isNature ? "NATURE EXPEDITION (4-WAY)" : "FLOORPLAN CAD (2D)"} • {worldTitle.split(": ")[0].trim().toUpperCase()}
         </span>
         <div className="flex items-center gap-1 pointer-events-auto">
+          <button
+            onClick={() => saveCheckpoint()}
+            className="text-[9px] uppercase tracking-wider px-1.5 py-0.5 border bg-black/80 hover:opacity-90 transition-all font-bold flex items-center gap-1"
+            style={{
+              borderColor: activeCheckpoint ? "#38bdf8" : `${theme.panelBorder}aa`,
+              color: activeCheckpoint ? "#38bdf8" : theme.accentColor,
+              backgroundColor: activeCheckpoint ? "rgba(14, 165, 233, 0.18)" : "rgba(20,25,35,0.8)",
+            }}
+            title="Save game checkpoint to local storage [C]"
+          >
+            
+            <span>{activeCheckpoint ? "Active [C]" : "Save [C]"}</span>
+          </button>
           <button
             onClick={() => expandWorld(currentRoomId)}
             disabled={isExpanding}
@@ -223,6 +243,15 @@ export function MinimapTopology() {
           </button>
         </div>
       </div>
+
+      {/* Floating Checkpoint Status Banner */}
+      {checkpointStatusText && (
+        <div className="absolute top-7 left-2 right-2 z-20 pointer-events-none flex items-center justify-center">
+          <div className="px-2.5 py-0.5 bg-sky-950/90 border border-sky-400 text-sky-200 text-[10px] font-bold shadow-lg backdrop-blur-sm animate-pulse tracking-wide">
+            {checkpointStatusText}
+          </div>
+        </div>
+      )}
 
       {/* precise top-down architectural / topographical SVG viewport */}
       <div className="absolute inset-0 flex items-center justify-center">
@@ -357,7 +386,7 @@ export function MinimapTopology() {
                     textAnchor="middle"
                     fill="#4ade80"
                   >
-                    🌴
+                    
                   </text>
                 ))}
 
@@ -872,6 +901,35 @@ export function MinimapTopology() {
                   )}
                 </g>
 
+                {/* checkpoint saved / restored marker on room */}
+                {(() => {
+                  const cp = checkpoints.find((c) => c.current_room_id === rId);
+                  if (!cp) return null;
+                  const isRestored = cp.status === "restored";
+                  const cpx = cx - (rTopo === "linear" ? carW / 2 - 2.5 : rTopo === "city_grid" ? blockW / 2 - 2.5 : roomRadiusSvg * 0.72);
+                  const cpy = cy - (rTopo === "linear" ? carH / 2 - 2.5 : rTopo === "city_grid" ? blockH / 2 - 2.5 : roomRadiusSvg * 0.72);
+                  return (
+                    <g transform={`translate(${cpx}, ${cpy})`}>
+                      <title>{`Checkpoint: ${cp.label || cp.room_name}`}</title>
+                      <circle
+                        r={expanded ? 4.5 : 3.2}
+                        fill={isRestored ? "#38bdf8" : "#22c55e"}
+                        stroke="#0f172a"
+                        strokeWidth="0.8"
+                      />
+                      <text
+                        textAnchor="middle"
+                        y={expanded ? 2.5 : 2.0}
+                        fontSize={expanded ? "6.5" : "5"}
+                        fill="#ffffff"
+                        fontWeight="bold"
+                      >
+                        {isRestored ? "R" : "S"}
+                      </text>
+                    </g>
+                  );
+                })()}
+
                 {/* exact 3D prop positions inside room */}
                 {roomProps.map((p, pIdx) => {
                   const rawTheta = p.position?.theta ?? 0.48 + pIdx * 0.35;
@@ -909,12 +967,12 @@ export function MinimapTopology() {
                     if (t.includes("noise") || t.includes("latent") || t.includes("quantum") || t.includes("manifold")) return "∿";
                     if (t.includes("everest") || t.includes("mountain") || t.includes("glacier") || t.includes("summit") || t.includes("icefall")) return "▲";
                     if (t.includes("giza") || t.includes("pyramid") || t.includes("sphinx") || t.includes("desert") || t.includes("oasis")) return "△";
-                    if (t.includes("subway") || t.includes("train") || t.includes("metro")) return "🚆";
-                    if (t.includes("plane") || t.includes("flight")) return "✈";
-                    if (t.includes("city") || t.includes("broadway") || t.includes("times square") || t.includes("neon") || t.includes("metropolis")) return "✦";
-                    if (t.includes("space") || t.includes("orbital") || t.includes("observatory") || t.includes("station")) return "🪐";
-                    if (t.includes("rome") || t.includes("colosseum") || t.includes("forum")) return "🏛";
-                    if (t.includes("forest") || t.includes("garden") || t.includes("sylvan") || t.includes("grove")) return "🌿";
+                    if (t.includes("subway") || t.includes("train") || t.includes("metro")) return "";
+                    if (t.includes("plane") || t.includes("flight")) return "";
+                    if (t.includes("city") || t.includes("broadway") || t.includes("times square") || t.includes("neon") || t.includes("metropolis")) return "";
+                    if (t.includes("space") || t.includes("orbital") || t.includes("observatory") || t.includes("station")) return "";
+                    if (t.includes("rome") || t.includes("colosseum") || t.includes("forum")) return "";
+                    if (t.includes("forest") || t.includes("garden") || t.includes("sylvan") || t.includes("grove")) return "";
                     return "◈";
                   })()}
                 </text>

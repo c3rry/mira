@@ -319,6 +319,10 @@ function SingleNPC({
 
   const walkPhaseRef = useRef<number>(index * 1.8);
 
+  const guideState = useWorldStore((s) => s.guideState);
+  const isGuide = Boolean(guideState && (guideState.agentId === npc.npc_id || npc.name.toLowerCase().includes("tariq") || npc.name.toLowerCase().includes("guide")));
+  const isStalling = isGuide && Boolean(guideState?.isStalling);
+
   // Floating holographic HUD nameplate matching prompt style
   const nametagTexture = useMemo(() => {
     if (typeof document === "undefined") return null;
@@ -334,8 +338,15 @@ function SingleNPC({
     ctx.roundRect(8, 8, 624, 144, 20);
     ctx.fill();
 
-    // Glowing border matching room accent
-    const borderCol = isSelected || hovered ? "#facc15" : style.accentColor;
+    // Glowing border matching room accent or guide status
+    const borderCol = isStalling
+      ? "#ef4444"
+      : isGuide
+      ? "#22c55e"
+      : isSelected || hovered
+      ? "#facc15"
+      : style.accentColor;
+
     ctx.strokeStyle = borderCol;
     ctx.lineWidth = 3.5;
     ctx.beginPath();
@@ -343,10 +354,18 @@ function SingleNPC({
     ctx.stroke();
 
     // Technical role badge header
-    ctx.fillStyle = style.accentColor;
+    const badgeText = isGuide
+      ? isStalling
+        ? "[ DECIPHERING RUNES • STALLING ]"
+        : "[ PATHFINDER GUIDE • FOLLOW ]"
+      : `[ ${style.roleBadge} ]`;
+
+    const badgeColor = isGuide ? (isStalling ? "#ef4444" : "#22c55e") : style.accentColor;
+
+    ctx.fillStyle = badgeColor;
     ctx.font = "bold 19px 'Courier New', monospace";
     ctx.textAlign = "center";
-    ctx.fillText(`[ ${style.roleBadge} ]`, 320, 42);
+    ctx.fillText(badgeText, 320, 42);
 
     // NPC Name
     ctx.fillStyle = "#ffffff";
@@ -354,14 +373,18 @@ function SingleNPC({
     ctx.fillText(npc.name.toUpperCase(), 320, 84);
 
     // Interaction hint
-    ctx.fillStyle = isSelected || hovered ? "#fde047" : "#94a3b8";
+    ctx.fillStyle = isStalling ? "#fca5a5" : isSelected || hovered ? "#fde047" : "#94a3b8";
     ctx.font = "italic 18px 'Segoe UI', sans-serif";
-    ctx.fillText("Click to Converse", 320, 124);
+    ctx.fillText(
+      isStalling ? "Waiting for archway mechanism..." : "Click to Converse",
+      320,
+      124
+    );
 
     const texture = new THREE.CanvasTexture(canvas);
     texture.colorSpace = THREE.SRGBColorSpace;
     return texture;
-  }, [npc.name, style, isSelected, hovered]);
+  }, [npc.name, style, isSelected, hovered, isGuide, isStalling]);
 
   useFrame(({ clock, camera }, delta) => {
     const elapsed = clock.getElapsedTime();

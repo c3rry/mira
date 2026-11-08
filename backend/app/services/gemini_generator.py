@@ -449,8 +449,19 @@ def enrich_and_normalize_graph(
         if local_assets is not None:
             room.panorama_url, room.depth_url = local_assets
         else:
-            room.panorama_url = f"/generated_worlds/{safe_world}/{safe_room}_panorama.webp"
-            room.depth_url = f"/generated_worlds/{safe_world}/{safe_room}_depth.png"
+            pano_url, depth_url = synthesize_connected_room_assets(
+                world_id=graph.world_id,
+                new_room_id=room.room_id,
+                new_room_name=room.name,
+                from_room=graph.rooms[0] if idx > 0 else None,
+                direction=dir_label if idx > 0 else "north",
+                target_x=room.worldX or 0.0,
+                target_z=room.worldZ or 0.0,
+                biome_type=b_type,
+                world_prompt=prompt,
+            )
+            room.panorama_url = pano_url
+            room.depth_url = depth_url
 
         # ensure connected adjacency graph
         if not room.adjacent_room_ids:

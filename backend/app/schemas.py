@@ -205,3 +205,98 @@ class ChatRefineResponse(BaseModel):
     refined_prompt: str
     suggested_biome: str
     clarifying_questions: List[ClarifyingQuestion]
+
+
+class KnowledgeLocationNode(BaseModel):
+    location_id: str
+    name: str
+    room_id: str
+    biome_type: str
+    story_role: str
+    atmosphere_desc: str
+    world_x: float = 0.0
+    world_z: float = 0.0
+
+
+class KnowledgeAgentNode(BaseModel):
+    agent_id: str
+    name: str
+    role: str  # "Guide", "Historian", "Rival", "Keeper", "Scout", "Merchant"
+    personality: str
+    appearance_style: str
+    current_location_id: str
+    movement_mode: Literal["escorting_player", "patrolling", "stationed", "beckoning_to_gateway"] = "stationed"
+    target_gateway_bearing: Optional[float] = None
+    narrative_dialogue_arc: List[str] = Field(default_factory=list)
+    secret_knowledge: str
+    faction: str
+    patrol_waypoints: List[Dict[str, float]] = Field(default_factory=list)
+    active_thought: Optional[str] = None
+
+
+class KnowledgeRelationshipEdge(BaseModel):
+    source_agent_id: str
+    target_agent_id: str
+    relation_type: Literal["allies_with", "mistrusts", "guards", "reports_to", "guides_player_to", "rival_of"]
+    interaction_lore: str
+
+
+class KnowledgeStoryBeatNode(BaseModel):
+    beat_id: str
+    title: str
+    stage: Literal["act_1_exposition", "act_2_exploration", "act_3_revelation"]
+    narrative_cue: str
+    target_location_id: str
+    required_agent_id: str
+    is_unlocked: bool = False
+
+
+class StoryKnowledgeGraph(BaseModel):
+    story_title: str
+    synopsis: str
+    interview_stage: Literal[
+        "ask_core_story",
+        "ask_sub_environments",
+        "ask_key_agents",
+        "compiled_active",
+        "premise",
+        "sub_environments",
+        "key_figures",
+    ]
+    locations: List[KnowledgeLocationNode] = Field(default_factory=list)
+    agents: List[KnowledgeAgentNode] = Field(default_factory=list)
+    relationships: List[KnowledgeRelationshipEdge] = Field(default_factory=list)
+    story_beats: List[KnowledgeStoryBeatNode] = Field(default_factory=list)
+    current_beat_id: Optional[str] = None
+
+
+class NarrativeChatTurnRequest(BaseModel):
+    world_id: str
+    world_title: str
+    current_room_id: str
+    player_message: Optional[str] = None
+    stage: Optional[str] = "ask_core_story"
+    existing_graph: Optional[StoryKnowledgeGraph] = None
+    simulate_provider: Optional[Literal["nemotron_70b", "gemini_flash", "offline_mock"]] = None
+
+
+class NarrativeChatTurnResponse(BaseModel):
+    director_utterance: str
+    next_stage: Literal[
+        "ask_core_story",
+        "ask_sub_environments",
+        "ask_key_agents",
+        "compiled_active",
+        "premise",
+        "sub_environments",
+        "key_figures",
+    ]
+    follow_up_question: Optional[str] = None
+    suggested_chips: List[str] = Field(default_factory=list)
+    premise_suggestions: List[str] = Field(default_factory=list)
+    updated_graph: Optional[StoryKnowledgeGraph] = None
+    spawned_subagents: List[KnowledgeAgentNode] = Field(default_factory=list)
+    guide_agent: Optional[KnowledgeAgentNode] = None
+    suggested_biome: Optional[str] = None
+    compilation_prompt: Optional[str] = None
+    telemetry: TelemetryMetadata

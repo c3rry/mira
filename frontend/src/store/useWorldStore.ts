@@ -82,6 +82,98 @@ export interface SavedWorldEntry {
   world_data: any;
 }
 
+export interface KnowledgeLocationNode {
+  location_id: string;
+  name: string;
+  room_id: string;
+  biome_type: string;
+  story_role: string;
+  atmosphere_desc: string;
+  world_x: number;
+  world_z: number;
+}
+
+export interface KnowledgeAgentNode {
+  agent_id: string;
+  name: string;
+  role: string;
+  personality: string;
+  appearance_style: string;
+  current_location_id: string;
+  movement_mode: "escorting_player" | "patrolling" | "stationed" | "beckoning_to_gateway";
+  target_gateway_bearing?: number;
+  narrative_dialogue_arc: string[];
+  secret_knowledge: string;
+  faction: string;
+  patrol_waypoints?: Array<{ r: number; theta: number; phi: number }>;
+  active_thought?: string;
+}
+
+export interface KnowledgeRelationshipEdge {
+  source_agent_id: string;
+  target_agent_id: string;
+  relation_type: "allies_with" | "mistrusts" | "guards" | "reports_to" | "guides_player_to" | "rival_of";
+  interaction_lore: string;
+}
+
+export interface KnowledgeStoryBeatNode {
+  beat_id: string;
+  title: string;
+  stage: "act_1_exposition" | "act_2_exploration" | "act_3_revelation";
+  narrative_cue: string;
+  target_location_id: string;
+  required_agent_id: string;
+  is_unlocked: boolean;
+}
+
+export interface StoryKnowledgeGraph {
+  story_title: string;
+  synopsis: string;
+  interview_stage: "ask_core_story" | "ask_sub_environments" | "ask_key_agents" | "compiled_active";
+  locations: KnowledgeLocationNode[];
+  agents: KnowledgeAgentNode[];
+  relationships: KnowledgeRelationshipEdge[];
+  story_beats: KnowledgeStoryBeatNode[];
+  current_beat_id?: string;
+}
+
+export interface NarrativeDirectorMessage {
+  role: "mira" | "director" | "player";
+  content: string;
+  timestamp: string;
+  chips?: string[];
+  followUp?: string;
+  suggestedBiome?: string;
+  compilationPrompt?: string;
+}
+
+export interface GuideGuidanceState {
+  agentId: string;
+  name: string;
+  targetRoomId: string | null;
+  nextHopRoomId: string | null;
+  isStalling: boolean;
+  stallMessage: string | null;
+  instructionText: string;
+  chunkedPath: string[];
+}
+
+export interface WorldCheckpoint {
+  checkpoint_id: string;
+  world_id: string;
+  world_title: string;
+  current_room_id: string;
+  room_name: string;
+  timestamp: string;
+  rooms: Record<string, WorldRoom>;
+  storyGraph: StoryKnowledgeGraph | null;
+  narrativeMessages: NarrativeDirectorMessage[];
+  guideState: GuideGuidanceState | null;
+  playerPosition: { x: number; z: number; yaw: number };
+  status: "saved" | "restored";
+  label?: string;
+}
+
 export interface AdaptiveTheme {
   id: "desert" | "classical" | "forest" | "space" | "metropolis";
   label: string;
@@ -263,432 +355,10 @@ export function resolveAdaptiveTheme(
 }
 
 const ARCHIVE_STORAGE_KEY = "mira_world_archives_v12_photoreal_raw";
+const CHECKPOINTS_STORAGE_KEY = "mira_world_checkpoints_v1";
+const ACTIVE_STATE_STORAGE_KEY = "mira_active_game_state_v1";
 
-export const BUILTIN_ARCHIVES: SavedWorldEntry[] = [
-  {
-    world_id: "archive_continuous_noise",
-    title: "Continuous Latent Expanse",
-    prompt: "Continuous multi-dimensional procedural noise chamber with iridescent quantum interference fields and harmonic manifolds",
-    biome_hint: "continuous_noise",
-    created_at: "Procedural Manifold",
-    world_data: {
-      world_id: "archive_continuous_noise",
-      title: "Continuous Latent Expanse",
-      initial_room_id: "noise_origin",
-      rooms: [
-        {
-          room_id: "noise_origin",
-          name: "Continuous Noise Chamber",
-          biome_type: "continuous_noise",
-          worldX: 0,
-          worldZ: 0,
-          panorama_url: "/generated_worlds/archive_continuous_noise/noise_origin_panorama.webp?room=Continuous%20Noise%20Chamber&prompt=Continuous%20Latent%20Expanse&biome=continuous_noise&x=0&z=0&idx=0&sky=%23090514&floor=%231e1b4b",
-          depth_url: "/generated_worlds/archive_continuous_noise/noise_origin_depth.png",
-          adjacent_room_ids: ["noise_north", "noise_east", "noise_south", "noise_west"],
-          mutation_level: 0.25,
-          visual_palette: {
-            sky_tone: "#090514",
-            floor_tone: "#1e1b4b",
-            dominant_color: "#38bdf8",
-            accent_color: "#a855f7",
-          },
-          npcs: [
-            {
-              npc_id: "npc_aethel",
-              name: "Aethel, Quantum Chronicler",
-              room_id: "noise_origin",
-              persona_description: "Observer of the continuous procedural manifold and keeper of multi-dimensional latent harmonics.",
-              thought_log: [
-                "[MEMORY] The continuous noise waves propagate across the 4-way coordinate axes.",
-                "[REFLECTION] An explorer arrives at the origin of the procedural manifold.",
-                "[PLANNING] Reveal how expanding outward morphs the noise field into new harmonic domains.",
-                "[ACTION] Welcome traveler to the Continuous Noise Chamber.",
-              ],
-              inventory: ["quantum_prism", "latent_vector_key"],
-              hp: 100,
-              position: { r: 500, theta: -0.22, phi: 1.65 },
-            },
-          ],
-        },
-        {
-          room_id: "noise_north",
-          name: "Quantum Interference Spire — North",
-          biome_type: "continuous_noise",
-          worldX: 0,
-          worldZ: -220,
-          panorama_url: "/generated_worlds/archive_continuous_noise/noise_north_panorama.webp?room=Quantum%20Interference%20Spire&prompt=Continuous%20Latent%20Expanse&from=Continuous%20Noise%20Chamber&dir=north&biome=continuous_noise&x=0&z=-220&idx=1&sky=%230284c7&floor=%23090514",
-          depth_url: "/generated_worlds/archive_continuous_noise/noise_north_depth.png",
-          adjacent_room_ids: ["noise_origin"],
-          mutation_level: 0.25,
-          visual_palette: {
-            sky_tone: "#0284c7",
-            floor_tone: "#090514",
-            dominant_color: "#06b6d4",
-            accent_color: "#38bdf8",
-          },
-          npcs: [],
-        },
-        {
-          room_id: "noise_east",
-          name: "Harmonic Resonance Terrace — East",
-          biome_type: "continuous_noise",
-          worldX: 220,
-          worldZ: 0,
-          panorama_url: "/generated_worlds/archive_continuous_noise/noise_east_panorama.webp?room=Harmonic%20Resonance%20Terrace&prompt=Continuous%20Latent%20Expanse&from=Continuous%20Noise%20Chamber&dir=east&biome=continuous_noise&x=220&z=0&idx=2&sky=%23a855f7&floor=%231e1b4b",
-          depth_url: "/generated_worlds/archive_continuous_noise/noise_east_depth.png",
-          adjacent_room_ids: ["noise_origin"],
-          mutation_level: 0.25,
-          visual_palette: {
-            sky_tone: "#a855f7",
-            floor_tone: "#1e1b4b",
-            dominant_color: "#c084fc",
-            accent_color: "#f43f5e",
-          },
-          npcs: [],
-        },
-        {
-          room_id: "noise_south",
-          name: "Sub-Dimensional Flux Basin — South",
-          biome_type: "continuous_noise",
-          worldX: 0,
-          worldZ: 220,
-          panorama_url: "/generated_worlds/archive_continuous_noise/noise_south_panorama.webp?room=Sub-Dimensional%20Flux%20Basin&prompt=Continuous%20Latent%20Expanse&from=Continuous%20Noise%20Chamber&dir=south&biome=continuous_noise&x=0&z=220&idx=3&sky=%2310b981&floor=%23064e3b",
-          depth_url: "/generated_worlds/archive_continuous_noise/noise_south_depth.png",
-          adjacent_room_ids: ["noise_origin"],
-          mutation_level: 0.25,
-          visual_palette: {
-            sky_tone: "#10b981",
-            floor_tone: "#064e3b",
-            dominant_color: "#34d399",
-            accent_color: "#facc15",
-          },
-          npcs: [],
-        },
-        {
-          room_id: "noise_west",
-          name: "Perlin Domain Warp Ridge — West",
-          biome_type: "continuous_noise",
-          worldX: -220,
-          worldZ: 0,
-          panorama_url: "/generated_worlds/archive_continuous_noise/noise_west_panorama.webp?room=Perlin%20Domain%20Warp%20Ridge&prompt=Continuous%20Latent%20Expanse&from=Continuous%20Noise%20Chamber&dir=west&biome=continuous_noise&x=-220&z=0&idx=4&sky=%23f59e0b&floor=%23451a03",
-          depth_url: "/generated_worlds/archive_continuous_noise/noise_west_depth.png",
-          adjacent_room_ids: ["noise_origin"],
-          mutation_level: 0.25,
-          visual_palette: {
-            sky_tone: "#f59e0b",
-            floor_tone: "#451a03",
-            dominant_color: "#fbbf24",
-            accent_color: "#38bdf8",
-          },
-          npcs: [],
-        },
-      ],
-      quests: [
-        {
-          quest_id: "quest_noise_01",
-          title: "Harmonize the Continuous Noise Manifold",
-          description: "Traverse the 4-way cardinal gateways to explore continuous procedural morphing across the latent field.",
-          completed: false,
-          trigger_flag: "explored_noise_origin",
-        },
-      ],
-    },
-  },
-  {
-    world_id: "archive_giza_necropolis",
-    title: "The Necropolis of Giza",
-    prompt: "The Great Pyramids of Giza at golden hour with the Sphinx causeway and Old Kingdom temples",
-    biome_hint: "desert_oasis",
-    created_at: "Old Kingdom, IV Dynasty",
-    world_data: {
-      world_id: "archive_giza_necropolis",
-      title: "The Necropolis of Giza",
-      initial_room_id: "giza_forecourt",
-      rooms: [
-        {
-          room_id: "giza_forecourt",
-          name: "Great Pyramid Forecourt",
-          biome_type: "desert_oasis",
-          worldX: 0,
-          worldZ: 0,
-          panorama_url: "/generated_worlds/archive_giza_necropolis/giza_forecourt_panorama.webp",
-          depth_url: "/generated_worlds/archive_giza_necropolis/giza_forecourt_depth.png",
-          adjacent_room_ids: ["sphinx_causeway", "khufu_gallery", "solar_barque"],
-          mutation_level: 0.0,
-          npcs: [
-            {
-              npc_id: "npc_khaemwaset",
-              name: "Khaemwaset, Royal Architect",
-              room_id: "giza_forecourt",
-              persona_description: "Chief Overseer of Royal Works, keeper of the sacred cubit and solar alignments of Khufu's horizon.",
-              thought_log: [
-                "[MEMORY] The casing stones of Tura limestone reflect the meridian sun across the plateau.",
-                "[REFLECTION] A traveler approaches the northern entrance of the Great Pyramid.",
-                "[PLANNING] Expound upon the sacred geometry and guide them toward the Sphinx Sanctuary.",
-                "[ACTION] Welcome the traveler in the name of Ra.",
-              ],
-              inventory: ["royal_cubit_rod", "papyrus_plan_of_khufu"],
-              hp: 100,
-              position: { r: 500, theta: -0.22, phi: 1.65 },
-            },
-          ],
-        },
-        {
-          room_id: "sphinx_causeway",
-          name: "Sanctuary of the Great Sphinx",
-          biome_type: "desert_oasis",
-          worldX: 220,
-          worldZ: 0,
-          panorama_url: "/generated_worlds/archive_giza_necropolis/sphinx_causeway_panorama.webp",
-          depth_url: "/generated_worlds/archive_giza_necropolis/sphinx_causeway_depth.png",
-          adjacent_room_ids: ["giza_forecourt"],
-          mutation_level: 0.0,
-          npcs: [
-            {
-              npc_id: "npc_neferu",
-              name: "Neferu, High Priestess",
-              room_id: "sphinx_causeway",
-              persona_description: "Interpreter of the Dream Stela resting between the paws of Horemakhet.",
-              thought_log: [
-                "[MEMORY] The Dream Stela records the covenant of the sun god upon the limestone monolith.",
-                "[REFLECTION] The visitor seeks the riddle of the eastern horizon.",
-                "[PLANNING] Recite the inscription of the Sphinx.",
-                "[ACTION] Gesture toward the altar between the lion paws.",
-              ],
-              inventory: ["dream_stela_rubbing", "lapis_amulet"],
-              hp: 100,
-              position: { r: 500, theta: 0.18, phi: 1.65 },
-            },
-          ],
-        },
-        {
-          room_id: "khufu_gallery",
-          name: "Grand Gallery of Khufu",
-          biome_type: "desert_oasis",
-          worldX: 0,
-          worldZ: -220,
-          panorama_url: "/generated_worlds/archive_giza_necropolis/khufu_gallery_panorama.webp",
-          depth_url: "/generated_worlds/archive_giza_necropolis/khufu_gallery_depth.png",
-          adjacent_room_ids: ["giza_forecourt"],
-          mutation_level: 0.0,
-          npcs: [
-            {
-              npc_id: "npc_imhotep_scribe",
-              name: "Scribe Merer",
-              room_id: "khufu_gallery",
-              persona_description: "Inspector of the Wadi al-Jarf papyri documenting the transport of fine limestone along the Nile.",
-              thought_log: [
-                "[MEMORY] Forty boatloads of Tura limestone arrived before the inundation subsided.",
-                "[REFLECTION] The traveler examines the corbelled granite vault.",
-                "[PLANNING] Share the logbook of the pyramid builders.",
-                "[ACTION] Unroll the papyrus ledger.",
-              ],
-              inventory: ["logbook_of_merer", "reed_pen"],
-              hp: 100,
-              position: { r: 500, theta: -0.15, phi: 1.65 },
-            },
-          ],
-        },
-        {
-          room_id: "solar_barque",
-          name: "Court of the Solar Barque",
-          biome_type: "desert_oasis",
-          worldX: 0,
-          worldZ: 220,
-          panorama_url: "/generated_worlds/archive_giza_necropolis/solar_barque_panorama.webp",
-          depth_url: "/generated_worlds/archive_giza_necropolis/solar_barque_depth.png",
-          adjacent_room_ids: ["giza_forecourt"],
-          mutation_level: 0.0,
-          npcs: [
-            {
-              npc_id: "npc_menkaure_nav",
-              name: "Navigator Seneb",
-              room_id: "solar_barque",
-              persona_description: "Master shipwright of the cedarwood vessel bound for the Imperishable Stars.",
-              thought_log: [
-                "[MEMORY] Twelve hundred planks of Lebanon cedar were stitched without a single iron nail.",
-                "[REFLECTION] The traveler admires the celestial oars.",
-                "[PLANNING] Explain the voyage across the Duat.",
-                "[ACTION] Bow respectfully.",
-              ],
-              inventory: ["cedar_compass", "star_chart_of_orion"],
-              hp: 100,
-              position: { r: 500, theta: 0.22, phi: 1.65 },
-            },
-          ],
-        },
-      ],
-      quests: [
-        {
-          quest_id: "q_giza_1",
-          title: "Converse with Khaemwaset in the Great Pyramid Forecourt",
-          is_completed: false,
-          trigger_flag: "met_architect",
-        },
-      ],
-    },
-  },
-  {
-    world_id: "archive_imperial_rome",
-    title: "Imperial Forum of Rome",
-    prompt: "Sunlit Roman Forum, Colosseum travertine arcades, and the Rotunda of the Pantheon",
-    biome_hint: "medieval_tavern",
-    created_at: "Anno Urbis Conditae DCCCXXX",
-    world_data: {
-      world_id: "archive_imperial_rome",
-      title: "Imperial Forum of Rome",
-      initial_room_id: "rome_forum",
-      rooms: [
-        {
-          room_id: "rome_forum",
-          name: "Via Sacra & Roman Forum",
-          biome_type: "medieval_tavern",
-          panorama_url: "/generated_worlds/archive_imperial_rome/rome_forum_panorama.webp?v=jopano",
-          depth_url: "/generated_worlds/archive_imperial_rome/rome_forum_depth.png?v=jopano",
-          adjacent_room_ids: ["rome_pantheon", "rome_colosseum"],
-          mutation_level: 0.0,
-          npcs: [
-            {
-              npc_id: "npc_vitruvius",
-              name: "Marcus Vitruvius Pollio",
-              room_id: "rome_forum",
-              persona_description: "Author of De Architectura, defender of firmitas, utilitas, and venustas.",
-              thought_log: [
-                "[MEMORY] Architecture depends upon Order, Arrangement, Eurhythmy, Symmetry, Propriety, and Economy.",
-                "[REFLECTION] A scholar walks along the Via Sacra.",
-                "[PLANNING] Discuss the proportions of the Corinthian colonnade.",
-                "[ACTION] Extend a scroll of architectural elevations.",
-              ],
-              inventory: ["ten_books_on_architecture", "bronze_calipers"],
-              hp: 100,
-              position: { r: 500, theta: -0.2, phi: 1.65 },
-            },
-          ],
-        },
-        {
-          room_id: "rome_pantheon",
-          name: "Rotunda of the Pantheon",
-          biome_type: "medieval_tavern",
-          panorama_url: "/generated_worlds/archive_imperial_rome/rome_basilica_panorama.webp?v=jopano",
-          depth_url: "/generated_worlds/archive_imperial_rome/rome_basilica_depth.png?v=jopano",
-          adjacent_room_ids: ["rome_forum", "rome_colosseum"],
-          mutation_level: 0.0,
-          npcs: [
-            {
-              npc_id: "npc_apollodorus",
-              name: "Apollodorus of Damascus",
-              room_id: "rome_pantheon",
-              persona_description: "Imperial engineer who spanned the unreinforced coffered dome.",
-              thought_log: [
-                "[MEMORY] Pumice aggregate lightens the upper crown around the twenty-seven-foot oculus.",
-                "[REFLECTION] The sunbeam illuminates the porphyry floor tiles.",
-                "[PLANNING] Point out the spherical geometry of the interior.",
-                "[ACTION] Look upward toward the oculus.",
-              ],
-              inventory: ["dome_centering_plan"],
-              hp: 100,
-              position: { r: 500, theta: 0.15, phi: 1.65 },
-            },
-          ],
-        },
-        {
-          room_id: "rome_colosseum",
-          name: "Flavian Amphitheater Colonnade",
-          biome_type: "medieval_tavern",
-          panorama_url: "/generated_worlds/archive_imperial_rome/rome_tabularium_panorama.webp?v=jopano",
-          depth_url: "/generated_worlds/archive_imperial_rome/rome_tabularium_depth.png?v=jopano",
-          adjacent_room_ids: ["rome_forum", "rome_pantheon"],
-          mutation_level: 0.0,
-          npcs: [
-            {
-              npc_id: "npc_senator_valeria",
-              name: "Senator Valeria Maxima",
-              room_id: "rome_colosseum",
-              persona_description: "Patron of the civic basilicas and curator of the imperial aqueducts.",
-              thought_log: [
-                "[MEMORY] Eighty travertine arches channel fifty thousand citizens without congestion.",
-                "[REFLECTION] The visitor studies the Doric, Ionic, and Corinthian tiers.",
-                "[PLANNING] Welcome them to the Flavian promenade.",
-                "[ACTION] Speak with senatorial poise.",
-              ],
-              inventory: ["senatorial_decree"],
-              hp: 100,
-              position: { r: 500, theta: -0.18, phi: 1.65 },
-            },
-          ],
-        },
-      ],
-      quests: [],
-    },
-  },
-  {
-    world_id: "archive_sylvan_gardens",
-    title: "Hanging Gardens of Babylon",
-    prompt: "Sunlit terraced botanical sanctuary with marble aqueducts, waterfalls, and cedar pavilions",
-    biome_hint: "enchanted_forest",
-    created_at: "Sixth Century BCE",
-    world_data: {
-      world_id: "archive_sylvan_gardens",
-      title: "Hanging Gardens of Babylon",
-      initial_room_id: "babylon_terrace",
-      rooms: [
-        {
-          room_id: "babylon_terrace",
-          name: "Upper Cedar Terrace",
-          biome_type: "enchanted_forest",
-          panorama_url: "/generated_worlds/archive_sylvan_gardens/sylvan_glade_panorama.webp?v=jopano",
-          depth_url: "/generated_worlds/archive_sylvan_gardens/sylvan_glade_depth.png?v=jopano",
-          adjacent_room_ids: ["babylon_aqueduct"],
-          mutation_level: 0.0,
-          npcs: [
-            {
-              npc_id: "npc_amytis",
-              name: "Queen Amytis of Media",
-              room_id: "babylon_terrace",
-              persona_description: "Founder of the terraced mountain gardens above the Euphrates plain.",
-              thought_log: [
-                "[MEMORY] Archimedes screws raise water from the Euphrates to the highest stone vaults.",
-                "[REFLECTION] A guest walks beneath the pomegranate and cedar arbors.",
-                "[PLANNING] Share the botanical marvels of the terrace.",
-                "[ACTION] Offer a greeting beneath the sunlit colonnade.",
-              ],
-              inventory: ["cedar_blossom"],
-              hp: 100,
-              position: { r: 500, theta: -0.2, phi: 1.65 },
-            },
-          ],
-        },
-        {
-          room_id: "babylon_aqueduct",
-          name: "Ishtar Water Pavilion",
-          biome_type: "enchanted_forest",
-          panorama_url: "/generated_worlds/archive_sylvan_gardens/sylvan_bridge_panorama.webp?v=jopano",
-          depth_url: "/generated_worlds/archive_sylvan_gardens/sylvan_bridge_depth.png?v=jopano",
-          adjacent_room_ids: ["babylon_terrace"],
-          mutation_level: 0.0,
-          npcs: [
-            {
-              npc_id: "npc_nabonidus",
-              name: "Chronicler Berossus",
-              room_id: "babylon_aqueduct",
-              persona_description: "Astronomer-priest of Marduk and historian of the Chaldean dynasties.",
-              thought_log: [
-                "[MEMORY] Glazed lapis bricks line the processional waterway.",
-                "[REFLECTION] The traveler observes the hydraulic channels.",
-                "[PLANNING] Converse on Babylonian astronomy and engineering.",
-                "[ACTION] Gesture to the water clock.",
-              ],
-              inventory: ["cuneiform_cylinder"],
-              hp: 100,
-              position: { r: 500, theta: 0.2, phi: 1.65 },
-            },
-          ],
-        },
-      ],
-      quests: [],
-    },
-  },
-];
+export const BUILTIN_ARCHIVES: SavedWorldEntry[] = [];
 
 export function inferTopologyType(text?: string): "linear" | "nature_open" | "city_grid" | "hub_spoke" {
   const t = (text || "").toLowerCase();
@@ -1081,6 +751,18 @@ export interface WorldState {
   renderedRoomIds: Record<string, boolean>;
   isPriorityWorkerActive: boolean;
 
+  // Nemotron narrative director & story knowledge graph
+  storyGraph: StoryKnowledgeGraph | null;
+  narrativeMessages: NarrativeDirectorMessage[];
+  isNarrativeLoading: boolean;
+  isGodModeDirectorOpen: boolean;
+  guideState: GuideGuidanceState | null;
+
+  // Checkpoint persistence system
+  checkpoints: WorldCheckpoint[];
+  activeCheckpoint: WorldCheckpoint | null;
+  checkpointStatusText: string | null;
+
   // actions
   setActiveScreen: (screen: "title" | "storage" | "create" | "game") => void;
   setIsCompilingWorld: (compiling: boolean) => void;
@@ -1090,6 +772,9 @@ export interface WorldState {
   saveWorldToArchive: (entry: SavedWorldEntry) => void;
   deleteWorldFromArchive: (worldId: string) => void;
   loadArchivedWorld: (entry: SavedWorldEntry) => void;
+  saveCheckpoint: (label?: string) => string;
+  loadCheckpoint: (checkpointId: string) => void;
+  restoreActiveCheckpoint: () => void;
 
   setCurrentRoom: (roomId: string, walkedInto?: boolean) => void;
   selectNPC: (npcId: string | null) => void;
@@ -1098,6 +783,13 @@ export interface WorldState {
   setLastTelemetry: (telemetry: TelemetryMetadata) => void;
   setSimulatedProvider: (provider: "nemotron_70b" | "gemini_flash" | "offline_mock" | null) => void;
   toggleGodMode: () => void;
+  toggleGodModeDirector: () => void;
+  setGodModeDirectorOpen: (open: boolean) => void;
+  sendNarrativeTurn: (playerMessage?: string) => Promise<void>;
+  compileAndManifestFromMira: (prompt?: string, biome?: string) => Promise<void>;
+  updateGuideGuidance: () => void;
+  advanceStoryBeat: (beatId: string) => void;
+  dispatchSubagentMovement: (agentId: string, mode: "escorting_player" | "patrolling" | "stationed" | "beckoning_to_gateway") => void;
   hydrateFromMockWorld: (worldData: any) => void;
   ensureNeighborZones: (roomId: string) => void;
   markRoomRendered: (roomId: string, rendered?: boolean) => void;
@@ -1143,6 +835,15 @@ export const useWorldStore = create<WorldState>((set, get) => ({
   transitionDirection: [0, 0, -1],
   renderedRoomIds: { noise_origin: true },
   isPriorityWorkerActive: false,
+
+  storyGraph: null,
+  narrativeMessages: [],
+  isNarrativeLoading: false,
+  isGodModeDirectorOpen: false,
+  guideState: null,
+  checkpoints: [],
+  activeCheckpoint: null,
+  checkpointStatusText: null,
 
   setActiveScreen: (screen) => {
     set({ activeScreen: screen });
@@ -1205,6 +906,88 @@ export const useWorldStore = create<WorldState>((set, get) => ({
       worldPrompt: entry.prompt || entry.title,
       activeScreen: "game",
     });
+    get().saveCheckpoint(`World Loaded: ${entry.title}`);
+  },
+
+  saveCheckpoint: (label?: string) => {
+    const s = get();
+    const currentRoom = s.rooms[s.currentRoomId];
+    const cpId = `cp_${Date.now()}`;
+    const newCp: WorldCheckpoint = {
+      checkpoint_id: cpId,
+      world_id: (s as any).worldId || "world_active",
+      world_title: s.worldTitle,
+      current_room_id: s.currentRoomId,
+      room_name: currentRoom?.name || s.currentRoomId,
+      timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" }),
+      rooms: s.rooms,
+      storyGraph: s.storyGraph,
+      narrativeMessages: s.narrativeMessages,
+      guideState: s.guideState,
+      playerPosition: s.playerPosition,
+      status: "saved",
+      label: label || `Checkpoint at ${currentRoom?.name || "Sanctuary"}`,
+    };
+
+    set((state) => {
+      const updated = [newCp, ...state.checkpoints.filter((c) => c.checkpoint_id !== cpId)];
+      if (typeof window !== "undefined") {
+        try {
+          localStorage.setItem(CHECKPOINTS_STORAGE_KEY, JSON.stringify(updated));
+          localStorage.setItem(ACTIVE_STATE_STORAGE_KEY, JSON.stringify(newCp));
+        } catch {}
+      }
+      return {
+        checkpoints: updated,
+        activeCheckpoint: newCp,
+        checkpointStatusText: `Checkpoint saved: ${newCp.room_name}`,
+      };
+    });
+
+    setTimeout(() => {
+      set({ checkpointStatusText: null });
+    }, 3500);
+
+    return cpId;
+  },
+
+  loadCheckpoint: (checkpointId: string) => {
+    const cp = get().checkpoints.find((c) => c.checkpoint_id === checkpointId);
+    if (!cp) return;
+
+    set({
+      worldTitle: cp.world_title,
+      currentRoomId: cp.current_room_id,
+      rooms: cp.rooms,
+      storyGraph: cp.storyGraph,
+      narrativeMessages: cp.narrativeMessages || [],
+      guideState: cp.guideState,
+      playerPosition: cp.playerPosition,
+      activeCheckpoint: { ...cp, status: "restored" },
+      activeScreen: "game",
+      checkpointStatusText: `Restored checkpoint: ${cp.room_name}`,
+    });
+
+    get().ensureNeighborZones(cp.current_room_id);
+    get().scheduleBoundedPriorityRendering();
+    get().updateGuideGuidance();
+
+    if (typeof window !== "undefined") {
+      try {
+        localStorage.setItem(ACTIVE_STATE_STORAGE_KEY, JSON.stringify(cp));
+      } catch {}
+    }
+
+    setTimeout(() => {
+      set({ checkpointStatusText: null });
+    }, 3500);
+  },
+
+  restoreActiveCheckpoint: () => {
+    const active = get().activeCheckpoint || get().checkpoints[0];
+    if (active) {
+      get().loadCheckpoint(active.checkpoint_id);
+    }
   },
 
   setCurrentRoom: (roomId: string, walkedInto: boolean = false) => {
@@ -1244,6 +1027,8 @@ export const useWorldStore = create<WorldState>((set, get) => ({
       // immediately generate neighboring zones as soon as the user enters this environment!
       get().ensureNeighborZones(roomId);
       get().scheduleBoundedPriorityRendering();
+      get().updateGuideGuidance();
+      get().saveCheckpoint(`Arrived at ${targetRoom.name}`);
     }
   },
 
@@ -1313,6 +1098,327 @@ export const useWorldStore = create<WorldState>((set, get) => ({
 
   toggleGodMode: () => {
     set((state) => ({ isGodModeOpen: !state.isGodModeOpen }));
+  },
+
+  toggleGodModeDirector: () => {
+    const next = !get().isGodModeDirectorOpen;
+    set({ isGodModeDirectorOpen: next });
+    if (next && get().narrativeMessages.length === 0) {
+      get().sendNarrativeTurn();
+    }
+  },
+
+  setGodModeDirectorOpen: (open: boolean) => {
+    set({ isGodModeDirectorOpen: open });
+    if (open && get().narrativeMessages.length === 0) {
+      get().sendNarrativeTurn();
+    }
+  },
+
+  sendNarrativeTurn: async (playerMessage?: string) => {
+    const state = get();
+    const currentGraph = state.storyGraph;
+    const stage = currentGraph ? currentGraph.interview_stage : "ask_core_story";
+
+    if (playerMessage) {
+      const userMsg: NarrativeDirectorMessage = {
+        role: "player",
+        content: playerMessage,
+        timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+      };
+      set({
+        narrativeMessages: [...state.narrativeMessages, userMsg],
+        isNarrativeLoading: true,
+      });
+    } else {
+      set({ isNarrativeLoading: true });
+    }
+
+    const controller = new AbortController();
+    const abortTimeout = setTimeout(() => controller.abort(), 6500);
+
+    try {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8001";
+      const res = await fetch(`${apiUrl}/story/director/turn`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        signal: controller.signal,
+        body: JSON.stringify({
+          world_id: state.worldTitle.toLowerCase().replace(/[^a-z0-9_-]/g, "_") || "world_active",
+          world_title: state.worldTitle,
+          current_room_id: state.currentRoomId,
+          player_message: playerMessage || null,
+          stage,
+          existing_graph: currentGraph,
+          simulate_provider: state.simulatedProvider,
+        }),
+      });
+      clearTimeout(abortTimeout);
+
+      if (res.ok) {
+        const data = await res.json();
+        const dirMsg: NarrativeDirectorMessage = {
+          role: "mira",
+          content: data.director_utterance,
+          timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+          chips: data.suggested_chips || [],
+          followUp: data.follow_up_question || undefined,
+          suggestedBiome: data.suggested_biome || undefined,
+          compilationPrompt: data.compilation_prompt || undefined,
+        };
+
+        const updatedState: Partial<WorldState> = {
+          narrativeMessages: [...get().narrativeMessages, dirMsg],
+          isNarrativeLoading: false,
+          lastTelemetry: data.telemetry || get().lastTelemetry,
+        };
+
+        if (data.updated_graph) {
+          updatedState.storyGraph = data.updated_graph;
+        }
+
+        // Integrate physical subagents into the active 3D world!
+        if (Array.isArray(data.spawned_subagents) && data.spawned_subagents.length > 0) {
+          const currentNpcs = { ...get().npcs };
+          data.spawned_subagents.forEach((ag: KnowledgeAgentNode, idx: number) => {
+            currentNpcs[ag.agent_id] = {
+              npc_id: ag.agent_id,
+              name: ag.name,
+              room_id: get().currentRoomId,
+              persona_description: `${ag.role}: ${ag.personality}. Secrets: ${ag.secret_knowledge}`,
+              thought_log: ag.active_thought ? [ag.active_thought] : [`[PLANNING] Advance story beat in ${get().currentRoomId}.`],
+              inventory: ["astrolabe", "cipher_key"],
+              hp: 100,
+              position: { r: 500, theta: -0.22 + idx * 0.42, phi: 1.65 },
+            };
+          });
+          updatedState.npcs = currentNpcs;
+        }
+
+        // If guide agent returned, announce greeting and subtitle
+        if (data.guide_agent) {
+          const speech = data.guide_agent.narrative_dialogue_arc?.[0] || `Welcome, explorer! Follow my lead.`;
+          updatedState.activeSubtitle = {
+            npcId: data.guide_agent.agent_id,
+            speaker: data.guide_agent.name,
+            persona: `${data.guide_agent.role} — ${data.guide_agent.faction}`,
+            text: speech,
+            timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+          };
+        }
+
+        set(updatedState);
+        get().updateGuideGuidance();
+        return;
+      }
+    } catch (err) {
+      console.warn("Nemotron narrative turn failed:", err);
+    } finally {
+      clearTimeout(abortTimeout);
+    }
+
+    // Fallback safe turn response if network dropped or timed out
+    const fallbackDirMsg: NarrativeDirectorMessage = {
+      role: "mira",
+      content: playerMessage
+        ? `I have recorded your command: "${playerMessage}". The ancient mechanisms are turning!`
+        : "What other clues or allies shall we summon to aid our quest?",
+      timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+      chips: ["Deploy Pathfinder Guide", "Trace the cipher dial", "Advance to next sector"],
+      followUp: "Who should join us? Name a companion or select an option below:",
+    };
+
+    set({
+      narrativeMessages: [...get().narrativeMessages, fallbackDirMsg],
+      isNarrativeLoading: false,
+    });
+  },
+
+  compileAndManifestFromMira: async (overridePrompt?: string, overrideBiome?: string) => {
+    const state = get();
+    const promptToUse = (overridePrompt || state.worldTitle || "The Great Pyramids of Giza").trim();
+    const biomeToUse = overrideBiome || undefined;
+
+    set({ isCompilingWorld: true, isGodModeDirectorOpen: false });
+    const startTime = performance.now();
+
+    try {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8001";
+      const res = await fetch(`${apiUrl}/world/compile`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          prompt: promptToUse,
+          biome_hint: biomeToUse,
+        }),
+      });
+
+      const latencyMs = performance.now() - startTime;
+      if (res.ok) {
+        const data = await res.json();
+        if (data.world_graph && Array.isArray(data.world_graph.rooms) && data.world_graph.rooms.length > 0) {
+          data.world_graph.prompt = promptToUse;
+          get().hydrateFromMockWorld(data.world_graph);
+          get().saveWorldToArchive({
+            world_id: data.world_graph.world_id || `world_${Date.now()}`,
+            title: data.world_graph.title || promptToUse,
+            prompt: promptToUse,
+            biome_hint: biomeToUse || "custom",
+            created_at: new Date().toLocaleString(),
+            world_data: data.world_graph,
+          });
+          get().setActiveScreen("game");
+        }
+
+        const source = data.generation_metadata?.source || "live_generative";
+        const isLive = source === "live_generative" || source === "gemini_generative";
+        get().setLastTelemetry({
+          provider: isLive ? "gemini_flash" : "offline_mock",
+          latency_ms: latencyMs,
+          fallback_occurred: !isLive,
+          fallback_reason: !isLive ? data.generation_metadata?.reason : undefined,
+        });
+      }
+    } catch (e) {
+      console.warn("compileAndManifestFromMira error:", e);
+    } finally {
+      set({ isCompilingWorld: false });
+      get().updateGuideGuidance();
+    }
+  },
+
+  updateGuideGuidance: () => {
+    const state = get();
+    if (!state.storyGraph) return;
+
+    const currentRoom = state.rooms[state.currentRoomId];
+    if (!currentRoom) return;
+
+    // Find active guide agent
+    const guide = state.storyGraph.agents.find((a) => a.role.toLowerCase() === "guide") || state.storyGraph.agents[0];
+    if (!guide) return;
+
+    // Find current active story beat
+    const activeBeat = state.storyGraph.story_beats.find((b) => b.is_unlocked) || state.storyGraph.story_beats[0];
+    const targetLoc = state.storyGraph.locations.find((l) => l.location_id === activeBeat?.target_location_id);
+    const targetRoomId = targetLoc?.room_id || state.currentRoomId;
+
+    if (targetRoomId === state.currentRoomId) {
+      set({
+        guideState: {
+          agentId: guide.agent_id,
+          name: guide.name,
+          targetRoomId,
+          nextHopRoomId: null,
+          isStalling: false,
+          stallMessage: null,
+          instructionText: `We have reached ${currentRoom.name}! Explore the chamber for clues.`,
+          chunkedPath: [currentRoom.room_id],
+        },
+      });
+      return;
+    }
+
+    // BFS path across rooms to targetRoomId
+    const queue: Array<{ id: string; path: string[] }> = [{ id: state.currentRoomId, path: [state.currentRoomId] }];
+    const visited = new Set<string>([state.currentRoomId]);
+    let foundPath: string[] | null = null;
+
+    while (queue.length > 0) {
+      const cur = queue.shift()!;
+      if (cur.id === targetRoomId) {
+        foundPath = cur.path;
+        break;
+      }
+      const r = state.rooms[cur.id];
+      if (r && r.adjacent_room_ids) {
+        for (const adj of r.adjacent_room_ids) {
+          if (!visited.has(adj)) {
+            visited.add(adj);
+            queue.push({ id: adj, path: [...cur.path, adj] });
+          }
+        }
+      }
+    }
+
+    const chunkedPath = foundPath || [state.currentRoomId, targetRoomId];
+    const nextHopRoomId = chunkedPath.length > 1 ? chunkedPath[1] : targetRoomId;
+    const isNextHopRendered = Boolean(state.renderedRoomIds[nextHopRoomId]);
+    const nextHopRoom = state.rooms[nextHopRoomId];
+    const nextHopName = nextHopRoom?.name || "the next chamber";
+
+    if (!isNextHopRendered) {
+      // In-character age 10-13 stalling dialogue while chunk renders!
+      const stallPhrases = [
+        `Hold up a moment, explorer! The stone gears in this archway are still shifting into place. Let me inspect the runes on this lintel before we step into ${nextHopName}.`,
+        `Wait—my astrolabe is picking up magnetic interference ahead. Give me ten seconds to calibrate the bearing so we don't trip an ancient mechanism entering ${nextHopName}.`,
+        `Check out this carving on the wall while the dust clears in the corridor to ${nextHopName}! That constellation glyph is our key.`,
+      ];
+      const hash = Math.abs(nextHopRoomId.split("").reduce((acc, c) => acc + c.charCodeAt(0), 0));
+      const stallMsg = stallPhrases[hash % stallPhrases.length];
+
+      set({
+        guideState: {
+          agentId: guide.agent_id,
+          name: guide.name,
+          targetRoomId,
+          nextHopRoomId,
+          isStalling: true,
+          stallMessage: stallMsg,
+          instructionText: stallMsg,
+          chunkedPath,
+        },
+      });
+
+      // Priority render the next hop immediately!
+      get().scheduleBoundedPriorityRendering();
+    } else {
+      // Fully rendered and safe!
+      set({
+        guideState: {
+          agentId: guide.agent_id,
+          name: guide.name,
+          targetRoomId,
+          nextHopRoomId,
+          isStalling: false,
+          stallMessage: null,
+          instructionText: `The archway to ${nextHopName} is open and clear! Follow me through.`,
+          chunkedPath,
+        },
+      });
+    }
+  },
+
+  advanceStoryBeat: (beatId: string) => {
+    set((state) => {
+      if (!state.storyGraph) return state;
+      const updatedBeats = state.storyGraph.story_beats.map((b) =>
+        b.beat_id === beatId ? { ...b, is_unlocked: true } : b
+      );
+      return {
+        storyGraph: {
+          ...state.storyGraph,
+          story_beats: updatedBeats,
+          current_beat_id: beatId,
+        },
+      };
+    });
+    get().updateGuideGuidance();
+  },
+
+  dispatchSubagentMovement: (agentId: string, mode: "escorting_player" | "patrolling" | "stationed" | "beckoning_to_gateway") => {
+    set((state) => {
+      if (!state.storyGraph) return state;
+      const updatedAgents = state.storyGraph.agents.map((ag) =>
+        ag.agent_id === agentId ? { ...ag, movement_mode: mode } : ag
+      );
+      return {
+        storyGraph: {
+          ...state.storyGraph,
+          agents: updatedAgents,
+        },
+      };
+    });
   },
 
   hydrateFromMockWorld: (worldData: any) => {
@@ -1722,6 +1828,7 @@ export const useWorldStore = create<WorldState>((set, get) => ({
           },
           isPriorityWorkerActive: false,
         }));
+        get().updateGuideGuidance();
       } catch (e) {
         console.warn("Priority render error:", e);
         set({ isPriorityWorkerActive: false });
@@ -1861,6 +1968,7 @@ export const useWorldStore = create<WorldState>((set, get) => ({
               : s.activeSubtitle,
           }));
 
+          get().updateGuideGuidance();
           drainQueue();
           return newRoom;
         }
@@ -1937,6 +2045,7 @@ export const useWorldStore = create<WorldState>((set, get) => ({
       },
     }));
 
+    get().updateGuideGuidance();
     drainQueue();
     return fallbackRoom;
   },
@@ -1947,7 +2056,9 @@ export const useWorldStore = create<WorldState>((set, get) => ({
 
     if (typeof window !== "undefined") {
       try {
-        const stored = localStorage.getItem(ARCHIVE_STORAGE_KEY);
+        localStorage.removeItem(ARCHIVE_STORAGE_KEY);
+        set({ savedWorlds: [] });
+        const stored = null;
         if (stored) {
           const parsed = JSON.parse(stored);
           if (Array.isArray(parsed) && parsed.length > 0) {
@@ -1959,7 +2070,39 @@ export const useWorldStore = create<WorldState>((set, get) => ({
             set({ savedWorlds: combined });
           }
         }
-      } catch {}
+
+        const storedCheckpoints = localStorage.getItem(CHECKPOINTS_STORAGE_KEY);
+        if (storedCheckpoints) {
+          const parsedCps = JSON.parse(storedCheckpoints);
+          if (Array.isArray(parsedCps) && parsedCps.length > 0) {
+            set({ checkpoints: parsedCps });
+          }
+        }
+
+        const storedActive = localStorage.getItem(ACTIVE_STATE_STORAGE_KEY);
+        if (storedActive) {
+          const activeCp: WorldCheckpoint = JSON.parse(storedActive);
+          if (activeCp && activeCp.rooms && Object.keys(activeCp.rooms).length > 0) {
+            set({
+              worldTitle: activeCp.world_title,
+              currentRoomId: activeCp.current_room_id,
+              rooms: activeCp.rooms,
+              storyGraph: activeCp.storyGraph,
+              narrativeMessages: activeCp.narrativeMessages || [],
+              guideState: activeCp.guideState,
+              playerPosition: activeCp.playerPosition || { x: 0, z: 0, yaw: 0 },
+              activeCheckpoint: { ...activeCp, status: "restored" },
+              activeScreen: "game",
+              checkpointStatusText: `Restored progress: ${activeCp.room_name}`,
+            });
+            get().ensureNeighborZones(activeCp.current_room_id);
+            get().scheduleBoundedPriorityRendering();
+            get().updateGuideGuidance();
+          }
+        }
+      } catch (err) {
+        console.warn("Local storage state restore notice:", err);
+      }
     }
 
     if (!isOffline && typeof window !== "undefined") {

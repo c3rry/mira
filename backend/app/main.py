@@ -5,7 +5,7 @@ import os
 from dotenv import load_dotenv
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from backend.app.routes import health, npc, tick, vision, world
+from backend.app.routes import health, npc, tick, vision, world, narrative
 from backend.app.schemas import WorldGraph
 
 # load environment variables from backend/.env or root .env
@@ -67,6 +67,7 @@ app.include_router(world.router)
 app.include_router(vision.router)
 app.include_router(tick.router)
 app.include_router(npc.router)
+app.include_router(narrative.router)
 
 
 @app.get("/")

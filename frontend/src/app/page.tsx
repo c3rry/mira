@@ -11,8 +11,8 @@ import { AudioManager } from "@/audio/AudioManager";
 import { FallbackStatusBadge } from "@/components/hud/FallbackStatusBadge";
 import { DialogueModal } from "@/components/hud/DialogueModal";
 import { GodModePalette } from "@/components/GodModePalette";
+import { GodModeNarrativeDirector } from "@/components/director/GodModeNarrativeDirector";
 import { MinimapTopology } from "@/components/minimap/MinimapTopology";
-import { PromptRefinementChat } from "@/components/chat/PromptRefinementChat";
 import { MutationControls } from "@/components/MutationControls";
 
 // dynamically import 3d canvas to prevent ssr webgl errors
@@ -80,6 +80,8 @@ export default function Home() {
     initializeSync,
     setCurrentRoom,
     toggleGodMode,
+    toggleGodModeDirector,
+    guideState,
     setLastTelemetry,
     setActiveSubtitle,
     expandWorld,
@@ -403,20 +405,6 @@ export default function Home() {
               <button
                 onClick={() => {
                   toggleAudioUnlock();
-                  setActiveScreen("create");
-                }}
-                className="w-full py-3 px-6 border text-sm uppercase tracking-[0.22em] font-bold transition-all bg-black/50 hover:bg-black/75"
-                style={{
-                  borderColor: theme.panelBorder,
-                  color: theme.accentText,
-                }}
-              >
-                II. Synthesize New World
-              </button>
-
-              <button
-                onClick={() => {
-                  toggleAudioUnlock();
                   setActiveScreen("storage");
                 }}
                 className="w-full py-3 px-6 border text-sm uppercase tracking-[0.22em] font-bold transition-all bg-black/50 hover:bg-black/75"
@@ -425,7 +413,7 @@ export default function Home() {
                   color: theme.mutedText,
                 }}
               >
-                III. World Archives & Storage ({savedWorlds.length} Worlds)
+                II. World Archives & Storage
               </button>
             </div>
 
@@ -462,13 +450,13 @@ export default function Home() {
                   className="text-xs uppercase tracking-[0.28em] mb-1"
                   style={{ color: theme.accentColor }}
                 >
-                  Cartographic Repository & Latent Synthesis
+                  Cartographic Repository
                 </div>
                 <h2
                   className="text-2xl font-bold uppercase tracking-[0.18em]"
                   style={{ color: theme.accentText }}
                 >
-                  World Archives & Creation Studio
+                  World Archives & Storage
                 </h2>
               </div>
 
@@ -494,112 +482,19 @@ export default function Home() {
               </div>
             </div>
 
-            {/* two-column body: left = create new world, right = saved world storage */}
-            <div className="grid grid-cols-1 lg:grid-cols-12 flex-1 overflow-hidden">
-              {/* left column: new world compiler */}
-              <div
-                className="lg:col-span-5 p-6 border-b lg:border-b-0 lg:border-r flex flex-col gap-4 overflow-y-auto"
-                style={{ borderColor: `${theme.panelBorder}55` }}
-              >
+            {/* world storage archive ledger */}
+            <div className="w-full p-6 flex flex-col gap-4 overflow-y-auto">
+              <div className="flex items-center justify-between">
                 <h3
                   className="text-sm font-bold uppercase tracking-[0.2em]"
                   style={{ color: theme.accentColor }}
                 >
-                  I. Synthesize New World
+                  World Archives Ledger
                 </h3>
-                <p className="text-xs italic leading-relaxed" style={{ color: theme.mutedText }}>
-                  Enter any historical monument, mythical sanctuary, or architectural domain.
-                  You will materialize inside the latent diffusion chamber and watch the noise
-                  converge into three-dimensional geometry.
-                </p>
-
-                <div className="flex flex-col gap-2">
-                  <label
-                    className="text-xs uppercase tracking-widest font-bold"
-                    style={{ color: theme.accentText }}
-                  >
-                    Architectural Prompt
-                  </label>
-                  <textarea
-                    value={newWorldPrompt}
-                    onChange={(e) => setNewWorldPrompt(e.target.value)}
-                    placeholder="e.g., The Great Pyramids of Giza at golden hour, Imperial Forum of Rome, Sunken Library of Alexandria..."
-                    rows={3}
-                    className="w-full p-3 bg-black/60 border text-sm text-[#fdf6e2] placeholder-neutral-500 focus:outline-none resize-none"
-                    style={{ borderColor: theme.panelBorder }}
-                  />
-                </div>
-
-                <button
-                  onClick={() => handleCreateNewWorld()}
-                  disabled={isCompilingWorld}
-                  className="w-full py-3 border-2 text-xs uppercase tracking-[0.22em] font-bold transition-all"
-                  style={{
-                    backgroundColor: theme.buttonBg,
-                    color: theme.buttonText,
-                    borderColor: theme.panelBorder,
-                  }}
-                >
-                  {isCompilingWorld
-                    ? "Initializing Latent Diffusion..."
-                    : "Compile & Enter New World"}
-                </button>
-
-                <div
-                  className="pt-3 border-t"
-                  style={{ borderColor: `${theme.panelBorder}44` }}
-                >
-                  <div
-                    className="text-xs uppercase tracking-[0.18em] font-bold mb-2.5"
-                    style={{ color: theme.accentColor }}
-                  >
-                    Classical Architectural Presets
-                  </div>
-                  <div className="grid grid-cols-1 gap-2">
-                    {STUDIO_PRESETS.map((preset) => (
-                      <button
-                        key={preset.title}
-                        onClick={() => {
-                          setNewWorldPrompt(preset.prompt);
-                          setNewWorldBiome(preset.biome);
-                          handleCreateNewWorld(preset.prompt, preset.biome);
-                        }}
-                        className="p-2.5 border text-left bg-black/45 hover:bg-black/75 transition-all flex items-center justify-between"
-                        style={{ borderColor: `${theme.panelBorder}55` }}
-                      >
-                        <div>
-                          <div className="text-xs font-bold" style={{ color: theme.accentText }}>
-                            {preset.numeral}. {preset.title}
-                          </div>
-                          <div className="text-[11px] italic truncate max-w-xs" style={{ color: theme.mutedText }}>
-                            {preset.prompt}
-                          </div>
-                        </div>
-                        <span
-                          className="text-[10px] uppercase tracking-widest px-2 py-0.5 border"
-                          style={{ borderColor: theme.panelBorder, color: theme.accentColor }}
-                        >
-                          Compile
-                        </span>
-                      </button>
-                    ))}
-                  </div>
-                </div>
+                <span className="text-xs italic" style={{ color: theme.mutedText }}>
+                  Select any stored chronicle to materialize immediately
+                </span>
               </div>
-
-              {/* right column: world storage archive ledger */}
-              <div className="lg:col-span-7 p-6 flex flex-col gap-4 overflow-y-auto">
-                <div className="flex items-center justify-between">
-                  <h3
-                    className="text-sm font-bold uppercase tracking-[0.2em]"
-                    style={{ color: theme.accentColor }}
-                  >
-                    II. Stored World Archives ({savedWorlds.length})
-                  </h3>
-                  <span className="text-xs italic" style={{ color: theme.mutedText }}>
-                    Select any stored chronicle to materialize immediately
-                  </span>
-                </div>
 
                 <div className="space-y-3">
                   {savedWorlds.map((entry, idx) => {
@@ -687,8 +582,7 @@ export default function Home() {
               </div>
             </div>
           </div>
-        </div>
-      )}
+        )}
 
       {/* ===================================================================== */}
       {/* SCREEN III: ACTIVE 3D EXPLORATION HUD (ADAPTIVE THEME & SUBTITLES)    */}
@@ -719,7 +613,7 @@ export default function Home() {
                   color: theme.accentText,
                 }}
               >
-                {worldTitle} — <span style={{ color: theme.accentColor }}>{activeRoom?.name || currentRoomId}</span>
+                {worldTitle} : <span style={{ color: theme.accentColor }}>{activeRoom?.name || currentRoomId}</span>
               </div>
             </div>
 
@@ -733,7 +627,21 @@ export default function Home() {
                   color: theme.accentText,
                 }}
               >
-                Archives ({savedWorlds.length})
+                Archives
+              </button>
+
+              <button
+                onClick={() => toggleGodModeDirector()}
+                className="px-2.5 py-0.5 border uppercase tracking-wider font-bold transition-all flex items-center gap-1.5 shadow-[0_0_8px_rgba(56,189,248,0.25)]"
+                style={{
+                  backgroundColor: `${theme.accentColor}24`,
+                  borderColor: theme.accentColor,
+                  color: theme.accentColor,
+                }}
+                title="Open Mira Narrative Director [G]"
+              >
+                <span className="w-1.5 h-1.5 rounded-full bg-sky-400 animate-pulse" />
+                Mira Director [G]
               </button>
 
               <button
@@ -779,7 +687,7 @@ export default function Home() {
                   className="text-[11px] font-bold uppercase tracking-[0.2em] mb-1"
                   style={{ color: theme.accentColor }}
                 >
-                  Synthesizing 3D World — {diffusionProgress}%
+                  Synthesizing 3D World : {diffusionProgress}%
                 </div>
                 <div className="w-full h-1.5 bg-black/70 border overflow-hidden" style={{ borderColor: theme.panelBorder }}>
                   <div
@@ -794,9 +702,21 @@ export default function Home() {
             </div>
           )}
 
-          {/* left floating quick world compiler */}
+          {/* left floating quick story creator button */}
           <div className="absolute top-12 left-4 z-20 pointer-events-auto">
-            <PromptRefinementChat />
+            <button
+              onClick={() => toggleGodModeDirector()}
+              className="px-3 py-1.5 border text-xs uppercase tracking-wider font-bold transition-all shadow-xl backdrop-blur-md flex items-center gap-2 hover:scale-[1.02]"
+              style={{
+                backgroundColor: "rgba(10, 10, 14, 0.85)",
+                borderColor: theme.accentColor,
+                color: theme.accentColor,
+              }}
+              title="Open Mira Story & World Creator [Key G]"
+            >
+              <span className="w-2 h-2 rounded-full animate-ping bg-sky-400" />
+              <span>Mira Story Creator [G]</span>
+            </button>
           </div>
 
           {/* top-right minimap topology */}
@@ -811,6 +731,36 @@ export default function Home() {
 
           {/* dialogue modal (only appears when clicking an NPC) */}
           <DialogueModal />
+
+          {/* God Mode Narrative Director Panel (Mira & Nemotron 70B Knowledge Graph) */}
+          <GodModeNarrativeDirector />
+
+          {/* Guide Live Guidance & In-Character Stalling Beacon */}
+          {guideState && (
+            <div
+              className="fixed bottom-11 left-1/2 -translate-x-1/2 z-20 pointer-events-auto flex items-center gap-2.5 px-3.5 py-1 border shadow-xl backdrop-blur-md max-w-xl cursor-pointer hover:scale-[1.01] transition-all"
+              onClick={() => toggleGodModeDirector()}
+              style={{
+                backgroundColor: guideState.isStalling ? "rgba(25, 10, 10, 0.9)" : "rgba(10, 25, 15, 0.9)",
+                borderColor: guideState.isStalling ? "#ef4444" : "#22c55e",
+              }}
+              title="Click to open Mira Director"
+            >
+              <span
+                className="w-2 h-2 rounded-full shrink-0 shadow-[0_0_5px]"
+                style={{
+                  backgroundColor: guideState.isStalling ? "#ef4444" : "#22c55e",
+                  color: guideState.isStalling ? "#ef4444" : "#22c55e",
+                }}
+              />
+              <span className="text-[11px] font-bold" style={{ color: guideState.isStalling ? "#fca5a5" : "#86efac" }}>
+                {guideState.name}:
+              </span>
+              <span className="text-[11px] truncate text-white/90 italic">
+                &ldquo;{guideState.instructionText}&rdquo;
+              </span>
+            </div>
+          )}
 
           {/* slim bottom chamber & continuous walk strip */}
           <footer
