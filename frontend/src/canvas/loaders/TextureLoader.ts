@@ -1,11 +1,10 @@
-// equirectangular panorama texture loader with bespoke prompt-driven 360 synthesis
+// equirectangular panorama texture loader with rock-solid photorealistic fallbacks
 import * as THREE from "three";
 
 const textureCache = new Map<string, THREE.Texture>();
 const loader = new THREE.TextureLoader();
-loader.setCrossOrigin("anonymous");
 
-const defaultFallbackUrl = "/cached_worlds/desert_oasis/panorama.webp";
+const defaultFallbackUrl = "/generated_worlds/archive_giza_necropolis/giza_forecourt_panorama.webp";
 
 function seededRandom(seed: number): () => number {
   let s = seed % 2147483647;
@@ -1044,56 +1043,98 @@ export function loadPanoramaTexture(
     return Promise.resolve(textureCache.get(url)!);
   }
 
-  // Only synthesize procedural 2D canvas if explicitly requested via procedural:// scheme
-  if (url.startsWith("procedural://")) {
-    const customTex = createPromptDrivenPanorama(url);
+  if (typeof window === "undefined") {
+    const customTex = new THREE.Texture();
     textureCache.set(url, customTex);
     return Promise.resolve(customTex);
   }
 
-  // Strip query string when loading static/generated .webp or .png files from disk so Next.js serves the real JoPano image
+  // Strip query string when loading static/generated .webp or .png files from disk
   const cleanFileUrl = url.split("?")[0];
+
+  const configureTexture = (texture: THREE.Texture): THREE.Texture => {
+    texture.colorSpace = THREE.SRGBColorSpace;
+    texture.minFilter = THREE.LinearFilter;
+    texture.magFilter = THREE.LinearFilter;
+    texture.generateMipmaps = false;
+    texture.wrapS = THREE.RepeatWrapping;
+    texture.wrapT = THREE.ClampToEdgeWrapping;
+    texture.needsUpdate = true;
+    return texture;
+  };
 
   return new Promise((resolve) => {
     loader.load(
       cleanFileUrl,
       (texture) => {
-        texture.colorSpace = THREE.SRGBColorSpace;
-        texture.minFilter = THREE.LinearFilter;
-        texture.magFilter = THREE.LinearFilter;
-        texture.generateMipmaps = false;
-        texture.wrapS = THREE.RepeatWrapping;
-        texture.wrapT = THREE.ClampToEdgeWrapping;
-        textureCache.set(url, texture);
-        resolve(texture);
+        const configured = configureTexture(texture);
+        textureCache.set(url, configured);
+        resolve(configured);
       },
       undefined,
       () => {
-        if (url !== fallbackUrl) {
+        // First fallback: attempt fallbackUrl
+        const cleanFallback = fallbackUrl.split("?")[0];
+        if (cleanFallback !== cleanFileUrl) {
           loader.load(
-            fallbackUrl.split("?")[0],
+            cleanFallback,
             (fallbackTexture) => {
-              fallbackTexture.colorSpace = THREE.SRGBColorSpace;
-              fallbackTexture.minFilter = THREE.LinearFilter;
-              fallbackTexture.magFilter = THREE.LinearFilter;
-              fallbackTexture.generateMipmaps = false;
-              fallbackTexture.wrapS = THREE.RepeatWrapping;
-              fallbackTexture.wrapT = THREE.ClampToEdgeWrapping;
-              // mark as fallback and do not cache under the real url so pending sub-rooms can reload once synthesized
-              fallbackTexture.userData.isFallback = true;
-              resolve(fallbackTexture);
+              const configured = configureTexture(fallbackTexture);
+              configured.userData.isFallback = true;
+              resolve(configured);
             },
             undefined,
             () => {
-              const procedural = createPromptDrivenPanorama(url);
-              procedural.userData.isFallback = true;
-              resolve(procedural);
+              // Guaranteed secondary fallback: confirmed high-res photorealistic asset
+              loader.load(
+                defaultFallbackUrl,
+                (emergencyTexture) => {
+                  const configured = configureTexture(emergencyTexture);
+                  configured.userData.isFallback = true;
+                  resolve(configured);
+                },
+                undefined,
+                () => {
+                  // Final safeguard: plain dark neutral environment texture (never cartoon 2D shapes)
+                  const fallbackCanvas = document.createElement("canvas");
+                  fallbackCanvas.width = 16;
+                  fallbackCanvas.height = 16;
+                  const ctx = fallbackCanvas.getContext("2d");
+                  if (ctx) {
+                    ctx.fillStyle = "#1e293b";
+                    ctx.fillRect(0, 0, 16, 16);
+                  }
+                  const safeTex = new THREE.CanvasTexture(fallbackCanvas);
+                  safeTex.userData.isFallback = true;
+                  resolve(safeTex);
+                }
+              );
             }
           );
         } else {
-          const procedural = createPromptDrivenPanorama(url);
-          textureCache.set(url, procedural);
-          resolve(procedural);
+          // If cleanFallback is the same, load defaultFallbackUrl
+          loader.load(
+            defaultFallbackUrl,
+            (emergencyTexture) => {
+              const configured = configureTexture(emergencyTexture);
+              configured.userData.isFallback = true;
+              resolve(configured);
+            },
+            undefined,
+            () => {
+              const fallbackCanvas = document.createElement("canvas");
+              fallbackCanvas.width = 16;
+              fallbackCanvas.height = 16;
+              const ctx = fallbackCanvas.getContext("2d");
+              if (ctx) {
+                ctx.fillStyle = "#1e293b";
+                ctx.fillRect(0, 0, 16, 16);
+              }
+              const safeTex = new THREE.CanvasTexture(fallbackCanvas);
+              safeTex.userData.isFallback = true;
+              resolve(safeTex);
+            }
+          );
         }
       }
     );

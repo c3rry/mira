@@ -126,7 +126,17 @@ def mark_key_cooldown(key: str, cooldown_seconds: float = 60.0) -> None:
 def detect_theme_category(text: str, biome_hint: Optional[str] = None) -> str:
     # prioritize explicit text keywords before falling back to biome_hint
     lower_text = (text or "").lower()
-    if any(k in lower_text for k in ["space", "station", "orbital", "spire", "moon", "mars", "cosmos", "star", "astral", "nebula", "observatory", "galaxy", "planet"]):
+    if any(
+        k in lower_text
+        for k in [
+            "space", "station", "orbital", "spire", "moon", "lunar", "mars", "martian",
+            "cosmos", "star", "astral", "nebula", "observatory", "galaxy", "planet",
+            "neptune", "jupiter", "saturn", "uranus", "venus", "mercury", "pluto",
+            "titan", "europa", "triton", "gas giant", "methane", "ice giant", "exoplanet",
+            "deep space", "outer space", "celestial", "interstellar", "sci-fi", "starship",
+            "everest", "himalaya", "glacier", "snow", "icefall", "alpine", "arctic", "tundra", "summit",
+        ]
+    ):
         return "space_station"
     if any(k in lower_text for k in ["forest", "jungle", "garden", "grove", "canopy", "fungi", "elven", "woods", "swamp", "island", "atlantis", "ocean", "babylon", "waterfall", "botanical", "coral", "sea"]):
         return "enchanted_forest"
@@ -140,7 +150,7 @@ def detect_theme_category(text: str, biome_hint: Optional[str] = None) -> str:
     hint = (biome_hint or "").lower()
     if hint in ["medieval_tavern", "enchanted_forest", "space_station", "cyberpunk_alley", "desert_oasis"]:
         return hint
-    return "medieval_tavern"
+    return "space_station" if any(w in lower_text for w in ["alien", "star", "sky", "flight"]) else "desert_oasis"
 
 
 def enrich_and_normalize_graph(

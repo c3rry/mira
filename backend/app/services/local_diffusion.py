@@ -798,6 +798,24 @@ def _is_natural_wilderness_scene(room_name: str, world_prompt: str) -> bool:
         "moon",
         "mars",
         "martian",
+        "neptune",
+        "jupiter",
+        "saturn",
+        "uranus",
+        "venus",
+        "mercury",
+        "pluto",
+        "titan",
+        "europa",
+        "triton",
+        "gas giant",
+        "methane",
+        "ice giant",
+        "diamond hail",
+        "deep space",
+        "exoplanet",
+        "alien planet",
+        "storm",
         "mare",
         "tranquility",
         "procellarum",
@@ -825,6 +843,23 @@ def _classify_nature_ground_and_sky(room_name: str, world_prompt: str) -> Tuple[
     forests get mossy earth and canopy, and oceans get water/sand.
     """
     text = f"{room_name} {world_prompt}".lower()
+    if any(w in text for w in ("neptune", "methane", "uranus", "jupiter", "saturn", "gas giant", "ice giant", "diamond hail")):
+        is_neptune = "neptune" in text or "methane" in text
+        up_prompt = (
+            "Deep indigo and cyan upper troposphere directly overhead with violent supersonic atmospheric bands, distant pinprick sun, electric blue auroral sheets, zenith view, photorealistic 8k"
+            if is_neptune
+            else "Vast planetary gas giant upper atmosphere and swirling storm vortexes directly overhead, zenith view, photorealistic 8k"
+        )
+        ground = "vast swirling azure and sapphire methane storm cloud decks and supersonic vapor bands" if is_neptune else "dense swirling planetary cloud decks stretching infinitely"
+        down_prompt = f"Continuous {ground} stretching to the horizon underfoot in {room_name}, nadir view, zero pavement, zero stone, zero buildings, photorealistic"
+        vantages = [
+            f"sweeping panoramic overlook across Neptune's azure methane cloud decks and high-altitude storm fronts in the foreground, supersonic atmospheric bands and distant pinprick sun, zero buildings, zero pavement, NASA Voyager 2 photography, 8k",
+            f"deep tropospheric expanse with swirling sapphire gas vortices and electric blue lightning arcs in the foreground, vast planetary horizon, zero man-made structures",
+            f"frozen crystalline diamond-hail descent into the high-pressure mantle in the foreground, dense cobalt methane atmosphere, zero architecture",
+            f"high-altitude atmospheric vantage overlooking massive cobalt storm vortices and wispy white methane ice cirrus clouds, pure planetary wilderness, zero buildings",
+        ]
+        return up_prompt, down_prompt, vantages
+
     if any(w in text for w in ("moon", "lunar", "mare", "tranquility", "procellarum", "copernicus", "mars", "martian", "asteroid", "planet")):
         is_mars = "mars" in text or "martian" in text
         up_prompt = (
@@ -970,10 +1005,14 @@ def _build_6face_multi_text_prompts(
         up_prompt, down_prompt, vantages = _classify_nature_ground_and_sky(room_name, world_prompt)
         vantage = vantages[room_idx % len(vantages)]
         text_lower = f"{room_name} {world_prompt}".lower()
-        is_space = any(w in text_lower for w in ("moon", "lunar", "mare", "tranquility", "procellarum", "copernicus", "mars", "martian", "asteroid", "planet"))
+        is_gas_giant = any(w in text_lower for w in ("neptune", "methane", "uranus", "jupiter", "saturn", "gas giant", "ice giant", "diamond hail"))
+        is_space = is_gas_giant or any(w in text_lower for w in ("moon", "lunar", "mare", "tranquility", "procellarum", "copernicus", "mars", "martian", "asteroid", "planet", "deep space", "cosmos", "alien"))
         is_underwater = any(w in text_lower for w in ("underwater", "ocean floor", "sea floor", "seabed", "abyss", "benthic", "trench", "deep sea", "hydrothermal", "coral canyon"))
 
-        if is_space:
+        if is_gas_giant:
+            light_desc = "dim electric cyan atmospheric illumination, deep contrast supersonic storm lighting, distant faint sun"
+            neg_add = ", buildings, stone, cobblestones, pavement, temple, roman, tuscan, palace, courtyard, trees, grass, terrestrial foliage"
+        elif is_space:
             light_desc = "harsh direct cosmic sunlight, deep contrast shadows, stark unfiltered vacuum lighting"
             neg_add = ", desert sand dunes, terrestrial desert, sand, clouds, blue sky, atmosphere, trees, plants, foliage, red dunes, soil"
         elif is_underwater:

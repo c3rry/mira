@@ -42,7 +42,8 @@ const skyFragmentShader = `
   void main() {
     vec3 a = texture2D(uTexA, vUv).rgb;
     vec3 b = texture2D(uTexB, vUv).rgb;
-    vec3 col = mix(a, b, uMix);
+    float blend = smoothstep(0.0, 1.0, uMix);
+    vec3 col = mix(a, b, blend);
     vec3 grain = vec3(hash21(vUv * 512.0 + uTime), hash21(vUv * 512.0 + uTime + 1.3), hash21(vUv * 512.0 + uTime + 2.9));
     col = mix(col, grain, clamp(uNoise * 0.9, 0.0, 0.92));
     col = mix(col, col * vec3(1.12, 0.95, 0.82), uMutation * 0.45);

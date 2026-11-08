@@ -145,3 +145,25 @@ class WorldTickResponse(BaseModel):
     # world tick cycle state updates
     moved_npcs: List[NPCRoamDecision] = Field(default_factory=list)
     quest_updates: List[QuestObjective] = Field(default_factory=list)
+
+
+class ClarifyingOption(BaseModel):
+    label: str
+    enhancement: str
+
+
+class ClarifyingQuestion(BaseModel):
+    id: str
+    question: str
+    options: List[ClarifyingOption]
+
+
+class ChatRefineRequest(BaseModel):
+    prompt: str
+    selected_options: Optional[List[str]] = None
+
+
+class ChatRefineResponse(BaseModel):
+    refined_prompt: str
+    suggested_biome: str
+    clarifying_questions: List[ClarifyingQuestion]

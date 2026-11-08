@@ -253,7 +253,7 @@ export function resolveAdaptiveTheme(
   };
 }
 
-const ARCHIVE_STORAGE_KEY = "mira_world_archives_v6_jopano";
+const ARCHIVE_STORAGE_KEY = "mira_world_archives_v12_photoreal_raw";
 
 export const BUILTIN_ARCHIVES: SavedWorldEntry[] = [
   {
@@ -271,8 +271,8 @@ export const BUILTIN_ARCHIVES: SavedWorldEntry[] = [
           room_id: "giza_forecourt",
           name: "Great Pyramid Forecourt",
           biome_type: "desert_oasis",
-          panorama_url: "/generated_worlds/archive_giza_necropolis/giza_forecourt_panorama.webp?v=jopano",
-          depth_url: "/generated_worlds/archive_giza_necropolis/giza_forecourt_depth.png?v=jopano",
+          panorama_url: "/generated_worlds/archive_giza_necropolis/giza_forecourt_panorama.webp",
+          depth_url: "/generated_worlds/archive_giza_necropolis/giza_forecourt_depth.png",
           adjacent_room_ids: ["sphinx_causeway", "khufu_gallery", "solar_barque"],
           mutation_level: 0.0,
           npcs: [
@@ -297,8 +297,8 @@ export const BUILTIN_ARCHIVES: SavedWorldEntry[] = [
           room_id: "sphinx_causeway",
           name: "Sanctuary of the Great Sphinx",
           biome_type: "desert_oasis",
-          panorama_url: "/generated_worlds/archive_giza_necropolis/giza_causeway_panorama.webp?v=jopano",
-          depth_url: "/generated_worlds/archive_giza_necropolis/giza_causeway_depth.png?v=jopano",
+          panorama_url: "/generated_worlds/archive_giza_necropolis/sphinx_causeway_panorama.webp",
+          depth_url: "/generated_worlds/archive_giza_necropolis/sphinx_causeway_depth.png",
           adjacent_room_ids: ["giza_forecourt", "khufu_gallery"],
           mutation_level: 0.0,
           npcs: [
@@ -323,8 +323,8 @@ export const BUILTIN_ARCHIVES: SavedWorldEntry[] = [
           room_id: "khufu_gallery",
           name: "Grand Gallery of Khufu",
           biome_type: "desert_oasis",
-          panorama_url: "/generated_worlds/archive_giza_necropolis/giza_antechamber_panorama.webp?v=jopano",
-          depth_url: "/generated_worlds/archive_giza_necropolis/giza_antechamber_depth.png?v=jopano",
+          panorama_url: "/generated_worlds/archive_giza_necropolis/khufu_gallery_panorama.webp",
+          depth_url: "/generated_worlds/archive_giza_necropolis/khufu_gallery_depth.png",
           adjacent_room_ids: ["giza_forecourt", "solar_barque"],
           mutation_level: 0.0,
           npcs: [
@@ -349,8 +349,8 @@ export const BUILTIN_ARCHIVES: SavedWorldEntry[] = [
           room_id: "solar_barque",
           name: "Court of the Solar Barque",
           biome_type: "desert_oasis",
-          panorama_url: "/cached_worlds/desert_oasis_panorama.webp?v=jopano",
-          depth_url: "/cached_worlds/desert_oasis_depth.png?v=jopano",
+          panorama_url: "/generated_worlds/archive_giza_necropolis/solar_barque_panorama.webp",
+          depth_url: "/generated_worlds/archive_giza_necropolis/solar_barque_depth.png",
           adjacent_room_ids: ["giza_forecourt", "khufu_gallery"],
           mutation_level: 0.0,
           npcs: [

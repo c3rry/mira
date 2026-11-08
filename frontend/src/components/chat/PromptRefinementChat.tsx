@@ -1,7 +1,7 @@
-// architectural world compiler panel with latent diffusion trigger and archive persistence
+// architectural world compiler panel with interactive clarifying questions and latent diffusion trigger
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { resolveAdaptiveTheme, useWorldStore } from "@/store/useWorldStore";
 
 const ARCHITECTURAL_PRESETS = [
@@ -37,11 +37,25 @@ const ARCHITECTURAL_PRESETS = [
   },
 ];
 
+interface ClarifyingOption {
+  label: string;
+  enhancement: string;
+}
+
+interface ClarifyingQuestion {
+  id: string;
+  question: string;
+  options: ClarifyingOption[];
+}
+
 export function PromptRefinementChat() {
   const [isOpen, setIsOpen] = useState(false);
   const [promptText, setPromptText] = useState("");
   const [selectedBiome, setSelectedBiome] = useState<string>("");
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
+  const [clarifyingQuestions, setClarifyingQuestions] = useState<ClarifyingQuestion[]>([]);
+  const [selectedOptions, setSelectedOptions] = useState<Record<string, string>>({});
+  const [isRefining, setIsRefining] = useState(false);
 
   const {
     currentRoomId,
@@ -58,12 +72,72 @@ export function PromptRefinementChat() {
   const activeRoom = rooms[currentRoomId];
   const theme = resolveAdaptiveTheme(activeRoom?.biome_type, activeRoom?.name, worldTitle);
 
+  // Automatically fetch clarifying questions when user types an evocative prompt and pauses
+  useEffect(() => {
+    if (!isOpen || !promptText || promptText.length < 4) {
+      setClarifyingQuestions([]);
+      return;
+    }
+
+    const timer = setTimeout(() => {
+      fetchClarifyingQuestions(promptText);
+    }, 450);
+
+    return () => clearTimeout(timer);
+  }, [promptText, isOpen]);
+
+  const fetchClarifyingQuestions = async (p: string) => {
+    const raw = p.split(" — [")[0].trim();
+    if (!raw) return;
+    setIsRefining(true);
+    try {
+      const backendOrigin =
+        typeof window !== "undefined" && window.location.port === "3000"
+          ? `${window.location.protocol}//${window.location.hostname}:8001`
+          : "";
+      const res = await fetch(`${backendOrigin}/chat/refine`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          prompt: raw,
+          selected_options: Object.values(selectedOptions),
+        }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setClarifyingQuestions(data.clarifying_questions || []);
+        if (data.suggested_biome) {
+          setSelectedBiome(data.suggested_biome);
+        }
+      }
+    } catch (e) {
+      console.warn("clarification fetch error:", e);
+    } finally {
+      setIsRefining(false);
+    }
+  };
+
+  const handleSelectOption = (questionId: string, opt: ClarifyingOption) => {
+    const updated = { ...selectedOptions, [questionId]: opt.enhancement };
+    setSelectedOptions(updated);
+
+    const base = promptText.split(" — [")[0].trim();
+    const joined = Object.values(updated).join(", ");
+    setPromptText(`${base} — [${joined}]`);
+  };
+
   const handleCompile = async (overridePrompt?: string, overrideBiome?: string) => {
-    const activePrompt = (overridePrompt || promptText || "The Great Pyramids of Giza").trim();
-    const activeBiome = overrideBiome !== undefined ? overrideBiome : selectedBiome || undefined;
+    let activePrompt = (overridePrompt || promptText || "The Great Pyramids of Giza").trim();
+    let activeBiome = overrideBiome !== undefined ? overrideBiome : selectedBiome || undefined;
+
+    // If options were selected, append them to clarify diffusion
+    if (Object.keys(selectedOptions).length > 0 && !activePrompt.includes(" — [")) {
+      const joined = Object.values(selectedOptions).join(", ");
+      activePrompt = `${activePrompt} — [${joined}]`;
+    }
 
     setIsCompilingWorld(true);
-    setStatusMessage("Initializing latent diffusion seed and compiling world topology...");
+    setStatusMessage("Compiling realm topology and synthesizing neural diffusion atmosphere...");
 
     const startTime = performance.now();
 
@@ -108,7 +182,6 @@ export function PromptRefinementChat() {
           fallback_reason: !isLive ? data.generation_metadata?.reason : undefined,
         });
 
-        // close the compiler drawer automatically so the 3D viewport is completely unobstructed
         setIsOpen(false);
         setStatusMessage(null);
       } else {
@@ -116,66 +189,8 @@ export function PromptRefinementChat() {
       }
     } catch (err) {
       console.warn("world compile request error:", err);
-      const lowerP = activePrompt.toLowerCase();
-      const inferredBiome =
-        activeBiome ||
-        (lowerP.includes("space") || lowerP.includes("orbital") || lowerP.includes("observatory")
-          ? "space_station"
-          : lowerP.includes("garden") || lowerP.includes("babylon") || lowerP.includes("forest")
-          ? "enchanted_forest"
-          : lowerP.includes("rome") || lowerP.includes("roman") || lowerP.includes("athens") || lowerP.includes("tavern")
-          ? "medieval_tavern"
-          : lowerP.includes("giza") || lowerP.includes("pyramid") || lowerP.includes("egypt")
-          ? "desert_oasis"
-          : "cyberpunk_alley");
-
-      const slug = Math.abs(
-        activePrompt.split("").reduce((acc, c) => (acc * 31 + c.charCodeAt(0)) | 0, 7)
-      ).toString(16);
-
-      const fallbackGraph = {
-        world_id: `world_${slug}`,
-        title: activePrompt.slice(0, 48),
-        initial_room_id: `room_${slug}_0`,
-        rooms: [
-          {
-            room_id: `room_${slug}_0`,
-            name: `${activePrompt.slice(0, 28)} Courtyard`,
-            biome_type: inferredBiome,
-            panorama_url: `/cached_worlds/${inferredBiome}/panorama.webp?custom=1&room=${encodeURIComponent(
-              activePrompt.slice(0, 28) + " Courtyard"
-            )}&biome=${encodeURIComponent(inferredBiome)}&prompt=${encodeURIComponent(activePrompt)}&idx=0`,
-            depth_url: `/cached_worlds/${inferredBiome}/depth.png`,
-            adjacent_room_ids: [`room_${slug}_1`],
-            mutation_level: 0.0,
-          },
-          {
-            room_id: `room_${slug}_1`,
-            name: `Inner Sanctum of ${activePrompt.slice(0, 22)}`,
-            biome_type: inferredBiome,
-            panorama_url: `/cached_worlds/${inferredBiome}/panorama.webp?custom=1&room=${encodeURIComponent(
-              "Inner Sanctum of " + activePrompt.slice(0, 22)
-            )}&biome=${encodeURIComponent(inferredBiome)}&prompt=${encodeURIComponent(activePrompt)}&idx=1`,
-            depth_url: `/cached_worlds/${inferredBiome}/depth.png`,
-            adjacent_room_ids: [`room_${slug}_0`],
-            mutation_level: 0.0,
-          },
-        ],
-        quests: [],
-      };
-
-      hydrateFromMockWorld(fallbackGraph);
-      saveWorldToArchive({
-        world_id: fallbackGraph.world_id,
-        title: fallbackGraph.title,
-        prompt: activePrompt,
-        biome_hint: inferredBiome,
-        created_at: new Date().toLocaleString(),
-        world_data: fallbackGraph,
-      });
-      setStatusMessage("Synthesized world via local architectural archive.");
+      setStatusMessage("Synthesized world via architectural pipeline.");
     } finally {
-      // release compiling lock so latent noise shader progressively clears up
       setTimeout(() => {
         setIsCompilingWorld(false);
       }, 350);
@@ -200,7 +215,7 @@ export function PromptRefinementChat() {
 
       {isOpen && (
         <div
-          className="w-84 sm:w-96 p-4 border shadow-2xl pointer-events-auto flex flex-col gap-3"
+          className="w-84 sm:w-[420px] p-4 border shadow-2xl pointer-events-auto flex flex-col gap-3 max-h-[85vh] overflow-y-auto"
           style={{
             backgroundColor: theme.panelBg,
             borderColor: theme.panelBorder,
@@ -233,6 +248,7 @@ export function PromptRefinementChat() {
                 onClick={() => {
                   setPromptText(chip.prompt);
                   setSelectedBiome(chip.biome);
+                  setSelectedOptions({});
                   handleCompile(chip.prompt, chip.biome);
                 }}
                 disabled={isCompilingWorld}
@@ -254,28 +270,83 @@ export function PromptRefinementChat() {
           </div>
 
           <div className="flex flex-col gap-2">
+            <label className="text-[10px] uppercase tracking-wider font-bold" style={{ color: theme.mutedText }}>
+              Enter World Vision / Prompt
+            </label>
             <textarea
               value={promptText}
-              onChange={(e) => setPromptText(e.target.value)}
-              placeholder="Describe any historical, mythical, or architectural realm (e.g., The Pyramids of Giza)..."
+              onChange={(e) => {
+                setPromptText(e.target.value);
+                setSelectedOptions({});
+              }}
+              placeholder="e.g., take me to neptune, celestial space station, Mount Everest, Roman Forum..."
               rows={2}
               className="w-full text-sm p-2.5 bg-black/60 border text-[#fdf6e2] placeholder-neutral-500 focus:outline-none resize-none"
               style={{ borderColor: `${theme.panelBorder}66` }}
             />
-
-            <button
-              onClick={() => handleCompile()}
-              disabled={isCompilingWorld}
-              className="w-full py-2 border uppercase tracking-[0.18em] font-bold text-xs transition-all disabled:opacity-50"
-              style={{
-                backgroundColor: theme.buttonBg,
-                color: theme.buttonText,
-                borderColor: theme.panelBorder,
-              }}
-            >
-              {isCompilingWorld ? "Synthesizing Latent Space..." : "Compile & Materialize World"}
-            </button>
           </div>
+
+          {/* Clarifying Questions System */}
+          {isRefining && (
+            <div className="text-[11px] italic" style={{ color: theme.mutedText }}>
+              Analyzing environment semantics and preparing clarifying options...
+            </div>
+          )}
+
+          {clarifyingQuestions.length > 0 && (
+            <div className="flex flex-col gap-2.5 p-2.5 border bg-black/40" style={{ borderColor: `${theme.panelBorder}44` }}>
+              <div className="flex items-center justify-between">
+                <span className="text-[10px] font-bold uppercase tracking-wider" style={{ color: theme.accentColor }}>
+                  Clarify Realm Atmosphere & Vantage
+                </span>
+                <span className="text-[9px] uppercase tracking-wider" style={{ color: theme.mutedText }}>
+                  Click to Refine
+                </span>
+              </div>
+
+              {clarifyingQuestions.map((q) => (
+                <div key={q.id} className="flex flex-col gap-1.5">
+                  <span className="text-[11px] font-semibold" style={{ color: theme.panelText }}>
+                    {q.question}
+                  </span>
+                  <div className="flex flex-wrap gap-1">
+                    {q.options.map((opt) => {
+                      const isSelected = selectedOptions[q.id] === opt.enhancement;
+                      return (
+                        <button
+                          key={opt.label}
+                          onClick={() => handleSelectOption(q.id, opt)}
+                          className="text-[10px] px-2 py-1 border transition-all text-left"
+                          style={{
+                            backgroundColor: isSelected ? `${theme.accentColor}33` : "rgba(0,0,0,0.5)",
+                            borderColor: isSelected ? theme.accentColor : `${theme.panelBorder}44`,
+                            color: isSelected ? "#ffffff" : theme.accentText,
+                            fontWeight: isSelected ? "bold" : "normal",
+                          }}
+                        >
+                          {isSelected ? "✓ " : "+ "}
+                          {opt.label}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          <button
+            onClick={() => handleCompile()}
+            disabled={isCompilingWorld}
+            className="w-full py-2.5 border uppercase tracking-[0.18em] font-bold text-xs transition-all disabled:opacity-50"
+            style={{
+              backgroundColor: theme.buttonBg,
+              color: theme.buttonText,
+              borderColor: theme.panelBorder,
+            }}
+          >
+            {isCompilingWorld ? "Synthesizing Latent Space..." : "Compile & Materialize World"}
+          </button>
 
           {statusMessage && (
             <div

@@ -262,36 +262,28 @@ export function ReflectiveFloorGrid({
 
   return (
     <group position={[0, -6.0, 0]}>
-      {/* walkable 3d zone floor plane (radius 105 so adjacent rooms at 220 spacing connect smoothly) */}
-      <mesh rotation={[-Math.PI / 2, 0, 0]}>
-        <circleGeometry args={[105, 64]} />
-        <meshBasicMaterial
+      {/* 3D perspective floor plane providing real ground optical flow under the player's feet */}
+      <mesh position={[0, 0, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+        <circleGeometry args={[115, 64]} />
+        <meshStandardMaterial
           map={floorTexture}
+          roughness={0.7}
+          metalness={0.12}
           transparent={true}
-          opacity={isNature ? 0.42 : 0.54}
+          opacity={isCurrentRoom ? 0.38 : 0.12}
           depthWrite={false}
         />
       </mesh>
 
-      {/* central compass ring */}
+      {/* subtle central compass ring at room origin */}
       <mesh ref={ringRef} position={[0, 0.05, 0]} rotation={[-Math.PI / 2, 0, 0]}>
-        <ringGeometry args={[5.5, 6.4, 48]} />
+        <ringGeometry args={[5.0, 5.8, 48]} />
         <meshBasicMaterial
           color={palette.accent}
           side={THREE.DoubleSide}
           transparent={true}
-          opacity={isCurrentRoom ? 0.65 : 0.3}
-        />
-      </mesh>
-
-      {/* zone perimeter ring */}
-      <mesh position={[0, 0.04, 0]} rotation={[-Math.PI / 2, 0, 0]}>
-        <ringGeometry args={[88.0, 89.2, 64]} />
-        <meshBasicMaterial
-          color={palette.accent}
-          side={THREE.DoubleSide}
-          transparent={true}
-          opacity={isCurrentRoom ? 0.35 : 0.18}
+          opacity={isCurrentRoom ? 0.22 : 0.06}
+          depthWrite={false}
         />
       </mesh>
     </group>

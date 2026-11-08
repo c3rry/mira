@@ -70,9 +70,15 @@ export function CameraController({
 
   const walkBobPhase = useRef<number>(0);
 
-  // move camera to the selected room's 3D world coordinates when explicitly teleported via HUD / Minimap
+  const prevTeleportTrigger = useRef(teleportTrigger);
+
+  // move camera to the selected room's 3D world coordinates ONLY when explicitly teleported via HUD / Minimap
   useEffect(() => {
-    const targetRoom = rooms[currentRoomId];
+    if (prevTeleportTrigger.current === teleportTrigger) return;
+    prevTeleportTrigger.current = teleportTrigger;
+
+    const state = useWorldStore.getState();
+    const targetRoom = state.rooms[state.currentRoomId];
     const rx = targetRoom?.worldX || 0;
     const rz = targetRoom?.worldZ || 0;
 
@@ -105,48 +111,54 @@ export function CameraController({
       const k = e.key.toLowerCase();
       const code = e.code;
 
-      // blur focused HUD buttons automatically so WASD/arrow keys always drive movement
-      if (
-        document.activeElement instanceof HTMLButtonElement &&
-        ["w", "a", "s", "d", "arrowup", "arrowdown", "arrowleft", "arrowright"].includes(k)
-      ) {
-        document.activeElement.blur();
+      const isMovementKey =
+        ["w", "a", "s", "d", "z", "q", "arrowup", "arrowdown", "arrowleft", "arrowright"].includes(k) ||
+        ["KeyW", "KeyA", "KeyS", "KeyD", "ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"].includes(code);
+
+      if (isMovementKey) {
+        // prevent page scrolling on arrow keys and blur HUD buttons so locomotion is never blocked
+        e.preventDefault();
+        if (document.activeElement instanceof HTMLElement && document.activeElement.tagName !== "BODY") {
+          document.activeElement.blur();
+        }
       }
 
-      if (k === "w" || code === "KeyW" || e.key === "ArrowUp") keysRef.current.forward = true;
+      if (k === "w" || k === "z" || code === "KeyW" || e.key === "ArrowUp") keysRef.current.forward = true;
       if (k === "s" || code === "KeyS" || e.key === "ArrowDown") keysRef.current.backward = true;
-      if (k === "a" || code === "KeyA" || e.key === "ArrowLeft") keysRef.current.left = true;
+      if (k === "a" || k === "q" || code === "KeyA" || e.key === "ArrowLeft") keysRef.current.left = true;
       if (k === "d" || code === "KeyD" || e.key === "ArrowRight") keysRef.current.right = true;
-      if (e.key === "Shift") keysRef.current.sprint = true;
+      if (e.key === "Shift" || e.shiftKey) keysRef.current.sprint = true;
     };
 
     const handleKeyUp = (e: KeyboardEvent) => {
       const k = e.key.toLowerCase();
       const code = e.code;
-      if (k === "w" || code === "KeyW" || e.key === "ArrowUp") keysRef.current.forward = false;
+      if (k === "w" || k === "z" || code === "KeyW" || e.key === "ArrowUp") keysRef.current.forward = false;
       if (k === "s" || code === "KeyS" || e.key === "ArrowDown") keysRef.current.backward = false;
-      if (k === "a" || code === "KeyA" || e.key === "ArrowLeft") keysRef.current.left = false;
+      if (k === "a" || k === "q" || code === "KeyA" || e.key === "ArrowLeft") keysRef.current.left = false;
       if (k === "d" || code === "KeyD" || e.key === "ArrowRight") keysRef.current.right = false;
-      if (e.key === "Shift") keysRef.current.sprint = false;
+      if (e.key === "Shift" || !e.shiftKey) keysRef.current.sprint = false;
     };
 
-    const handleBlur = () => {
-      keysRef.current = {
-        forward: false,
-        backward: false,
-        left: false,
-        right: false,
-        sprint: false,
-      };
+    const handleVisibilityChange = () => {
+      if (document.hidden) {
+        keysRef.current = {
+          forward: false,
+          backward: false,
+          left: false,
+          right: false,
+          sprint: false,
+        };
+      }
     };
 
-    window.addEventListener("keydown", handleKeyDown);
-    window.addEventListener("keyup", handleKeyUp);
-    window.addEventListener("blur", handleBlur);
+    window.addEventListener("keydown", handleKeyDown, { capture: true });
+    window.addEventListener("keyup", handleKeyUp, { capture: true });
+    document.addEventListener("visibilitychange", handleVisibilityChange);
     return () => {
-      window.removeEventListener("keydown", handleKeyDown);
-      window.removeEventListener("keyup", handleKeyUp);
-      window.removeEventListener("blur", handleBlur);
+      window.removeEventListener("keydown", handleKeyDown, { capture: true });
+      window.removeEventListener("keyup", handleKeyUp, { capture: true });
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
     };
   }, []);
 
@@ -158,7 +170,8 @@ export function CameraController({
     const controls = controlsRef.current;
 
     if (isMoving) {
-      const moveSpeed = (sprint ? 34.0 : 19.0) * Math.min(delta, 0.1);
+      // brisk, responsive locomotion speed
+      const moveSpeed = (sprint ? 58.0 : 36.0) * Math.min(delta, 0.1);
 
       // compute horizontal forward and right vectors from camera look direction
       const forwardVec = new THREE.Vector3();
@@ -186,17 +199,17 @@ export function CameraController({
 
         // compute dynamic multi-room bounding box so player can continuously walk across all rooms & bridges
         const roomList = Object.values(rooms);
-        let minX = -115;
-        let maxX = 115;
-        let minZ = -115;
-        let maxZ = 115;
+        let minX = -120;
+        let maxX = 120;
+        let minZ = -120;
+        let maxZ = 120;
         roomList.forEach((r) => {
           const rx = r.worldX || 0;
           const rz = r.worldZ || 0;
-          if (rx - 115 < minX) minX = rx - 115;
-          if (rx + 115 > maxX) maxX = rx + 115;
-          if (rz - 115 < minZ) minZ = rz - 115;
-          if (rz + 115 > maxZ) maxZ = rz + 115;
+          if (rx - 120 < minX) minX = rx - 120;
+          if (rx + 120 > maxX) maxX = rx + 120;
+          if (rz - 120 < minZ) minZ = rz - 120;
+          if (rz + 120 > maxZ) maxZ = rz + 120;
         });
 
         const clampedX = Math.max(minX, Math.min(maxX, nextTargetX));
@@ -208,9 +221,12 @@ export function CameraController({
         camera.position.add(moveDelta);
         controls.target.add(moveDelta);
 
-        // check if player physically walked into an adjacent sub-room's territory
+        // check if player physically walked closer into an adjacent sub-room
+        const activeRoom = rooms[currentRoomId];
+        const distToCurrent = Math.hypot(clampedX - (activeRoom?.worldX || 0), clampedZ - (activeRoom?.worldZ || 0));
+
         let closestRoomId = currentRoomId;
-        let closestDist = Infinity;
+        let closestDist = distToCurrent;
         roomList.forEach((r) => {
           const d = Math.hypot(clampedX - (r.worldX || 0), clampedZ - (r.worldZ || 0));
           if (d < closestDist) {
@@ -218,30 +234,46 @@ export function CameraController({
             closestRoomId = r.room_id;
           }
         });
-        if (closestRoomId !== currentRoomId && closestDist < 98.0) {
+
+        // transition with 12-unit hysteresis to ensure crisp, clean room switching
+        if (closestRoomId !== currentRoomId && closestDist < distToCurrent - 12.0) {
           setCurrentRoom(closestRoomId, true);
         }
       }
 
-      walkBobPhase.current += delta * (sprint ? 12.5 : 8.5);
+      walkBobPhase.current += delta * (sprint ? 12.0 : 8.5);
     } else {
       walkBobPhase.current = THREE.MathUtils.lerp(walkBobPhase.current, 0, 0.15);
     }
 
-    // apply subtle vertical footstep head-bob to world floor while keeping horizon steady
-    const bobOffset = isMoving ? Math.sin(walkBobPhase.current) * 0.22 : 0;
-    if (worldGroupRef?.current) {
-      worldGroupRef.current.position.y = THREE.MathUtils.lerp(
-        worldGroupRef.current.position.y,
-        -bobOffset,
-        0.25
-      );
+    // dynamic speed FOV expansion for immediate kinetic forward rush
+    const targetFov = isMoving ? (sprint ? 84 : 79) : 75;
+    if ("fov" in camera && typeof (camera as any).fov === "number") {
+      const persCamera = camera as THREE.PerspectiveCamera;
+      persCamera.fov = THREE.MathUtils.lerp(persCamera.fov, targetFov, delta * 8.0);
+      persCamera.updateProjectionMatrix();
     }
 
-    // keep outer horizon skybox centered around camera
+    // natural footstep head-bob with gentle walking gait (subtle 0.05 amplitude, never violent bounce)
+    const bobOffset = isMoving ? Math.sin(walkBobPhase.current) * 0.05 : 0;
+    camera.position.y = THREE.MathUtils.lerp(camera.position.y, bobOffset, 0.22);
+
+    // anchor skybox sphere at active room origin so walking forward physically moves the player through the 3D space
+    const currentRoom = rooms[currentRoomId];
+    const roomOriginX = currentRoom?.worldX || 0;
+    const roomOriginZ = currentRoom?.worldZ || 0;
+
     if (skyboxGroupRef?.current) {
-      skyboxGroupRef.current.position.x = camera.position.x;
-      skyboxGroupRef.current.position.z = camera.position.z;
+      skyboxGroupRef.current.position.x = THREE.MathUtils.lerp(
+        skyboxGroupRef.current.position.x,
+        roomOriginX,
+        0.14
+      );
+      skyboxGroupRef.current.position.z = THREE.MathUtils.lerp(
+        skyboxGroupRef.current.position.z,
+        roomOriginZ,
+        0.14
+      );
     }
 
     // broadcast live player coordinates and heading to Zustand store for the top-down architectural minimap

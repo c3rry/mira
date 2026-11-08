@@ -182,7 +182,19 @@ export default function Home() {
       const lowerP = promptToUse.toLowerCase();
       const inferredBiome =
         biomeToUse ||
-        (lowerP.includes("space") || lowerP.includes("orbital") || lowerP.includes("observatory")
+        (lowerP.includes("space") ||
+        lowerP.includes("orbital") ||
+        lowerP.includes("observatory") ||
+        lowerP.includes("neptune") ||
+        lowerP.includes("jupiter") ||
+        lowerP.includes("saturn") ||
+        lowerP.includes("uranus") ||
+        lowerP.includes("mars") ||
+        lowerP.includes("moon") ||
+        lowerP.includes("lunar") ||
+        lowerP.includes("planet") ||
+        lowerP.includes("exoplanet") ||
+        lowerP.includes("cosmos")
           ? "space_station"
           : lowerP.includes("garden") || lowerP.includes("babylon") || lowerP.includes("forest")
           ? "enchanted_forest"
