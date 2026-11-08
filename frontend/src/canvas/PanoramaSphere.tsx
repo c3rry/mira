@@ -323,9 +323,14 @@ export function PanoramaSphere({
     const isReady = !isCompilingWorld && targetTex !== null && !isFallback;
 
     if (!isReady) {
-      // Noisily transition into the shimmering iridescent rainbow fog
+      // Shimmering iridescent rainbow fog while waiting for texture
       rainbowFogRef.current = Math.min(1.0, rainbowFogRef.current + delta * 2.5);
       noiseRef.current = Math.min(0.98, noiseRef.current + delta * 1.8);
+      // Progressively creep up to 92% during compilation so user sees continuous motion
+      const currentProg = useWorldStore.getState().diffusionProgress;
+      if (currentProg < 92) {
+        setDiffusionProgress(Math.min(92, currentProg + Math.max(1, Math.round(delta * 12))));
+      }
     } else {
       // Immediately transform into the sharp neural environment once it is ready
       rainbowFogRef.current = Math.max(0.0, rainbowFogRef.current - delta * 3.8);
@@ -333,10 +338,15 @@ export function PanoramaSphere({
       if (noiseRef.current > minNoise) {
         noiseRef.current = Math.max(minNoise, noiseRef.current - delta * 2.2);
       }
+      // Snap to 100% as fog clears
+      if (rainbowFogRef.current <= 0.05) {
+        setDiffusionProgress(100);
+      } else {
+        setDiffusionProgress(Math.max(92, Math.round((1.0 - rainbowFogRef.current) * 100)));
+      }
     }
     u.uRainbowFog.value = rainbowFogRef.current;
     u.uNoise.value = noiseRef.current;
-    setDiffusionProgress(Math.round((1.0 - rainbowFogRef.current) * 100));
   });
 
   return (
