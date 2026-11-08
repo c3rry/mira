@@ -1024,6 +1024,10 @@ def _build_6face_multi_text_prompts(
         "backward": "forward",
     }.get(cardinal, "backwards")
 
+    # Simplify and extract concise core subject to avoid prompt bloat and repetition in diffusion model
+    core_clean_world = re.sub(r"^(?:let\'s\s+make\s+a|make\s+a|create\s+a|put\s+me\s+in\s+a|build\s+a)\s+", "", world_prompt, flags=re.IGNORECASE).strip()
+    clean_world_phrase = core_clean_world or world_prompt
+
     # 1. Pure Natural Wilderness
     if _is_natural_wilderness_scene(room_name, world_prompt):
         up_prompt, down_prompt, vantages = _classify_nature_ground_and_sky(room_name, world_prompt)
@@ -1047,9 +1051,9 @@ def _build_6face_multi_text_prompts(
             neg_add = ""
 
         anchor_prompt = (
-            f"Eye-level rectilinear National Geographic photography of {room_name}, {world_prompt}, "
+            f"Eye-level National Geographic photography of {room_name}, {clean_world_phrase}, "
             f"{vantage}, straight level horizon, untouched natural wilderness, "
-            f"{light_desc}, ultra-detailed geological textures, photorealistic, 8k"
+            f"{light_desc}, photorealistic, 8k"
         )
         gate_feature = (
             f"natural terrain pathway connecting from {from_room_name}"
@@ -1057,10 +1061,10 @@ def _build_6face_multi_text_prompts(
             else "natural terrain pathway receding toward connected sectors"
         )
         face_prompts = [
-            f"Front view of {room_name}, {world_prompt}, {vantage}, pure natural photography, zero buildings",
-            f"Rear view of {room_name}, {world_prompt}, continuous natural terrain, {gate_feature}, zero buildings, photorealistic",
-            f"Left side view of {room_name}, {world_prompt}, untouched natural wilderness vista, zero buildings, photorealistic",
-            f"Right side view of {room_name}, {world_prompt}, expansive natural landscape, {gate_feature}, zero buildings, photorealistic",
+            f"Front view of {room_name}, {clean_world_phrase}, {vantage}, pure natural photography, zero buildings",
+            f"Rear view of {room_name}, {clean_world_phrase}, continuous natural terrain, {gate_feature}, zero buildings, photorealistic",
+            f"Left side view of {room_name}, {clean_world_phrase}, untouched natural wilderness vista, zero buildings, photorealistic",
+            f"Right side view of {room_name}, {clean_world_phrase}, expansive natural landscape, {gate_feature}, zero buildings, photorealistic",
             up_prompt,
             down_prompt,
         ]
@@ -1084,31 +1088,30 @@ def _build_6face_multi_text_prompts(
     )
     if is_urban:
         urban_vantages = [
-            "wide asphalt avenue with pedestrian crosswalk markings in the foreground, illuminated digital signs and towering street architecture receding into the distance",
-            "broad pedestrian sidewalk with polished curb and illuminated storefronts in the foreground, vibrant urban avenue traffic and architectural facades",
-            "bustling street crossing with streetlamps and reflective damp pavement in the foreground, expansive urban avenue and neon signage along the horizon",
-            "elevated pedestrian walkway overlook in the foreground, sweeping view of the multi-lane city avenue and architectural high-rises",
+            "wide asphalt avenue with illuminated signs and towering architecture",
+            "broad pedestrian walkway with illuminated storefronts in the foreground",
+            "bustling street crossing with streetlamps and reflective damp pavement",
+            "elevated walkway overlook, sweeping view of the city avenue and high-rises",
         ]
         vantage = urban_vantages[room_idx % len(urban_vantages)]
         anchor_prompt = (
-            f"Eye-level rectilinear architectural street photography of {room_name}, {world_prompt}, "
-            f"{vantage}, straight level horizon, National Geographic urban photography, "
-            f"realistic architectural lighting, photorealistic, 8k"
+            f"Eye-level architectural street photography of {room_name}, {clean_world_phrase}, "
+            f"{vantage}, straight level horizon, realistic architectural lighting, photorealistic, 8k"
         )
-        up_prompt = "Open urban sky framed by towering architectural skyscrapers and illuminated billboards directly overhead, zenith view, photorealistic"
-        down_prompt = f"Continuous asphalt street pavement with painted road lines and damp ground reflections in {room_name}, nadir view, photorealistic"
+        up_prompt = "Open urban sky framed by skyscrapers directly overhead, zenith view, photorealistic"
+        down_prompt = f"Continuous asphalt street pavement and damp ground reflections in {room_name}, nadir view, photorealistic"
 
         back_face = (
-            f"Rear view of {room_name}, looking {reverse_cardinal} back across the street towards {from_room_name}, seamless connecting urban thoroughfare, photorealistic"
+            f"Rear view of {room_name}, looking {reverse_cardinal} towards {from_room_name}, seamless street, photorealistic"
             if from_room_name
-            else f"Rear view of {room_name}, {world_prompt}, continuous urban street avenue and building facades, photorealistic"
+            else f"Rear view of {room_name}, {clean_world_phrase}, continuous street and building facades, photorealistic"
         )
 
         face_prompts = [
-            f"Front view along {room_name}, {world_prompt}, {vantage}, photorealistic architectural street photography",
+            f"Front view along {room_name}, {clean_world_phrase}, {vantage}, photorealistic",
             back_face,
-            f"Left side view of {room_name}, {world_prompt}, vibrant storefront facades, pedestrian sidewalk, and urban architecture, photorealistic",
-            f"Right side view of {room_name}, {world_prompt}, illuminated commercial storefronts and street architecture, photorealistic",
+            f"Left side view of {room_name}, {clean_world_phrase}, storefront facades and urban architecture, photorealistic",
+            f"Right side view of {room_name}, {clean_world_phrase}, illuminated storefronts and street architecture, photorealistic",
             up_prompt,
             down_prompt,
         ]
