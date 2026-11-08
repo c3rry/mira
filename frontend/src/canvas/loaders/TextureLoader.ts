@@ -145,12 +145,21 @@ function createPromptDrivenPanorama(url: string): THREE.Texture {
   const roomIdx = parseInt(params.get("idx") || "0", 10);
   const customSkyHex = params.get("sky") || "";
   const customFloorHex = params.get("floor") || "";
+  const worldX = parseFloat(params.get("x") || "0");
+  const worldZ = parseFloat(params.get("z") || "0");
 
   const archetype = classifySceneArchetype(roomName, promptText, biome);
-  const seedKey = `${roomName}_${promptText}_${archetype}_${roomIdx}`;
+  const seedKey = `${roomName}_${promptText}_${archetype}_${roomIdx}_${worldX}_${worldZ}`;
   const rand = seededRandom(hashString(seedKey) + roomIdx * 131);
   const horizonY = h / 2;
-  const subRoomVariant = roomIdx % 4;
+
+  let subRoomVariant = roomIdx % 4;
+  if (!isNaN(worldX) && !isNaN(worldZ) && (Math.abs(worldX) > 40 || Math.abs(worldZ) > 40)) {
+    if (worldZ > 80) subRoomVariant = 3;
+    else if (worldX > 80) subRoomVariant = 1;
+    else if (worldZ < -80) subRoomVariant = 2;
+    else subRoomVariant = 0;
+  }
 
   if (ctx) {
     if (archetype === "rome") {

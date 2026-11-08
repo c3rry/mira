@@ -740,11 +740,41 @@ export function generateThematicRoomName(
     t.includes("desert") ||
     t.includes("egypt")
   ) {
+    const ring = Math.max(1, Math.round(Math.hypot(x, z) / 220));
+    const tierSuffix = ring > 1 ? ` — Sector ${ring}` : "";
     const names: Record<string, string[]> = {
-      north: ["Causeway of Khafre", "Northern Pyramid Enclosure", "Solar Boat Pit Terrace", "Limestone Pavement of Khufu"],
-      south: ["Plateau South Horizon", "Valley Temple Porphyry Court", "Southern Dune Causeway", "Sakkara Vista Corridor"],
-      east: ["Sanctuary of the Great Sphinx", "Nile Valley Harbor Basin", "Eastern Basalt Causeway", "Colonnade of Hathor"],
-      west: ["Western Mastaba Field", "Royal Offering Chapel", "Western Necropolis Terrace", "Giza Plateau Sandcrest"],
+      north: [
+        `Grand Hypostyle Hall${tierSuffix}`,
+        `Northern Pyramid Enclosure${tierSuffix}`,
+        `Royal Sphinxtown Promenade${tierSuffix}`,
+        `Limestone Pavement of Khufu${tierSuffix}`,
+        `Khafre Pinnacle Vista${tierSuffix}`,
+        `Upper Necropolis Citadel${tierSuffix}`,
+      ],
+      south: [
+        `Verdant Date Palm Oasis${tierSuffix}`,
+        `Sacred Alabaster Water Terraces${tierSuffix}`,
+        `Southern Solar Barque Court${tierSuffix}`,
+        `Turquoise Lotus Spring${tierSuffix}`,
+        `Valley Temple Porphyry Court${tierSuffix}`,
+        `Sakkara Vista Promenade${tierSuffix}`,
+      ],
+      east: [
+        `Nile Canal Reflection Promenade${tierSuffix}`,
+        `Sanctuary of the Great Sphinx${tierSuffix}`,
+        `Eastern Basalt Quay${tierSuffix}`,
+        `Royal Harbor Landing${tierSuffix}`,
+        `Colonnade of Hathor${tierSuffix}`,
+        `Papyrus Delta Shore${tierSuffix}`,
+      ],
+      west: [
+        `Western Mastaba Terrace${tierSuffix}`,
+        `Wind-Carved Basalt Gorge${tierSuffix}`,
+        `Giza Plateau Sandcrest${tierSuffix}`,
+        `Royal Offering Chapel${tierSuffix}`,
+        `Sandstone Obelisk Pass${tierSuffix}`,
+        `Dune Sea Overlook${tierSuffix}`,
+      ],
     };
     const list = names[dir] || names.north;
     const idx = Math.abs(Math.round((x * 3 + z * 7) / 220)) % list.length;
@@ -1539,7 +1569,7 @@ export const useWorldStore = create<WorldState>((set, get) => ({
     const fallbackRoom: WorldRoom = {
       room_id: fallbackId,
       name: fallbackName,
-      panorama_url: `/generated_worlds/${safeWorld}/${fallbackId}_panorama.webp?room=${encodeURIComponent(fallbackName)}&prompt=${encodeURIComponent(state.worldTitle)}&from=${encodeURIComponent(sourceRoom?.name || "")}&dir=${fallbackDir}&biome=${encodeURIComponent(fallbackBiome)}&sky=${encodeURIComponent(fallbackPal.sky_tone)}&floor=${encodeURIComponent(fallbackPal.floor_tone)}&u_back=${uBack.toFixed(3)}`,
+      panorama_url: `/generated_worlds/${safeWorld}/${fallbackId}_panorama.webp?room=${encodeURIComponent(fallbackName)}&prompt=${encodeURIComponent(state.worldTitle)}&from=${encodeURIComponent(sourceRoom?.name || "")}&dir=${fallbackDir}&biome=${encodeURIComponent(fallbackBiome)}&sky=${encodeURIComponent(fallbackPal.sky_tone)}&floor=${encodeURIComponent(fallbackPal.floor_tone)}&u_back=${uBack.toFixed(3)}&x=${newX}&z=${newZ}&idx=${nextIdx}`,
       depth_url: `/generated_worlds/${safeWorld}/${fallbackId}_depth.png`,
       adjacent_room_ids: [sourceRoomId],
       mutation_level: 0,

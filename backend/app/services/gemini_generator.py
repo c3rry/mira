@@ -29,6 +29,7 @@ from backend.app.services.connected_synthesizer import (
     synthesize_connected_room_assets,
     build_connected_multi_face_prompts,
 )
+from backend.app.services.infinite_world_field import InfiniteWorldField
 
 load_dotenv(os.path.join(os.path.dirname(__file__), "..", "..", ".env"))
 load_dotenv()
@@ -566,35 +567,32 @@ def generate_expanded_room(
             (f"{from_base_name} - {cardinal_name} Cornice", "Windswept snow cornice overlooking the endless Himalayan sea of peaks", "Tashi, Cairn Chronicler", "Chronicler leaving prayer flags at the high vantage point."),
         ]
         name, desc, npc_n, npc_p = everest_titles[(next_idx - 1) % len(everest_titles)]
-    elif any(k in lower_p for k in ["giza", "pyramid", "sphinx", "egypt"]):
-        giza_titles = [
-            (f"{from_base_name} - {cardinal_name} Mastaba Colonnade", "Ancient limestone offering chapels stretching into the sunlit plateau", "Scribe Sennefer", "Chronicler recording sacred funerary liturgies upon carved limestone stelae."),
-            (f"{from_base_name} - {cardinal_name} Processional Causeway", "Monumental stone processional roadway bridging the valley temple to the horizon", "Overseer Rahotep", "Architect surveying the astronomical alignment with the morning star."),
-            (f"{from_base_name} - {cardinal_name} Porphyry Court", "Colossal monolithic red granite hall illuminated by clerestory sunlight", "Priestess Meritaten", "Keeper of the sacred libations and alabaster unguent jars."),
-            (f"{from_base_name} - {cardinal_name} Horizon Vista", "Windswept desert sands surveying the southern horizons under the solar disc", "Pathfinder Tariq", "Desert navigator guiding caravans along the ancient trade routes."),
-        ]
-        name, desc, npc_n, npc_p = giza_titles[(next_idx - 1) % len(giza_titles)]
-    else:
-        name = f"{from_base_name} - {cardinal_name} Sector {next_idx}"
-        desc = f"Newly expanded continuous natural quadrant connected directly from {from_base_name}."
-        npc_n = f"Guardian of {cardinal_name} Sector"
-        npc_p = f"Resident scout charting the continuous frontier leading from {from_base_name}."
+    field = InfiniteWorldField(clean_prompt)
+    info = field.sample_field(new_x, new_z)
+    name = info["name"]
+    desc = info["description"]
+    npc_n = info["npc_title"]
+    npc_p = info["npc_role"]
+    palette = info["palette"]
+    theme = info["sector_type"] if info["sector_type"] != "general" else theme
 
-    palette = generate_room_visual_palette(name, clean_prompt, theme)
     from_id = from_room.room_id if from_room else from_room_id
     adj_ids = [from_id] if from_id else []
 
-    # Synthesize dedicated connected panorama and 16-bit depth map with reciprocal portal
-    pano_url, depth_url = synthesize_connected_room_assets(
-        world_id=world_id,
-        new_room_id=new_room_id,
-        new_room_name=name,
-        from_room=from_room,
-        direction=dir_lower,
+    from_name = from_room.name if from_room else clean_prompt
+    from_x_val = from_room.worldX if (from_room and from_room.worldX is not None) else from_x
+    from_z_val = from_room.worldZ if (from_room and from_room.worldZ is not None) else from_z
+
+    # Synthesize dedicated connected panorama and 16-bit depth map:
+    # Portal facing parent room blends seamlessly; outward headings morph into the new sector's landscape!
+    pano_url, depth_url, _ = field.synthesize_infinite_room_assets(
         target_x=new_x,
         target_z=new_z,
-        biome_type=theme,
-        world_prompt=clean_prompt,
+        from_x=from_x_val,
+        from_z=from_z_val,
+        from_room_name=from_name,
+        world_id=world_id,
+        room_idx=next_idx,
     )
 
     new_node = NodeState(
