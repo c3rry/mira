@@ -428,40 +428,71 @@ def enrich_and_normalize_graph(
             else:
                 dir_label = "south" if room.worldZ > 0 else "north"
 
-        # Synchronously synthesize ALL rooms via JoPano 6-Face Cubemap + Poisson CFB
-        # so EVERY room in the world is 100% fusion-generated and exists on disk before compile returns!
-        local_assets = generate_room_panorama_and_depth(
-            world_id=graph.world_id,
-            room_id=room.room_id,
-            room_name=room.name,
-            world_prompt=prompt,
-            biome_type=b_type,
-            room_idx=idx,
-            ambient_color=getattr(room.lighting, "ambient_color", "") or "",
-            fog_color=getattr(room.lighting, "fog_color", "") or "",
-            from_room_name=graph.rooms[0].name if idx > 0 else None,
-            direction=dir_label if idx > 0 else None,
-            target_x=room.worldX,
-            target_z=room.worldZ,
-            from_x=graph.rooms[0].worldX if idx > 0 else 0.0,
-            from_z=graph.rooms[0].worldZ if idx > 0 else 0.0,
-        )
-        if local_assets is not None:
-            room.panorama_url, room.depth_url = local_assets
-        else:
-            pano_url, depth_url = synthesize_connected_room_assets(
+        # Synchronously synthesize the initial room (idx == 0) via JoPano 6-Face Cubemap + Poisson CFB
+        # so the user can enter IMMEDIATELY into the bespoke fusion room,
+        # while synthesizing rooms 1..N in background threads so /world/compile never times out!
+        if idx == 0:
+            local_assets = generate_room_panorama_and_depth(
                 world_id=graph.world_id,
-                new_room_id=room.room_id,
-                new_room_name=room.name,
-                from_room=graph.rooms[0] if idx > 0 else None,
-                direction=dir_label if idx > 0 else "north",
-                target_x=room.worldX or 0.0,
-                target_z=room.worldZ or 0.0,
-                biome_type=b_type,
+                room_id=room.room_id,
+                room_name=room.name,
                 world_prompt=prompt,
+                biome_type=b_type,
+                room_idx=idx,
+                ambient_color=getattr(room.lighting, "ambient_color", "") or "",
+                fog_color=getattr(room.lighting, "fog_color", "") or "",
+                from_room_name=None,
+                direction=None,
+                target_x=room.worldX,
+                target_z=room.worldZ,
+                from_x=0.0,
+                from_z=0.0,
             )
-            room.panorama_url = pano_url
-            room.depth_url = depth_url
+            if local_assets is not None:
+                room.panorama_url, room.depth_url = local_assets
+            else:
+                pano_url, depth_url = synthesize_connected_room_assets(
+                    world_id=graph.world_id,
+                    new_room_id=room.room_id,
+                    new_room_name=room.name,
+                    from_room=None,
+                    direction="north",
+                    target_x=room.worldX or 0.0,
+                    target_z=room.worldZ or 0.0,
+                    biome_type=b_type,
+                    world_prompt=prompt,
+                )
+                room.panorama_url = pano_url
+                room.depth_url = depth_url
+        else:
+            # Set target URLs for rooms 1..N
+            clean_w = re.sub(r"[^a-zA-Z0-9_-]", "", graph.world_id or "world_default")
+            clean_r = re.sub(r"[^a-zA-Z0-9_-]", "", room.room_id or f"room_{idx}")
+            room.panorama_url = f"/generated_worlds/{clean_w}/{clean_r}_panorama.webp"
+            room.depth_url = f"/generated_worlds/{clean_w}/{clean_r}_depth.png"
+
+            # Spawn dedicated background fusion worker for each neighbor room
+            import threading
+            threading.Thread(
+                target=generate_room_panorama_and_depth,
+                kwargs={
+                    "world_id": graph.world_id,
+                    "room_id": room.room_id,
+                    "room_name": room.name,
+                    "world_prompt": prompt,
+                    "biome_type": b_type,
+                    "room_idx": idx,
+                    "ambient_color": getattr(room.lighting, "ambient_color", "") or "",
+                    "fog_color": getattr(room.lighting, "fog_color", "") or "",
+                    "from_room_name": graph.rooms[0].name,
+                    "direction": dir_label,
+                    "target_x": room.worldX,
+                    "target_z": room.worldZ,
+                    "from_x": graph.rooms[0].worldX or 0.0,
+                    "from_z": graph.rooms[0].worldZ or 0.0,
+                },
+                daemon=True,
+            ).start()
 
         # ensure connected adjacency graph
         if not room.adjacent_room_ids:
