@@ -31,9 +31,9 @@ const ARCHITECTURAL_PRESETS = [
   },
   {
     numeral: "V",
-    label: "Orbital Observatory",
+    label: "Mount Everest Summit",
     biome: "space_station",
-    prompt: "Alabaster and brass celestial observatory dome in high planetary orbit",
+    prompt: "Mount Everest Khumbu Icefall, Western Cwm glacial valley, and snow-covered Himalayan summit ridge",
   },
 ];
 
@@ -108,7 +108,9 @@ export function PromptRefinementChat() {
           fallback_reason: !isLive ? data.generation_metadata?.reason : undefined,
         });
 
-        setStatusMessage("Vision materialized — Stepping into the newly forged realm...");
+        // close the compiler drawer automatically so the 3D viewport is completely unobstructed
+        setIsOpen(false);
+        setStatusMessage(null);
       } else {
         setStatusMessage("Realm materialized from the ancient archives.");
       }
@@ -185,14 +187,14 @@ export function PromptRefinementChat() {
       {!isOpen && (
         <button
           onClick={() => setIsOpen(true)}
-          className="px-4 py-2 border text-xs uppercase tracking-[0.2em] font-bold transition-all pointer-events-auto"
+          className="px-3 py-1.5 border text-[11px] uppercase tracking-[0.18em] font-bold transition-all pointer-events-auto backdrop-blur-md opacity-85 hover:opacity-100"
           style={{
-            backgroundColor: theme.panelBg,
-            borderColor: theme.panelBorder,
+            backgroundColor: "rgba(10, 10, 12, 0.72)",
+            borderColor: `${theme.panelBorder}88`,
             color: theme.accentText,
           }}
         >
-          Compile New World
+          + Compile World
         </button>
       )}
 

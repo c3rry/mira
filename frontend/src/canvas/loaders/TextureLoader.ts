@@ -1071,7 +1071,7 @@ export function loadPanoramaTexture(
       () => {
         if (url !== fallbackUrl) {
           loader.load(
-            fallbackUrl,
+            fallbackUrl.split("?")[0],
             (fallbackTexture) => {
               fallbackTexture.colorSpace = THREE.SRGBColorSpace;
               fallbackTexture.minFilter = THREE.LinearFilter;
@@ -1079,13 +1079,14 @@ export function loadPanoramaTexture(
               fallbackTexture.generateMipmaps = false;
               fallbackTexture.wrapS = THREE.RepeatWrapping;
               fallbackTexture.wrapT = THREE.ClampToEdgeWrapping;
-              textureCache.set(url, fallbackTexture);
+              // mark as fallback and do not cache under the real url so pending sub-rooms can reload once synthesized
+              fallbackTexture.userData.isFallback = true;
               resolve(fallbackTexture);
             },
             undefined,
             () => {
               const procedural = createPromptDrivenPanorama(url);
-              textureCache.set(url, procedural);
+              procedural.userData.isFallback = true;
               resolve(procedural);
             }
           );

@@ -21,14 +21,13 @@ export function DialogueModal() {
 
   const [inputMessage, setInputMessage] = useState("");
   const [isLoading, setIsLoading] = useState(false);
-  const [showCognitiveTrace, setShowCognitiveTrace] = useState(false);
 
   const activeRoom = rooms[currentRoomId];
   const theme = resolveAdaptiveTheme(activeRoom?.biome_type, activeRoom?.name, worldTitle);
 
-  // resolve active npc from selection or current room resident
+  // only show dialogue modal when an NPC is explicitly clicked/selected by the user
   const roomNpcs = Object.values(npcs).filter((n) => n.room_id === currentRoomId);
-  const selectedNpc = (selectedNpcId && npcs[selectedNpcId]) || roomNpcs[0] || null;
+  const selectedNpc = (selectedNpcId && npcs[selectedNpcId]) || null;
 
   if (!selectedNpc && !activeSubtitle) {
     return null;
@@ -54,7 +53,11 @@ export function DialogueModal() {
     setIsLoading(true);
 
     try {
-      const res = await fetch("/npc/interact", {
+      const backendOrigin =
+        typeof window !== "undefined" && window.location.port === "3000"
+          ? `${window.location.protocol}//${window.location.hostname}:8001`
+          : "";
+      const res = await fetch(`${backendOrigin}/npc/interact`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -97,96 +100,91 @@ export function DialogueModal() {
   ];
 
   return (
-    <div className="fixed bottom-16 left-0 right-0 z-30 flex flex-col items-center px-6 pointer-events-none select-none">
-      {/* cinematic movie subtitle display */}
-      <div className="max-w-3xl w-full text-center mb-3 pointer-events-auto">
-        <div className="inline-block px-6 py-3 bg-black/75 backdrop-blur-sm border-t border-b border-white/15">
-          <div
-            className="text-xs uppercase tracking-[0.25em] font-bold mb-1 subtitle-shadow"
-            style={{ color: theme.accentColor }}
-          >
-            {speakerName}
-          </div>
-          <p className="text-lg sm:text-xl leading-relaxed text-[#fdf8ed] italic subtitle-shadow">
-            &ldquo;{isLoading ? "Contemplating your words..." : subtitleText}&rdquo;
-          </p>
-        </div>
-      </div>
-
-      {/* compact classical response & inquiry bar */}
-      {selectedNpc && (
-        <div
-          className="max-w-2xl w-full px-4 py-2.5 border pointer-events-auto flex flex-col gap-2"
-          style={{
-            backgroundColor: theme.panelBg,
-            borderColor: theme.panelBorder,
-          }}
-        >
-          {/* roman numeral quick inquiries */}
-          <div className="flex flex-wrap items-center justify-between gap-2 border-b pb-1.5" style={{ borderColor: `${theme.panelBorder}44` }}>
-            <div className="flex flex-wrap gap-3">
-              {quickInquiries.map((q) => (
-                <button
-                  key={q.numeral}
-                  disabled={isLoading}
-                  onClick={() => handleSendMessage(q.text)}
-                  className="text-xs hover:underline transition-opacity disabled:opacity-40 text-left"
-                  style={{ color: theme.accentText }}
-                >
-                  <span className="font-bold mr-1" style={{ color: theme.accentColor }}>
-                    {q.numeral}.
-                  </span>
-                  <span>{q.text}</span>
-                </button>
-              ))}
-            </div>
-
-            <div className="flex items-center space-x-3">
-              {roomNpcs.length > 1 && (
-                <button
-                  onClick={() => {
-                    const idx = roomNpcs.findIndex((n) => n.npc_id === selectedNpc.npc_id);
-                    const nextNpc = roomNpcs[(idx + 1) % roomNpcs.length];
-                    selectNPC(nextNpc.npc_id);
-                  }}
-                  className="text-[11px] uppercase tracking-wider underline"
-                  style={{ color: theme.accentColor }}
-                >
-                  Switch Companion
-                </button>
-              )}
-            </div>
-          </div>
-
-          {/* direct speech input */}
-          <div className="flex items-center gap-2">
-            <input
-              type="text"
-              value={inputMessage}
-              disabled={isLoading}
-              onChange={(e) => setInputMessage(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") handleSendMessage();
-              }}
-              placeholder={`Address ${selectedNpc.name}...`}
-              className="flex-1 px-3 py-1 bg-black/50 border text-sm text-[#fdf6e2] placeholder-neutral-500 focus:outline-none"
-              style={{ borderColor: `${theme.panelBorder}66` }}
-            />
-            <button
-              onClick={() => handleSendMessage()}
-              disabled={isLoading || !inputMessage.trim()}
-              className="px-4 py-1 text-xs uppercase tracking-[0.18em] font-bold border transition-opacity disabled:opacity-40"
-              style={{
-                backgroundColor: theme.buttonBg,
-                color: theme.buttonText,
-                borderColor: theme.panelBorder,
-              }}
+    <div className="fixed bottom-12 left-0 right-0 z-30 flex flex-col items-center px-4 pointer-events-none select-none">
+      {/* compact cinematic subtitle & dialogue bar */}
+      <div
+        className="max-w-xl w-full px-4 py-2.5 border pointer-events-auto flex flex-col gap-2 backdrop-blur-md shadow-xl"
+        style={{
+          backgroundColor: "rgba(10, 10, 12, 0.84)",
+          borderColor: `${theme.panelBorder}88`,
+        }}
+      >
+        <div className="flex items-start justify-between gap-3">
+          <div className="flex-1">
+            <div
+              className="text-[10px] uppercase tracking-[0.22em] font-bold mb-0.5"
+              style={{ color: theme.accentColor }}
             >
-              Speak
-            </button>
+              {speakerName}
+            </div>
+            <p className="text-sm leading-snug text-[#fdf8ed] italic">
+              &ldquo;{isLoading ? "Contemplating your words..." : subtitleText}&rdquo;
+            </p>
           </div>
+
+          <button
+            onClick={() => selectNPC(null)}
+            className="text-[10px] uppercase tracking-wider px-2 py-0.5 border opacity-75 hover:opacity-100 shrink-0"
+            style={{ borderColor: `${theme.panelBorder}66`, color: theme.mutedText }}
+          >
+            Dismiss [Esc]
+          </button>
         </div>
-      )}
+
+        {selectedNpc && (
+          <>
+            <div
+              className="flex flex-wrap items-center justify-between gap-1.5 border-t pt-1.5"
+              style={{ borderColor: `${theme.panelBorder}33` }}
+            >
+              <div className="flex flex-wrap gap-2.5">
+                {quickInquiries.map((q) => (
+                  <button
+                    key={q.numeral}
+                    disabled={isLoading}
+                    onClick={() => handleSendMessage(q.text)}
+                    className="text-[11px] hover:underline transition-opacity disabled:opacity-40 text-left"
+                    style={{ color: theme.accentText }}
+                  >
+                    <span className="font-bold mr-1" style={{ color: theme.accentColor }}>
+                      {q.numeral}.
+                    </span>
+                    <span>{q.text}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="flex items-center gap-1.5">
+              <input
+                type="text"
+                value={inputMessage}
+                disabled={isLoading}
+                onChange={(e) => setInputMessage(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") handleSendMessage();
+                  if (e.key === "Escape") selectNPC(null);
+                }}
+                placeholder={`Address ${selectedNpc.name}...`}
+                className="flex-1 px-2.5 py-1 bg-black/55 border text-xs text-[#fdf6e2] placeholder-neutral-500 focus:outline-none"
+                style={{ borderColor: `${theme.panelBorder}55` }}
+              />
+              <button
+                onClick={() => handleSendMessage()}
+                disabled={isLoading || !inputMessage.trim()}
+                className="px-3 py-1 text-[11px] uppercase tracking-[0.16em] font-bold border transition-opacity disabled:opacity-40"
+                style={{
+                  backgroundColor: theme.buttonBg,
+                  color: theme.buttonText,
+                  borderColor: theme.panelBorder,
+                }}
+              >
+                Speak
+              </button>
+            </div>
+          </>
+        )}
+      </div>
     </div>
   );
 }

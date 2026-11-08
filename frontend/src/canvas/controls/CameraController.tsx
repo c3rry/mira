@@ -48,7 +48,11 @@ export function CameraController({
   const controlsRef = useRef<OrbitControlsImpl>(null);
   const { camera } = useThree();
   const currentRoomId = useWorldStore((state) => state.currentRoomId);
+  const rooms = useWorldStore((state) => state.rooms);
   const activeScreen = useWorldStore((state) => state.activeScreen);
+  const teleportTrigger = useWorldStore((state) => state.teleportTrigger);
+  const setCurrentRoom = useWorldStore((state) => state.setCurrentRoom);
+  const setPlayerPosition = useWorldStore((state) => state.setPlayerPosition);
 
   const keysRef = useRef<{
     forward: boolean;
@@ -66,20 +70,24 @@ export function CameraController({
 
   const walkBobPhase = useRef<number>(0);
 
-  // reset player camera and target to center of chamber when changing rooms
+  // move camera to the selected room's 3D world coordinates when explicitly teleported via HUD / Minimap
   useEffect(() => {
+    const targetRoom = rooms[currentRoomId];
+    const rx = targetRoom?.worldX || 0;
+    const rz = targetRoom?.worldZ || 0;
+
     if (worldGroupRef?.current) {
       worldGroupRef.current.position.set(0, 0, 0);
     }
     if (skyboxGroupRef?.current) {
-      skyboxGroupRef.current.position.set(0, 0, 0);
+      skyboxGroupRef.current.position.set(rx, 0, rz);
     }
     if (controlsRef.current) {
-      camera.position.set(0, 0, 0.5);
-      controlsRef.current.target.set(0, 0, 0);
+      camera.position.set(rx, 0, rz + 0.5);
+      controlsRef.current.target.set(rx, 0, rz);
       controlsRef.current.update();
     }
-  }, [currentRoomId, camera, worldGroupRef, skyboxGroupRef]);
+  }, [teleportTrigger, camera, worldGroupRef, skyboxGroupRef]);
 
   useEffect(() => {
     const isInputFocused = (e: KeyboardEvent) => {
@@ -150,7 +158,7 @@ export function CameraController({
     const controls = controlsRef.current;
 
     if (isMoving) {
-      const moveSpeed = (sprint ? 26.0 : 15.0) * Math.min(delta, 0.1);
+      const moveSpeed = (sprint ? 34.0 : 19.0) * Math.min(delta, 0.1);
 
       // compute horizontal forward and right vectors from camera look direction
       const forwardVec = new THREE.Vector3();
@@ -173,21 +181,46 @@ export function CameraController({
       if (moveDelta.lengthSq() > 0) {
         moveDelta.normalize().multiplyScalar(moveSpeed);
 
-        // clamp walkable radius inside the architectural floor bounds (max 110 units)
         const nextTargetX = controls.target.x + moveDelta.x;
         const nextTargetZ = controls.target.z + moveDelta.z;
-        const maxWalkRadius = 110.0;
-        const dist = Math.hypot(nextTargetX, nextTargetZ);
-        if (dist > maxWalkRadius) {
-          const clampedX = (nextTargetX / dist) * maxWalkRadius;
-          const clampedZ = (nextTargetZ / dist) * maxWalkRadius;
-          moveDelta.x = clampedX - controls.target.x;
-          moveDelta.z = clampedZ - controls.target.z;
-        }
+
+        // compute dynamic multi-room bounding box so player can continuously walk across all rooms & bridges
+        const roomList = Object.values(rooms);
+        let minX = -115;
+        let maxX = 115;
+        let minZ = -115;
+        let maxZ = 115;
+        roomList.forEach((r) => {
+          const rx = r.worldX || 0;
+          const rz = r.worldZ || 0;
+          if (rx - 115 < minX) minX = rx - 115;
+          if (rx + 115 > maxX) maxX = rx + 115;
+          if (rz - 115 < minZ) minZ = rz - 115;
+          if (rz + 115 > maxZ) maxZ = rz + 115;
+        });
+
+        const clampedX = Math.max(minX, Math.min(maxX, nextTargetX));
+        const clampedZ = Math.max(minZ, Math.min(maxZ, nextTargetZ));
+        moveDelta.x = clampedX - controls.target.x;
+        moveDelta.z = clampedZ - controls.target.z;
 
         // translate camera.position and controls.target together before controls.update()
         camera.position.add(moveDelta);
         controls.target.add(moveDelta);
+
+        // check if player physically walked into an adjacent sub-room's territory
+        let closestRoomId = currentRoomId;
+        let closestDist = Infinity;
+        roomList.forEach((r) => {
+          const d = Math.hypot(clampedX - (r.worldX || 0), clampedZ - (r.worldZ || 0));
+          if (d < closestDist) {
+            closestDist = d;
+            closestRoomId = r.room_id;
+          }
+        });
+        if (closestRoomId !== currentRoomId && closestDist < 98.0) {
+          setCurrentRoom(closestRoomId, true);
+        }
       }
 
       walkBobPhase.current += delta * (sprint ? 12.5 : 8.5);
@@ -205,11 +238,21 @@ export function CameraController({
       );
     }
 
-    // keep PanoramaSphere centered around camera with 0.88x follow (0.12x subtle parallax)
+    // keep outer horizon skybox centered around camera
     if (skyboxGroupRef?.current) {
-      skyboxGroupRef.current.position.x = camera.position.x * 0.88;
-      skyboxGroupRef.current.position.z = camera.position.z * 0.88;
+      skyboxGroupRef.current.position.x = camera.position.x;
+      skyboxGroupRef.current.position.z = camera.position.z;
     }
+
+    // broadcast live player coordinates and heading to Zustand store for the top-down architectural minimap
+    const lookDir = new THREE.Vector3();
+    camera.getWorldDirection(lookDir);
+    const yawRad = Math.atan2(lookDir.x, -lookDir.z);
+    setPlayerPosition({
+      x: controls.target.x,
+      z: controls.target.z,
+      yaw: yawRad,
+    });
 
     controls.update();
   });

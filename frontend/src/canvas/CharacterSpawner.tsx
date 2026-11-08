@@ -45,8 +45,98 @@ function SingleNPC({ npc, index, total, biome, onSelect }: SingleNPCProps) {
 
   const walkPhaseRef = useRef<number>(index * 2.1);
 
+  const morphology = useMemo(() => {
+    const text = `${npc.name} ${npc.persona_description || ""} ${biome}`.toLowerCase();
+    if (
+      text.includes("angler") ||
+      text.includes("fish") ||
+      text.includes("ocean") ||
+      text.includes("abyss") ||
+      text.includes("benthic") ||
+      text.includes("trench") ||
+      text.includes("creature") ||
+      text.includes("manta") ||
+      text.includes("crustacean")
+    ) {
+      return "aquatic_abyssal";
+    }
+    if (
+      text.includes("alien") ||
+      text.includes("droid") ||
+      text.includes("rover") ||
+      text.includes("drone") ||
+      text.includes("automaton") ||
+      text.includes("golem") ||
+      text.includes("synthet")
+    ) {
+      return "construct_automaton";
+    }
+    if (
+      text.includes("astronaut") ||
+      text.includes("commander") ||
+      text.includes("pilot") ||
+      text.includes("sol") ||
+      text.includes("chang'e") ||
+      text.includes("collins") ||
+      text.includes("armstrong") ||
+      text.includes("lunar") ||
+      text.includes("moon") ||
+      text.includes("mars")
+    ) {
+      return "space_explorer";
+    }
+    if (
+      text.includes("sherpa") ||
+      text.includes("yeti") ||
+      text.includes("beast") ||
+      text.includes("wolf") ||
+      text.includes("falcon") ||
+      text.includes("ranger") ||
+      text.includes("pathfinder")
+    ) {
+      return "wilderness_scout";
+    }
+    return "humanoid_scholar";
+  }, [npc.name, npc.persona_description, biome]);
+
   const palette = useMemo(() => {
     const b = biome.toLowerCase();
+    if (morphology === "aquatic_abyssal") {
+      return {
+        garment: "#0f172a",
+        secondaryGarment: "#0284c7",
+        trim: "#06b6d4",
+        mantle: "#0369a1",
+        skin: "#0284c7",
+        hair: "#0c4a6e",
+        headpiece: "#22d3ee",
+        leather: "#082f49",
+      };
+    }
+    if (morphology === "space_explorer") {
+      return {
+        garment: "#f8fafc",
+        secondaryGarment: "#94a3b8",
+        trim: "#e2e8f0",
+        mantle: "#0284c7",
+        skin: "#e2e8f0",
+        hair: "#38bdf8",
+        headpiece: "#f59e0b",
+        leather: "#334155",
+      };
+    }
+    if (morphology === "construct_automaton") {
+      return {
+        garment: "#334155",
+        secondaryGarment: "#64748b",
+        trim: "#f59e0b",
+        mantle: "#0f172a",
+        skin: "#94a3b8",
+        hair: "#e2e8f0",
+        headpiece: "#10b981",
+        leather: "#1e293b",
+      };
+    }
     if (b.includes("desert") || b.includes("giza") || b.includes("pyramid") || b.includes("ruin")) {
       return {
         garment: "#efe3c8",
@@ -105,7 +195,7 @@ function SingleNPC({ npc, index, total, biome, onSelect }: SingleNPCProps) {
       headpiece: "#475569",
       leather: "#1f1610",
     };
-  }, [biome]);
+  }, [biome, morphology]);
 
   // high-resolution woven cloth PBR albedo + bump texture
   const { clothAlbedo, clothBump } = useMemo(() => {
@@ -323,82 +413,152 @@ function SingleNPC({ npc, index, total, biome, onSelect }: SingleNPCProps) {
       {/* articulated upper body & head */}
       <group ref={torsoRef}>
         <group ref={headGroupRef} position={[0, 29.2, 0]}>
-          {/* sculpted anatomical cranium & jaw */}
-          <mesh position={[0, 0.4, 0]} scale={[0.92, 1.08, 0.98]}>
-            <sphereGeometry args={[4.1, 32, 32]} />
-            <meshPhysicalMaterial
-              color={palette.skin}
-              roughness={0.48}
-              metalness={0.02}
-              clearcoat={0.08}
-              clearcoatRoughness={0.6}
-            />
-          </mesh>
+          {morphology === "aquatic_abyssal" ? (
+            /* Abyssal Angler / Deep Sea Chimera Entity */
+            <group>
+              <mesh position={[0, 0, 0]} scale={[1.2, 1.0, 1.4]}>
+                <sphereGeometry args={[4.2, 24, 24]} />
+                <meshPhysicalMaterial color="#0e7490" roughness={0.2} transmission={0.2} clearcoat={0.9} />
+              </mesh>
+              {/* Luminous Bioluminescent Angler Esca Lure */}
+              <mesh position={[0, 5.5, 3.8]} rotation={[-0.4, 0, 0]}>
+                <cylinderGeometry args={[0.18, 0.35, 6.5, 12]} />
+                <meshStandardMaterial color="#06b6d4" metalness={0.8} />
+              </mesh>
+              <mesh position={[0, 8.8, 5.8]}>
+                <sphereGeometry args={[1.2, 16, 16]} />
+                <meshPhysicalMaterial color="#67e8f9" emissive="#22d3ee" emissiveIntensity={1.8} roughness={0.1} />
+              </mesh>
+              {/* Large bioluminescent eyes */}
+              <mesh position={[-2.4, 0.8, 2.2]}>
+                <sphereGeometry args={[1.4, 16, 16]} />
+                <meshPhysicalMaterial color="#fef08a" emissive="#eab308" emissiveIntensity={1.2} />
+              </mesh>
+              <mesh position={[2.4, 0.8, 2.2]}>
+                <sphereGeometry args={[1.4, 16, 16]} />
+                <meshPhysicalMaterial color="#fef08a" emissive="#eab308" emissiveIntensity={1.2} />
+              </mesh>
+              {/* Dorsal fin crest */}
+              <mesh position={[0, 3.5, -2.5]} rotation={[0.4, 0, 0]}>
+                <coneGeometry args={[2.5, 5.5, 4]} />
+                <meshPhysicalMaterial color="#0284c7" transmission={0.5} roughness={0.15} />
+              </mesh>
+            </group>
+          ) : morphology === "space_explorer" ? (
+            /* Apollo / Artemis Astronaut Pressure Helmet with Gold Solar Visor */
+            <group>
+              <mesh position={[0, 0, 0]}>
+                <sphereGeometry args={[4.6, 32, 32]} />
+                <meshStandardMaterial color="#f8fafc" roughness={0.2} metalness={0.1} />
+              </mesh>
+              {/* Reflective gold visor shield */}
+              <mesh position={[0, 0.2, 1.8]} rotation={[0.1, 0, 0]}>
+                <sphereGeometry args={[3.8, 24, 24, 0, Math.PI * 2, 0, Math.PI * 0.45]} />
+                <meshStandardMaterial color="#f59e0b" metalness={0.96} roughness={0.06} />
+              </mesh>
+              {/* Helmet audio & telemetry communicators */}
+              <mesh position={[-4.7, 0, 0]} rotation={[0, 0, Math.PI / 2]}>
+                <cylinderGeometry args={[1.2, 1.2, 0.8, 16]} />
+                <meshStandardMaterial color="#64748b" metalness={0.8} />
+              </mesh>
+              <mesh position={[4.7, 0, 0]} rotation={[0, 0, Math.PI / 2]}>
+                <cylinderGeometry args={[1.2, 1.2, 0.8, 16]} />
+                <meshStandardMaterial color="#64748b" metalness={0.8} />
+              </mesh>
+            </group>
+          ) : morphology === "construct_automaton" ? (
+            /* Cybernetic / Ancient Golem Automaton Core Head */
+            <group>
+              <mesh position={[0, 0, 0]}>
+                <boxGeometry args={[5.2, 5.8, 5.0]} />
+                <meshStandardMaterial color="#475569" metalness={0.85} roughness={0.25} />
+              </mesh>
+              {/* Optical horizontal sensor bar */}
+              <mesh position={[0, 0.6, 2.6]}>
+                <boxGeometry args={[4.2, 0.9, 0.5]} />
+                <meshPhysicalMaterial color="#10b981" emissive="#34d399" emissiveIntensity={1.5} />
+              </mesh>
+            </group>
+          ) : (
+            /* Classical Humanoid Scholar Cranium & Face */
+            <group>
+              <mesh position={[0, 0.4, 0]} scale={[0.92, 1.08, 0.98]}>
+                <sphereGeometry args={[4.1, 32, 32]} />
+                <meshPhysicalMaterial
+                  color={palette.skin}
+                  roughness={0.48}
+                  metalness={0.02}
+                  clearcoat={0.08}
+                  clearcoatRoughness={0.6}
+                />
+              </mesh>
 
-          {/* sculpted jawline & chin */}
-          <mesh position={[0, -1.6, 0.6]} scale={[0.82, 0.75, 0.85]}>
-            <cylinderGeometry args={[3.4, 2.2, 3.6, 24]} />
-            <meshPhysicalMaterial color={palette.skin} roughness={0.48} />
-          </mesh>
+              {/* sculpted jawline & chin */}
+              <mesh position={[0, -1.6, 0.6]} scale={[0.82, 0.75, 0.85]}>
+                <cylinderGeometry args={[3.4, 2.2, 3.6, 24]} />
+                <meshPhysicalMaterial color={palette.skin} roughness={0.48} />
+              </mesh>
 
-          {/* anatomical nose bridge */}
-          <mesh position={[0, -0.1, 3.95]} rotation={[0.18, 0, 0]}>
-            <coneGeometry args={[0.68, 2.1, 12]} />
-            <meshPhysicalMaterial color={palette.skin} roughness={0.45} />
-          </mesh>
+              {/* anatomical nose bridge */}
+              <mesh position={[0, -0.1, 3.95]} rotation={[0.18, 0, 0]}>
+                <coneGeometry args={[0.68, 2.1, 12]} />
+                <meshPhysicalMaterial color={palette.skin} roughness={0.45} />
+              </mesh>
 
-          {/* brow ridge */}
-          <mesh position={[0, 1.35, 3.55]} scale={[1.0, 0.35, 0.45]}>
-            <boxGeometry args={[4.6, 1.2, 1.6]} />
-            <meshPhysicalMaterial color={palette.skin} roughness={0.5} />
-          </mesh>
+              {/* brow ridge */}
+              <mesh position={[0, 1.35, 3.55]} scale={[1.0, 0.35, 0.45]}>
+                <boxGeometry args={[4.6, 1.2, 1.6]} />
+                <meshPhysicalMaterial color={palette.skin} roughness={0.5} />
+              </mesh>
 
-          {/* sclera & iris eyes */}
-          <group position={[-1.35, 0.6, 3.55]}>
-            <mesh scale={[1.1, 0.85, 0.6]}>
-              <sphereGeometry args={[0.62, 16, 16]} />
-              <meshStandardMaterial color="#f8fafc" roughness={0.2} />
-            </mesh>
-            <mesh position={[0, 0, 0.32]}>
-              <sphereGeometry args={[0.32, 14, 14]} />
-              <meshStandardMaterial color="#1e1b18" roughness={0.1} />
-            </mesh>
-          </group>
-          <group position={[1.35, 0.6, 3.55]}>
-            <mesh scale={[1.1, 0.85, 0.6]}>
-              <sphereGeometry args={[0.62, 16, 16]} />
-              <meshStandardMaterial color="#f8fafc" roughness={0.2} />
-            </mesh>
-            <mesh position={[0, 0, 0.32]}>
-              <sphereGeometry args={[0.32, 14, 14]} />
-              <meshStandardMaterial color="#1e1b18" roughness={0.1} />
-            </mesh>
-          </group>
+              {/* sclera & iris eyes */}
+              <group position={[-1.35, 0.6, 3.55]}>
+                <mesh scale={[1.1, 0.85, 0.6]}>
+                  <sphereGeometry args={[0.62, 16, 16]} />
+                  <meshStandardMaterial color="#f8fafc" roughness={0.2} />
+                </mesh>
+                <mesh position={[0, 0, 0.32]}>
+                  <sphereGeometry args={[0.32, 14, 14]} />
+                  <meshStandardMaterial color="#1e1b18" roughness={0.1} />
+                </mesh>
+              </group>
+              <group position={[1.35, 0.6, 3.55]}>
+                <mesh scale={[1.1, 0.85, 0.6]}>
+                  <sphereGeometry args={[0.62, 16, 16]} />
+                  <meshStandardMaterial color="#f8fafc" roughness={0.2} />
+                </mesh>
+                <mesh position={[0, 0, 0.32]}>
+                  <sphereGeometry args={[0.32, 14, 14]} />
+                  <meshStandardMaterial color="#1e1b18" roughness={0.1} />
+                </mesh>
+              </group>
 
-          {/* sculpted hair & beard / coiffure */}
-          <mesh position={[0, 1.2, -0.5]} scale={[0.98, 1.05, 1.04]}>
-            <sphereGeometry args={[4.25, 24, 24]} />
-            <meshStandardMaterial color={palette.hair} roughness={0.85} />
-          </mesh>
+              {/* sculpted hair & beard / coiffure */}
+              <mesh position={[0, 1.2, -0.5]} scale={[0.98, 1.05, 1.04]}>
+                <sphereGeometry args={[4.25, 24, 24]} />
+                <meshStandardMaterial color={palette.hair} roughness={0.85} />
+              </mesh>
 
-          {/* ornate metallic diadem / klaft / laurels */}
-          <mesh position={[0, 2.3, 0.1]} rotation={[0.08, 0, 0]}>
-            <torusGeometry args={[3.95, 0.48, 16, 36]} />
-            <meshStandardMaterial
-              color={palette.headpiece}
-              metalness={0.88}
-              roughness={0.22}
-            />
-          </mesh>
-          {/* diadem front crest */}
-          <mesh position={[0, 3.1, 3.9]}>
-            <octahedronGeometry args={[0.85, 1]} />
-            <meshStandardMaterial
-              color={palette.trim}
-              metalness={0.92}
-              roughness={0.15}
-            />
-          </mesh>
+              {/* ornate metallic diadem / klaft / laurels */}
+              <mesh position={[0, 2.3, 0.1]} rotation={[0.08, 0, 0]}>
+                <torusGeometry args={[3.95, 0.48, 16, 36]} />
+                <meshStandardMaterial
+                  color={palette.headpiece}
+                  metalness={0.88}
+                  roughness={0.22}
+                />
+              </mesh>
+              {/* diadem front crest */}
+              <mesh position={[0, 3.1, 3.9]}>
+                <octahedronGeometry args={[0.85, 1]} />
+                <meshStandardMaterial
+                  color={palette.trim}
+                  metalness={0.92}
+                  roughness={0.15}
+                />
+              </mesh>
+            </group>
+          )}
         </group>
 
         {/* anatomical neck */}
@@ -510,26 +670,54 @@ function SingleNPC({ npc, index, total, biome, onSelect }: SingleNPCProps) {
               <meshPhysicalMaterial color={palette.skin} roughness={0.48} />
             </mesh>
 
-            {/* gilded astrolabe / scepter staff held in hand */}
-            <group position={[0, -5.8, 1.2]} rotation={[0.45, 0, 0]}>
-              <mesh position={[0, 4.0, 0]}>
-                <cylinderGeometry args={[0.38, 0.32, 36, 16]} />
-                <meshStandardMaterial color={palette.trim} metalness={0.9} roughness={0.18} />
-              </mesh>
-              <mesh position={[0, 22.5, 0]}>
-                <torusGeometry args={[2.2, 0.28, 14, 32]} />
-                <meshStandardMaterial color={palette.trim} metalness={0.92} roughness={0.15} />
-              </mesh>
-              <mesh position={[0, 22.5, 0]}>
-                <octahedronGeometry args={[1.25, 1]} />
-                <meshStandardMaterial
-                  color="#fef08a"
-                  emissive={palette.trim}
-                  emissiveIntensity={0.65}
-                  roughness={0.15}
-                />
-              </mesh>
-            </group>
+            {/* Biome-adaptive hand-held artifact/tool */}
+            {morphology === "aquatic_abyssal" ? (
+              <group position={[0, -5.8, 1.2]} rotation={[0.45, 0, 0]}>
+                <mesh position={[0, 4.0, 0]}>
+                  <cylinderGeometry args={[0.3, 0.45, 34, 12]} />
+                  <meshStandardMaterial color="#0e7490" roughness={0.3} metalness={0.7} />
+                </mesh>
+                <mesh position={[0, 21.0, 0]}>
+                  <octahedronGeometry args={[2.2, 0]} />
+                  <meshPhysicalMaterial color="#38bdf8" emissive="#0284c7" emissiveIntensity={1.4} roughness={0.1} />
+                </mesh>
+              </group>
+            ) : morphology === "space_explorer" ? (
+              <group position={[0, -5.8, 1.2]} rotation={[0.35, 0, 0]}>
+                <mesh position={[0, 2.0, 0]}>
+                  <boxGeometry args={[1.5, 7.0, 2.5]} />
+                  <meshStandardMaterial color="#334155" metalness={0.8} />
+                </mesh>
+                <mesh position={[0, 6.0, 0]}>
+                  <cylinderGeometry args={[0.2, 0.3, 12.0, 8]} />
+                  <meshStandardMaterial color="#cbd5e1" metalness={0.9} />
+                </mesh>
+                <mesh position={[0, 12.2, 0]}>
+                  <sphereGeometry args={[0.6, 12, 12]} />
+                  <meshPhysicalMaterial color="#38bdf8" emissive="#0284c7" emissiveIntensity={1.5} />
+                </mesh>
+              </group>
+            ) : (
+              <group position={[0, -5.8, 1.2]} rotation={[0.45, 0, 0]}>
+                <mesh position={[0, 4.0, 0]}>
+                  <cylinderGeometry args={[0.38, 0.32, 36, 16]} />
+                  <meshStandardMaterial color={palette.trim} metalness={0.9} roughness={0.18} />
+                </mesh>
+                <mesh position={[0, 22.5, 0]}>
+                  <torusGeometry args={[2.2, 0.28, 14, 32]} />
+                  <meshStandardMaterial color={palette.trim} metalness={0.92} roughness={0.15} />
+                </mesh>
+                <mesh position={[0, 22.5, 0]}>
+                  <octahedronGeometry args={[1.25, 1]} />
+                  <meshStandardMaterial
+                    color="#fef08a"
+                    emissive={palette.trim}
+                    emissiveIntensity={0.65}
+                    roughness={0.15}
+                  />
+                </mesh>
+              </group>
+            )}
           </group>
         </group>
       </group>
@@ -590,15 +778,18 @@ function SingleNPC({ npc, index, total, biome, onSelect }: SingleNPCProps) {
 
 interface CharacterSpawnerProps {
   npcs: NPCAgent[];
+  roomContext?: string;
   onNPCSelect?: (npcId: string) => void;
 }
 
-export function CharacterSpawner({ npcs, onNPCSelect }: CharacterSpawnerProps) {
+export function CharacterSpawner({ npcs, roomContext, onNPCSelect }: CharacterSpawnerProps) {
   const selectNPC = useWorldStore((state) => state.selectNPC);
   const currentRoomId = useWorldStore((state) => state.currentRoomId);
   const rooms = useWorldStore((state) => state.rooms);
   const worldTitle = useWorldStore((state) => state.worldTitle);
-  const activeBiome = `${rooms[currentRoomId]?.biome_type || ""} ${rooms[currentRoomId]?.name || ""} ${worldTitle || ""}`;
+  const activeBiome =
+    roomContext ||
+    `${rooms[currentRoomId]?.biome_type || ""} ${rooms[currentRoomId]?.name || ""} ${worldTitle || ""}`;
 
   const handleSelect = (npcId: string) => {
     selectNPC(npcId);

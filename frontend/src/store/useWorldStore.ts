@@ -25,6 +25,8 @@ export interface WorldRoom {
   mutation_level: number;
   biome_type: string;
   props?: PropItem[];
+  worldX?: number;
+  worldZ?: number;
 }
 
 export interface NPCAgent {
@@ -561,17 +563,20 @@ export interface WorldState {
   isCompilingWorld: boolean;
   diffusionProgress: number;
   activeSubtitle: SubtitleCue | null;
+  playerPosition: { x: number; z: number; yaw: number };
+  teleportTrigger: number;
 
   // actions
   setActiveScreen: (screen: "title" | "storage" | "create" | "game") => void;
   setIsCompilingWorld: (compiling: boolean) => void;
   setDiffusionProgress: (progress: number) => void;
   setActiveSubtitle: (cue: SubtitleCue | null) => void;
+  setPlayerPosition: (pos: { x: number; z: number; yaw: number }) => void;
   saveWorldToArchive: (entry: SavedWorldEntry) => void;
   deleteWorldFromArchive: (worldId: string) => void;
   loadArchivedWorld: (entry: SavedWorldEntry) => void;
 
-  setCurrentRoom: (roomId: string) => void;
+  setCurrentRoom: (roomId: string, walkedInto?: boolean) => void;
   selectNPC: (npcId: string | null) => void;
   setMutationLevel: (roomId: string, level: number) => void;
   appendThoughtLog: (npcId: string, thought: string) => void;
@@ -604,6 +609,8 @@ export const useWorldStore = create<WorldState>((set, get) => ({
   isCompilingWorld: false,
   diffusionProgress: 100,
   activeSubtitle: null,
+  playerPosition: { x: 0, z: 0, yaw: 0 },
+  teleportTrigger: 0,
 
   setActiveScreen: (screen) => {
     set({ activeScreen: screen });
@@ -621,6 +628,17 @@ export const useWorldStore = create<WorldState>((set, get) => ({
 
   setActiveSubtitle: (cue) => {
     set({ activeSubtitle: cue });
+  },
+
+  setPlayerPosition: (pos) => {
+    const prev = get().playerPosition;
+    if (
+      Math.abs(prev.x - pos.x) > 0.35 ||
+      Math.abs(prev.z - pos.z) > 0.35 ||
+      Math.abs(prev.yaw - pos.yaw) > 0.04
+    ) {
+      set({ playerPosition: pos });
+    }
   },
 
   saveWorldToArchive: (entry) => {
@@ -656,27 +674,23 @@ export const useWorldStore = create<WorldState>((set, get) => ({
     });
   },
 
-  setCurrentRoom: (roomId: string) => {
-    const { rooms, npcs } = get();
-    if (rooms[roomId]) {
-      // find first npc in target room to present an introductory subtitle
-      const roomNpc = Object.values(npcs).find((n) => n.room_id === roomId);
-      const subtitle: SubtitleCue | null = roomNpc
-        ? {
-            npcId: roomNpc.npc_id,
-            speaker: roomNpc.name,
-            persona: roomNpc.persona_description,
-            text: `Welcome to ${rooms[roomId].name}. ${roomNpc.persona_description}`,
-            thoughtLog: roomNpc.thought_log?.[roomNpc.thought_log.length - 1],
-            timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
-          }
-        : null;
-
-      set({
+  setCurrentRoom: (roomId: string, walkedInto: boolean = false) => {
+    const { rooms } = get();
+    const targetRoom = rooms[roomId];
+    if (targetRoom) {
+      set((state) => ({
         currentRoomId: roomId,
-        selectedNpcId: roomNpc ? roomNpc.npc_id : null,
-        activeSubtitle: subtitle,
-      });
+        selectedNpcId: null,
+        activeSubtitle: null,
+        playerPosition: walkedInto
+          ? state.playerPosition
+          : {
+              x: targetRoom.worldX || 0,
+              z: targetRoom.worldZ || 0,
+              yaw: state.playerPosition.yaw,
+            },
+        teleportTrigger: walkedInto ? state.teleportTrigger : state.teleportTrigger + 1,
+      }));
     }
   },
 
@@ -754,9 +768,20 @@ export const useWorldStore = create<WorldState>((set, get) => ({
     const roomsMap: Record<string, WorldRoom> = {};
     const npcsMap: Record<string, NPCAgent> = {};
 
+    const roomSpacing = 220;
+    const gridOffsets: Array<[number, number]> = [
+      [0, 0],
+      [0, -roomSpacing],
+      [roomSpacing, -roomSpacing],
+      [roomSpacing, 0],
+      [-roomSpacing, 0],
+      [-roomSpacing, -roomSpacing],
+    ];
+
     worldData.rooms.forEach((r: any, idx: number) => {
       const inferredBiome = r.biome_type || "medieval_tavern";
       const rawPano = r.panorama_url || `/cached_worlds/${inferredBiome}/panorama.webp`;
+      const [wx, wz] = gridOffsets[idx % gridOffsets.length];
 
       roomsMap[r.room_id] = {
         room_id: r.room_id,
@@ -767,6 +792,8 @@ export const useWorldStore = create<WorldState>((set, get) => ({
         mutation_level: r.mutation_level || 0.0,
         biome_type: inferredBiome,
         props: r.props || [],
+        worldX: typeof r.worldX === "number" ? r.worldX : wx,
+        worldZ: typeof r.worldZ === "number" ? r.worldZ : wz,
       };
 
       const rawNpcs = Array.isArray(r.npcs) && r.npcs.length > 0
@@ -801,32 +828,39 @@ export const useWorldStore = create<WorldState>((set, get) => ({
       });
     });
 
+    // ensure all rooms form a connected walkable loop so every room can be reached on foot
+    const orderedIds = Object.keys(roomsMap);
+    orderedIds.forEach((rid, idx) => {
+      const nextId = orderedIds[(idx + 1) % orderedIds.length];
+      const prevId = orderedIds[(idx - 1 + orderedIds.length) % orderedIds.length];
+      const existing = new Set(roomsMap[rid].adjacent_room_ids);
+      if (nextId && nextId !== rid) existing.add(nextId);
+      if (prevId && prevId !== rid) existing.add(prevId);
+      roomsMap[rid].adjacent_room_ids = Array.from(existing);
+    });
+
     const initialId =
       worldData.initial_room_id && roomsMap[worldData.initial_room_id]
         ? worldData.initial_room_id
-        : Object.keys(roomsMap)[0] || "";
+        : orderedIds[0] || "";
 
-    const initialNpc = Object.values(npcsMap).find((n) => n.room_id === initialId);
     const initialRoom = roomsMap[initialId];
 
-    set({
+    set((state) => ({
       worldTitle: worldData.title || "Architectural Chronicle",
       currentRoomId: initialId,
       rooms: roomsMap,
       npcs: npcsMap,
       quests: worldData.quests || [],
-      selectedNpcId: initialNpc ? initialNpc.npc_id : null,
-      activeSubtitle: initialNpc
-        ? {
-            npcId: initialNpc.npc_id,
-            speaker: initialNpc.name,
-            persona: initialNpc.persona_description,
-            text: `Welcome to ${initialRoom?.name || "this realm"}. ${initialNpc.persona_description}`,
-            thoughtLog: initialNpc.thought_log?.[initialNpc.thought_log.length - 1],
-            timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
-          }
-        : null,
-    });
+      selectedNpcId: null,
+      activeSubtitle: null,
+      playerPosition: {
+        x: initialRoom?.worldX || 0,
+        z: initialRoom?.worldZ || 0,
+        yaw: 0,
+      },
+      teleportTrigger: state.teleportTrigger + 1,
+    }));
   },
 
   initializeSync: () => {

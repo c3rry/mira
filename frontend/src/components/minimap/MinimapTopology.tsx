@@ -1,340 +1,451 @@
-// bird's eye view cartographic island map with merged biome terrain and live agent tracking
+// precise top-down architectural & spatial floorplan radar with live multi-room player tracking
 "use client";
 
-import { useMemo, useState, useEffect } from "react";
+import { useEffect, useMemo, useState, useTransition } from "react";
 import { resolveAdaptiveTheme, useWorldStore } from "@/store/useWorldStore";
-
-interface SectorCoordinates {
-  x: number;
-  y: number;
-  title: string;
-  biome: string;
-  code: string;
-}
+import { isNaturalBiomeContext } from "@/canvas/environment/ReflectiveFloorGrid";
 
 export function MinimapTopology() {
-  const { currentRoomId, rooms, npcs, worldTitle, setCurrentRoom } = useWorldStore();
-  const [isExpanded, setIsExpanded] = useState(false);
-  const [hoveredSector, setHoveredSector] = useState<string | null>(null);
+  const [expanded, setExpanded] = useState(false);
+  const {
+    currentRoomId,
+    rooms,
+    npcs,
+    worldTitle,
+    playerPosition,
+    setCurrentRoom,
+    selectNPC,
+  } = useWorldStore();
+  const [, startTransition] = useTransition();
 
+  const roomIds = Object.keys(rooms);
   const activeRoom = rooms[currentRoomId];
   const theme = resolveAdaptiveTheme(activeRoom?.biome_type, activeRoom?.name, worldTitle);
 
+  const isNature = useMemo(() => {
+    const ctx = `${worldTitle || ""} ${activeRoom?.name || ""} ${activeRoom?.biome_type || ""}`;
+    return isNaturalBiomeContext(ctx);
+  }, [worldTitle, activeRoom]);
+
+  // toggle expanded top-down blueprint map with 'M' key
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (
-        e.target instanceof HTMLInputElement ||
-        e.target instanceof HTMLTextAreaElement
-      ) {
+      const el = document.activeElement as HTMLElement | null;
+      if (el && (el.tagName === "INPUT" || el.tagName === "TEXTAREA" || el.isContentEditable)) {
         return;
       }
       if (e.key === "m" || e.key === "M") {
-        e.preventDefault();
-        setIsExpanded((prev) => !prev);
+        setExpanded((prev) => !prev);
       }
     };
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, []);
 
-  // dynamically map both canonical sectors and newly compiled world rooms onto the island terrain
-  const sectorPositions: Record<string, SectorCoordinates> = useMemo(() => {
-    const base: Record<string, SectorCoordinates> = {
-      giza_forecourt: { x: 115, y: 290, title: "PYRAMID FORECOURT", biome: "desert", code: "B5" },
-      sphinx_causeway: { x: 165, y: 315, title: "GREAT SPHINX", biome: "desert", code: "C5" },
-      khufu_gallery: { x: 85, y: 325, title: "KHUFU GALLERY", biome: "desert", code: "A5" },
-      solar_barque: { x: 135, y: 345, title: "SOLAR BARQUE", biome: "desert", code: "B6" },
-      rome_forum: { x: 200, y: 195, title: "VIA SACRA FORUM", biome: "tavern", code: "C3" },
-      rome_pantheon: { x: 175, y: 225, title: "PANTHEON ROTUNDA", biome: "tavern", code: "C4" },
-      rome_colosseum: { x: 230, y: 215, title: "COLOSSEUM ARENA", biome: "tavern", code: "D4" },
-      babylon_terrace: { x: 295, y: 295, title: "CEDAR TERRACE", biome: "forest", code: "D5" },
-      babylon_aqueduct: { x: 325, y: 320, title: "ISHTAR PAVILION", biome: "forest", code: "E5" },
-      cyber_lab_01: { x: 110, y: 110, title: "METROPOLIS LAB", biome: "cyber", code: "B2" },
-      cyberpunk_alley: { x: 135, y: 140, title: "GRAND ARCADE", biome: "cyber", code: "B3" },
-      medieval_tavern: { x: 200, y: 200, title: "HIGHLAND KEEP", biome: "tavern", code: "C3" },
-      space_station: { x: 290, y: 110, title: "ORBITAL DOME", biome: "space", code: "D2" },
-      desert_oasis: { x: 110, y: 300, title: "GIZA OASIS", biome: "desert", code: "B5" },
-      enchanted_forest: { x: 295, y: 295, title: "SYLVAN GROVE", biome: "forest", code: "D5" },
-    };
-
-    const roomEntries = Object.values(rooms);
-    roomEntries.forEach((r, idx) => {
-      if (!base[r.room_id]) {
-        const b = (r.biome_type || "").toLowerCase();
-        let cx = 200;
-        let cy = 200;
-        if (b.includes("desert")) {
-          cx = 115 + (idx % 3) * 38;
-          cy = 285 + Math.floor(idx / 2) * 32;
-        } else if (b.includes("forest")) {
-          cx = 280 + (idx % 3) * 32;
-          cy = 280 + Math.floor(idx / 2) * 32;
-        } else if (b.includes("space")) {
-          cx = 275 + (idx % 3) * 32;
-          cy = 105 + Math.floor(idx / 2) * 30;
-        } else if (b.includes("tavern") || b.includes("medieval")) {
-          cx = 180 + (idx % 3) * 34;
-          cy = 185 + Math.floor(idx / 2) * 30;
-        } else {
-          cx = 115 + (idx % 3) * 36;
-          cy = 120 + Math.floor(idx / 2) * 32;
-        }
-        base[r.room_id] = {
-          x: cx,
-          y: cy,
-          title: r.name.toUpperCase().slice(0, 18),
-          biome: b,
-          code: `${String.fromCharCode(65 + (idx % 5))}${idx + 1}`,
-        };
-      }
+  // map 3D world coordinates (worldX, worldZ) to precise SVG top-down coordinates
+  const spatialLayout = useMemo(() => {
+    const list = Object.values(rooms);
+    if (list.length === 0) {
+      return {
+        toSvgX: (wx: number) => 150 + wx * 0.38,
+        toSvgY: (wz: number) => 150 + wz * 0.38,
+        scale: 0.38,
+      };
+    }
+    let minX = Infinity;
+    let maxX = -Infinity;
+    let minZ = Infinity;
+    let maxZ = -Infinity;
+    list.forEach((r) => {
+      const rx = r.worldX || 0;
+      const rz = r.worldZ || 0;
+      if (rx < minX) minX = rx;
+      if (rx > maxX) maxX = rx;
+      if (rz < minZ) minZ = rz;
+      if (rz > maxZ) maxZ = rz;
     });
+    const centerX = (minX + maxX) / 2;
+    const centerZ = (minZ + maxZ) / 2;
+    const span = Math.max(maxX - minX, maxZ - minZ, 220) + 210;
+    const scale = 250 / span;
 
-    return base;
+    return {
+      toSvgX: (wx: number) => 150 + (wx - centerX) * scale,
+      toSvgY: (wz: number) => 150 + (wz - centerZ) * scale,
+      scale,
+    };
   }, [rooms]);
 
-  const activeCoord = sectorPositions[currentRoomId] || {
-    x: 200,
-    y: 200,
-    title: rooms[currentRoomId]?.name?.toUpperCase() || currentRoomId,
-    biome: "desert",
-    code: "C3",
-  };
+  // build exact connecting corridor segments between adjacent rooms
+  const corridorEdges = useMemo(() => {
+    const edges: Array<{
+      key: string;
+      x1: number;
+      y1: number;
+      x2: number;
+      y2: number;
+      distMeters: number;
+    }> = [];
+    const seen = new Set<string>();
 
-  const npcBlips = useMemo(() => {
-    return Object.values(npcs).map((npc) => {
-      const coord = sectorPositions[npc.room_id] || { x: 200, y: 200 };
-      return {
-        npc,
-        x: coord.x + 7,
-        y: coord.y - 7,
-      };
+    roomIds.forEach((idA) => {
+      const rA = rooms[idA];
+      if (!rA) return;
+      (rA.adjacent_room_ids || []).forEach((idB) => {
+        const rB = rooms[idB];
+        if (!rB) return;
+        const pairKey = [idA, idB].sort().join("::");
+        if (seen.has(pairKey)) return;
+        seen.add(pairKey);
+
+        const ax = rA.worldX || 0;
+        const az = rA.worldZ || 0;
+        const bx = rB.worldX || 0;
+        const bz = rB.worldZ || 0;
+        // match the 3d world: only direct neighbors get a physical corridor
+        if (Math.hypot(bx - ax, bz - az) > 260) return;
+
+        edges.push({
+          key: pairKey,
+          x1: spatialLayout.toSvgX(ax),
+          y1: spatialLayout.toSvgY(az),
+          x2: spatialLayout.toSvgX(bx),
+          y2: spatialLayout.toSvgY(bz),
+          distMeters: Math.round(Math.hypot(bx - ax, bz - az)),
+        });
+      });
     });
-  }, [npcs, sectorPositions]);
+    return edges;
+  }, [roomIds, rooms, spatialLayout]);
 
-  // display active world rooms plus core landmarks on the bird's eye map
-  const visibleMarkers = useMemo(() => {
-    const activeIds = new Set(Object.keys(rooms));
-    const entries = Object.entries(sectorPositions).filter(
-      ([id]) => activeIds.has(id) || isExpanded
-    );
-    return entries.length > 0 ? entries : Object.entries(sectorPositions);
-  }, [rooms, sectorPositions, isExpanded]);
+  if (roomIds.length === 0) {
+    return null;
+  }
+
+  const playerSvgX = spatialLayout.toSvgX(playerPosition.x);
+  const playerSvgY = spatialLayout.toSvgY(playerPosition.z);
+  const playerYawDeg = (playerPosition.yaw * 180) / Math.PI;
+  const roomRadiusSvg = Math.max(28, 95 * spatialLayout.scale);
+  const corridorWidthSvg = Math.max(10, 28 * spatialLayout.scale);
 
   return (
     <div
-      className={`transition-all duration-300 pointer-events-auto select-none ${
-        isExpanded
-          ? "fixed inset-8 z-40 p-6 shadow-2xl flex flex-col border-2"
-          : "relative w-60 h-60 p-2 shadow-2xl border-2"
+      className={`border shadow-2xl transition-all duration-200 flex flex-col justify-between select-none relative overflow-hidden backdrop-blur-md ${
+        expanded ? "w-[440px] h-[440px] p-3" : "w-56 h-56 p-2"
       }`}
       style={{
-        backgroundColor: theme.panelBg,
-        borderColor: theme.panelBorder,
+        backgroundColor: "rgba(8, 11, 16, 0.86)",
+        borderColor: `${theme.panelBorder}99`,
       }}
     >
-      {/* top cartographic header */}
-      <div className="absolute top-2.5 left-3 right-3 z-10 flex items-center justify-between text-[11px]">
-        <div
-          className="px-2 py-0.5 border bg-black/75 uppercase tracking-widest font-bold"
-          style={{ borderColor: `${theme.panelBorder}88`, color: theme.accentColor }}
+      {/* top CAD / radar header */}
+      <div className="flex items-center justify-between z-10 pointer-events-none">
+        <span
+          className="text-[9px] font-bold uppercase tracking-[0.16em] px-1.5 py-0.5 border bg-black/80"
+          style={{ borderColor: `${theme.panelBorder}66`, color: theme.accentColor }}
         >
-          {isExpanded ? "Cartographic Atlas — Press M to Close" : `Atlas [${activeCoord.code}]`}
-        </div>
-
+          {isNature ? "TOPO SURVEY" : "FLOORPLAN CAD"} ({Math.round(playerPosition.x)}, {Math.round(playerPosition.z)})
+        </span>
         <button
-          onClick={() => setIsExpanded(!isExpanded)}
-          className="px-2 py-0.5 border bg-black/75 uppercase tracking-wider text-[10px]"
-          style={{ borderColor: `${theme.panelBorder}88`, color: theme.accentText }}
+          onClick={() => setExpanded((prev) => !prev)}
+          className="text-[9px] uppercase tracking-wider px-1.5 py-0.5 border bg-black/80 pointer-events-auto hover:opacity-90"
+          style={{ borderColor: `${theme.panelBorder}66`, color: theme.accentText }}
         >
-          {isExpanded ? "Minimize [M]" : "Expand [M]"}
+          {expanded ? "Compact [M]" : "Expand [M]"}
         </button>
       </div>
 
-      {/* bird's eye view island terrain */}
-      <div className="w-full h-full flex items-center justify-center overflow-hidden">
-        <svg className="w-full h-full" viewBox="0 0 400 400">
+      {/* precise top-down architectural / topographical SVG viewport */}
+      <div className="absolute inset-0 flex items-center justify-center">
+        <svg viewBox="0 0 300 300" className="w-full h-full">
           <defs>
-            <radialGradient id="waterGrad" cx="50%" cy="50%" r="50%">
-              <stop offset="60%" stopColor="#0c192c" />
-              <stop offset="90%" stopColor="#152c4a" />
-              <stop offset="100%" stopColor="#07101d" />
-            </radialGradient>
-
-            <linearGradient id="cyberTerrain" x1="0%" y1="0%" x2="100%" y2="100%">
-              <stop offset="0%" stopColor="#1e293b" />
-              <stop offset="100%" stopColor="#475569" stopOpacity="0.7" />
-            </linearGradient>
-
-            <linearGradient id="desertTerrain" x1="0%" y1="0%" x2="100%" y2="100%">
-              <stop offset="0%" stopColor="#b45309" />
-              <stop offset="60%" stopColor="#d97706" stopOpacity="0.85" />
-              <stop offset="100%" stopColor="#fde68a" stopOpacity="0.5" />
-            </linearGradient>
-
-            <linearGradient id="forestTerrain" x1="0%" y1="0%" x2="100%" y2="100%">
-              <stop offset="0%" stopColor="#14532d" />
-              <stop offset="100%" stopColor="#22c55e" stopOpacity="0.6" />
-            </linearGradient>
-
-            <linearGradient id="spaceTerrain" x1="0%" y1="0%" x2="100%" y2="100%">
-              <stop offset="0%" stopColor="#1e3a8a" />
-              <stop offset="100%" stopColor="#60a5fa" stopOpacity="0.6" />
-            </linearGradient>
-
-            <linearGradient id="visionCone" x1="50%" y1="100%" x2="50%" y2="0%">
-              <stop offset="0%" stopColor={theme.accentColor} stopOpacity="0.6" />
+            <pattern id="cadGridMinor" width="15" height="15" patternUnits="userSpaceOnUse">
+              <path
+                d="M 15 0 L 0 0 0 15"
+                fill="none"
+                stroke={theme.accentColor}
+                strokeOpacity="0.08"
+                strokeWidth="0.5"
+              />
+            </pattern>
+            <pattern id="cadGridMajor" width="60" height="60" patternUnits="userSpaceOnUse">
+              <rect width="60" height="60" fill="url(#cadGridMinor)" />
+              <path
+                d="M 60 0 L 0 0 0 60"
+                fill="none"
+                stroke={theme.accentColor}
+                strokeOpacity="0.18"
+                strokeWidth="0.8"
+              />
+            </pattern>
+            <linearGradient id="fovConeGrad" x1="0%" y1="100%" x2="0%" y2="0%">
+              <stop offset="0%" stopColor={theme.accentColor} stopOpacity="0.55" />
               <stop offset="100%" stopColor={theme.accentColor} stopOpacity="0.0" />
             </linearGradient>
           </defs>
 
-          <rect x="0" y="0" width="400" height="400" fill="url(#waterGrad)" />
+          {/* background precision grid */}
+          <rect x="0" y="0" width="300" height="300" fill="#070a0f" />
+          <rect x="0" y="0" width="300" height="300" fill="url(#cadGridMajor)" />
 
-          {/* tactical coordinate grid */}
-          <g stroke="rgba(212, 175, 55, 0.16)" strokeWidth="1">
-            {[80, 160, 240, 320].map((pos) => (
-              <g key={pos}>
-                <line x1={pos} y1="0" x2={pos} y2="400" />
-                <line x1="0" y1={pos} x2="400" y2={pos} />
-              </g>
-            ))}
-          </g>
+          {/* cardinal compass crosshairs */}
+          <line x1="150" y1="8" x2="150" y2="292" stroke={theme.accentColor} strokeOpacity="0.12" strokeDasharray="2 3" />
+          <line x1="8" y1="150" x2="292" y2="150" stroke={theme.accentColor} strokeOpacity="0.12" strokeDasharray="2 3" />
+          <text x="150" y="16" textAnchor="middle" fill={theme.accentColor} fontSize="7" opacity="0.6" fontWeight="bold">
+            N
+          </text>
 
-          {/* merged island landmass */}
-          <path
-            d="M 85,70 Q 150,45 230,65 Q 320,55 355,115 Q 375,195 345,275 Q 355,345 280,365 Q 200,375 115,355 Q 45,335 55,255 Q 35,175 65,110 Z"
-            fill="#1c1917"
-            stroke={theme.panelBorder}
-            strokeWidth="2.5"
-          />
+          {/* 1. physical walkable corridors / causeway bridges between connected rooms */}
+          {corridorEdges.map((edge) => (
+            <g key={edge.key}>
+              {/* outer corridor walls / trail boundaries */}
+              <line
+                x1={edge.x1}
+                y1={edge.y1}
+                x2={edge.x2}
+                y2={edge.y2}
+                stroke={theme.panelBorder}
+                strokeWidth={corridorWidthSvg + 2.5}
+                strokeLinecap="butt"
+                opacity="0.65"
+              />
+              {/* inner walkable corridor floor */}
+              <line
+                x1={edge.x1}
+                y1={edge.y1}
+                x2={edge.x2}
+                y2={edge.y2}
+                stroke="#111827"
+                strokeWidth={corridorWidthSvg}
+                strokeLinecap="butt"
+              />
+              {/* centerline navigation guide */}
+              <line
+                x1={edge.x1}
+                y1={edge.y1}
+                x2={edge.x2}
+                y2={edge.y2}
+                stroke={theme.accentColor}
+                strokeWidth="1"
+                strokeDasharray="3 3"
+                opacity="0.55"
+              />
+            </g>
+          ))}
 
-          {/* northwest metropolis plateau */}
-          <path
-            d="M 85,80 Q 155,65 195,110 L 185,175 L 85,180 Q 60,135 85,80 Z"
-            fill="url(#cyberTerrain)"
-          />
+          {/* 2. exact top-down room footprints (architectural octagon/chamber vs natural topo contours) */}
+          {roomIds.map((rId, idx) => {
+            const room = rooms[rId];
+            if (!room) return null;
+            const cx = spatialLayout.toSvgX(room.worldX || 0);
+            const cy = spatialLayout.toSvgY(room.worldZ || 0);
+            const isCurrent = rId === currentRoomId;
+            const roomNpcs = Object.values(npcs).filter((n) => n.room_id === rId);
+            const roomProps = room.props || [];
 
-          {/* northeast astral observatory */}
-          <path
-            d="M 225,75 Q 310,65 345,120 Q 350,165 295,175 L 235,155 Z"
-            fill="url(#spaceTerrain)"
-          />
-
-          {/* central highland keep */}
-          <circle cx="200" cy="200" r="46" fill="#78350f" fillOpacity="0.6" stroke="#d97706" strokeDasharray="3 3" />
-
-          {/* southwest giza necropolis & desert dunes */}
-          <path
-            d="M 65,240 L 175,245 L 180,345 Q 105,355 60,315 Z"
-            fill="url(#desertTerrain)"
-          />
-
-          {/* southeast hanging gardens & sylvan canopy */}
-          <path
-            d="M 235,245 L 335,240 Q 355,315 285,355 L 220,335 Z"
-            fill="url(#forestTerrain)"
-          />
-
-          {/* connecting causeways and trade roads */}
-          <g stroke="#d4af37" strokeWidth="2" fill="none" strokeDasharray="4 3" opacity="0.65">
-            <path d="M 130,135 L 200,200 L 290,115" />
-            <path d="M 200,200 L 115,295" />
-            <path d="M 200,200 L 295,295" />
-          </g>
-
-          {/* perimeter boundary ring */}
-          <circle
-            cx="200"
-            cy="205"
-            r="158"
-            fill="none"
-            stroke={theme.accentColor}
-            strokeWidth="1.5"
-            strokeDasharray="6 4"
-            opacity="0.55"
-          />
-
-          {/* sector pins */}
-          {visibleMarkers.map(([rId, sector]) => {
-            const isPlayerHere = rId === currentRoomId;
-            const isHover = hoveredSector === rId;
+            // generate octagonal architectural chamber vertices
+            const octPoints = Array.from({ length: 8 })
+              .map((_, k) => {
+                const ang = (k * Math.PI) / 4 + Math.PI / 8;
+                const px = cx + roomRadiusSvg * Math.cos(ang);
+                const py = cy + roomRadiusSvg * Math.sin(ang);
+                return `${px.toFixed(1)},${py.toFixed(1)}`;
+              })
+              .join(" ");
 
             return (
               <g
                 key={rId}
                 className="cursor-pointer"
-                onClick={() => setCurrentRoom(rId)}
-                onMouseEnter={() => setHoveredSector(rId)}
-                onMouseLeave={() => setHoveredSector(null)}
+                onClick={() => {
+                  startTransition(() => {
+                    setCurrentRoom(rId);
+                  });
+                }}
               >
+                {isNature ? (
+                  <>
+                    {/* natural topographical elevation contour rings */}
+                    <circle
+                      cx={cx}
+                      cy={cy}
+                      r={roomRadiusSvg}
+                      fill={isCurrent ? `${theme.accentColor}22` : "rgba(15, 23, 42, 0.85)"}
+                      stroke={isCurrent ? theme.accentColor : theme.panelBorder}
+                      strokeWidth={isCurrent ? "2" : "1.2"}
+                    />
+                    <circle
+                      cx={cx}
+                      cy={cy}
+                      r={roomRadiusSvg * 0.72}
+                      fill="none"
+                      stroke={theme.accentColor}
+                      strokeWidth="0.7"
+                      strokeDasharray="4 2"
+                      opacity="0.45"
+                    />
+                    <circle
+                      cx={cx}
+                      cy={cy}
+                      r={roomRadiusSvg * 0.42}
+                      fill="none"
+                      stroke={theme.accentColor}
+                      strokeWidth="0.6"
+                      opacity="0.3"
+                    />
+                  </>
+                ) : (
+                  <>
+                    {/* precision architectural double-walled octagonal chamber floorplan */}
+                    <polygon
+                      points={octPoints}
+                      fill={isCurrent ? `${theme.accentColor}24` : "rgba(14, 18, 26, 0.92)"}
+                      stroke={isCurrent ? theme.accentColor : theme.panelBorder}
+                      strokeWidth={isCurrent ? "2.2" : "1.3"}
+                    />
+                    <circle
+                      cx={cx}
+                      cy={cy}
+                      r={roomRadiusSvg * 0.82}
+                      fill="none"
+                      stroke={theme.accentColor}
+                      strokeWidth="0.6"
+                      opacity="0.35"
+                    />
+                    {/* corner structural column piers */}
+                    {[0, 1, 2, 3].map((cIdx) => {
+                      const a = (cIdx * Math.PI) / 2 + Math.PI / 4;
+                      const px = cx + roomRadiusSvg * 0.72 * Math.cos(a);
+                      const py = cy + roomRadiusSvg * 0.72 * Math.sin(a);
+                      return (
+                        <rect
+                          key={cIdx}
+                          x={px - 1.8}
+                          y={py - 1.8}
+                          width="3.6"
+                          height="3.6"
+                          fill={theme.panelBorder}
+                          opacity="0.75"
+                        />
+                      );
+                    })}
+                  </>
+                )}
+
+                {/* room center astrolabe marker */}
                 <circle
-                  cx={sector.x}
-                  cy={sector.y}
-                  r={isPlayerHere ? "7" : isHover ? "6" : "4.5"}
-                  fill={isPlayerHere ? theme.accentColor : isHover ? "#fde68a" : "#cbd5e1"}
-                  stroke="#1c1917"
-                  strokeWidth="1.5"
+                  cx={cx}
+                  cy={cy}
+                  r="2.2"
+                  fill={isCurrent ? theme.accentColor : theme.mutedText}
+                  opacity="0.7"
                 />
 
-                {(isExpanded || isHover || isPlayerHere) && (
-                  <text
-                    x={sector.x}
-                    y={sector.y - 10}
-                    textAnchor="middle"
-                    fill={isPlayerHere ? theme.accentText : "#ffffff"}
-                    fontSize="9"
-                    fontWeight="bold"
-                    fontFamily="'Times New Roman', Times, serif"
-                  >
-                    {sector.title}
-                  </text>
-                )}
+                {/* exact 3D prop positions inside room */}
+                {roomProps.map((p, pIdx) => {
+                  const rawTheta = p.position?.theta ?? 0.48 + pIdx * 0.35;
+                  const propDist = 25.0 * spatialLayout.scale;
+                  const px = cx + propDist * Math.sin(rawTheta);
+                  const py = cy - propDist * Math.cos(rawTheta);
+                  return (
+                    <rect
+                      key={p.prop_id}
+                      x={px - 2.2}
+                      y={py - 2.2}
+                      width="4.4"
+                      height="4.4"
+                      transform={`rotate(45 ${px} ${py})`}
+                      fill="#38bdf8"
+                      stroke="#0284c7"
+                      strokeWidth="0.8"
+                    />
+                  );
+                })}
+
+                {/* exact NPC positions inside room */}
+                {roomNpcs.map((npc, nIdx) => {
+                  const rawTheta = npc.position?.theta ?? -0.22 + nIdx * 0.45;
+                  const npcDist = 21.0 * spatialLayout.scale;
+                  const nx = cx + npcDist * Math.sin(rawTheta);
+                  const ny = cy - npcDist * Math.cos(rawTheta);
+                  return (
+                    <g
+                      key={npc.npc_id}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        startTransition(() => {
+                          if (rId !== currentRoomId) setCurrentRoom(rId);
+                          selectNPC(npc.npc_id);
+                        });
+                      }}
+                    >
+                      <circle
+                        cx={nx}
+                        cy={ny}
+                        r={expanded ? 4.2 : 3.4}
+                        fill="#f59e0b"
+                        stroke="#ffffff"
+                        strokeWidth="1"
+                      />
+                      {expanded && (
+                        <text
+                          x={nx}
+                          y={ny - 6}
+                          textAnchor="middle"
+                          fill="#fde68a"
+                          fontSize="6.5"
+                          fontWeight="bold"
+                        >
+                          {npc.name.split(",")[0]}
+                        </text>
+                      )}
+                    </g>
+                  );
+                })}
+
+                {/* room number & structural title */}
+                <text
+                  x={cx}
+                  y={cy + roomRadiusSvg - (expanded ? 8 : 6)}
+                  textAnchor="middle"
+                  fill={isCurrent ? "#ffffff" : theme.accentText}
+                  fontSize={expanded ? "8" : "6.8"}
+                  fontWeight="bold"
+                  style={{ textShadow: "0px 1px 2px #000" }}
+                >
+                  {idx + 1}. {room.name.length > 18 ? room.name.slice(0, 16) + ".." : room.name}
+                </text>
               </g>
             );
           })}
 
-          {/* live npc blips */}
-          {npcBlips.map(({ npc, x, y }) => (
-            <g key={npc.npc_id}>
-              <circle cx={x} cy={y} r="4" fill="#ef4444" stroke="#ffffff" strokeWidth="1" />
-              {isExpanded && (
-                <text
-                  x={x}
-                  y={y + 11}
-                  textAnchor="middle"
-                  fill="#fca5a5"
-                  fontSize="8"
-                  fontFamily="'Times New Roman', Times, serif"
-                >
-                  {npc.name}
-                </text>
-              )}
-            </g>
-          ))}
-
-          {/* player indicator with directional vision cone */}
-          <g transform={`translate(${activeCoord.x}, ${activeCoord.y})`}>
+          {/* 3. live real-time player position & rotating directional FOV cone */}
+          <g transform={`translate(${playerSvgX}, ${playerSvgY}) rotate(${playerYawDeg})`}>
+            {/* 75-degree camera field-of-view cone */}
             <path
-              d="M 0,0 L -36,-68 A 76 76 0 0 1 36,-68 Z"
-              fill="url(#visionCone)"
-              opacity="0.85"
+              d="M 0,0 L -22,-42 A 46 46 0 0 1 22,-42 Z"
+              fill="url(#fovConeGrad)"
             />
+            {/* crisp player directional chevron */}
             <polygon
-              points="0,-8 6,6 0,2 -6,6"
-              fill={theme.accentColor}
-              stroke="#ffffff"
+              points="0,-6.5 5,5 0,2 -5,5"
+              fill="#ffffff"
+              stroke={theme.accentColor}
               strokeWidth="1.5"
             />
           </g>
         </svg>
       </div>
 
-      {/* footer status */}
+      {/* bottom legend / active zone bar */}
       <div
-        className="absolute bottom-2 left-3 right-3 z-10 flex items-center justify-between text-[10px] bg-black/80 px-2.5 py-1 border"
-        style={{ borderColor: `${theme.panelBorder}66`, color: theme.accentText }}
+        className="z-10 flex items-center justify-between text-[9px] bg-black/80 px-2 py-0.5 border pointer-events-none"
+        style={{ borderColor: `${theme.panelBorder}55`, color: theme.accentText }}
       >
-        <span className="font-bold truncate">{activeCoord.title}</span>
-        <span className="italic opacity-80">Select Pin to Travel</span>
+        <span className="font-bold truncate max-w-[65%]">
+          {activeRoom?.name || currentRoomId}
+        </span>
+        <span className="opacity-75">Click Zone to Jump</span>
       </div>
     </div>
   );

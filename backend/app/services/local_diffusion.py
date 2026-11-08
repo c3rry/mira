@@ -665,15 +665,354 @@ def _get_or_load_local_pipelines() -> Tuple[Any, Any, Any]:
         return None, None, None
 
 
+def _is_natural_wilderness_scene(room_name: str, world_prompt: str) -> bool:
+    """
+    Detects whether a room/world prompt describes a pure natural or wilderness landscape
+    (e.g., Mount Everest, glaciers, mountain peaks, oceans, forests, canyons, deserts, volcanoes)
+    where man-made buildings, dojos, temples, and stone pavements must NOT be forced.
+    """
+    text = f"{room_name} {world_prompt}".lower()
+    explicit_building_words = (
+        "temple",
+        "palace",
+        "castle",
+        "citadel",
+        "cathedral",
+        "church",
+        "monastery",
+        "dojo",
+        "pagoda",
+        "shrine",
+        "tavern",
+        "guildhall",
+        "guild",
+        "forum",
+        "colosseum",
+        "pantheon",
+        "parthenon",
+        "acropolis",
+        "pyramid",
+        "sphinx",
+        "ziggurat",
+        "city",
+        "metropolis",
+        "arcade",
+        "boulevard",
+        "skybridge",
+        "station",
+        "observatory",
+        "library",
+        "museum",
+        "courtyard",
+        "plaza",
+        "colonnade",
+        "rotunda",
+        "basilica",
+        "aqueduct",
+        "fortress",
+        "ruins",
+        "village",
+        "town",
+    )
+    nature_words = (
+        "everest",
+        "himalaya",
+        "k2",
+        "alps",
+        "andes",
+        "kilimanjaro",
+        "fuji",
+        "denali",
+        "matterhorn",
+        "mountain",
+        "peak",
+        "summit",
+        "ridge",
+        "glacier",
+        "icefall",
+        "crevasse",
+        "serac",
+        "alpine",
+        "snow",
+        "blizzard",
+        "tundra",
+        "arctic",
+        "antarctica",
+        "iceberg",
+        "fjord",
+        "volcano",
+        "caldera",
+        "lava",
+        "magma",
+        "canyon",
+        "gorge",
+        "ravine",
+        "valley",
+        "cliff",
+        "crag",
+        "mesa",
+        "butte",
+        "desert",
+        "sahara",
+        "dune",
+        "wasteland",
+        "oasis",
+        "forest",
+        "redwood",
+        "sequoia",
+        "jungle",
+        "rainforest",
+        "woods",
+        "wilderness",
+        "meadow",
+        "prairie",
+        "savanna",
+        "steppe",
+        "swamp",
+        "marsh",
+        "bayou",
+        "ocean",
+        "sea",
+        "beach",
+        "coast",
+        "shore",
+        "island",
+        "atoll",
+        "lagoon",
+        "reef",
+        "coral",
+        "underwater",
+        "abyss",
+        "waterfall",
+        "cascade",
+        "river",
+        "lake",
+        "loch",
+        "cave",
+        "cavern",
+        "grotto",
+        "stalactite",
+        "crater",
+        "surface of mars",
+        "lunar",
+        "moon",
+        "mars",
+        "martian",
+        "mare",
+        "tranquility",
+        "procellarum",
+        "copernicus",
+        "planet",
+        "asteroid",
+        "lunar surface",
+        "nature",
+        "national park",
+        "yosemite",
+        "yellowstone",
+        "banff",
+        "patagonia",
+        "iceland",
+    )
+    has_nature = any(w in text for w in nature_words)
+    has_building = any(w in text for w in explicit_building_words)
+    return has_nature and not has_building
+
+
+def _classify_nature_ground_and_sky(room_name: str, world_prompt: str) -> Tuple[str, str, List[str]]:
+    """
+    Returns (up_prompt, down_prompt, directional_vantages) tailored to the specific natural biome
+    so Mount Everest gets pure snow/ice/granite ridges, deserts get wind-sculpted sand dunes,
+    forests get mossy earth and canopy, and oceans get water/sand.
+    """
+    text = f"{room_name} {world_prompt}".lower()
+    if any(w in text for w in ("moon", "lunar", "mare", "tranquility", "procellarum", "copernicus", "mars", "martian", "asteroid", "planet")):
+        is_mars = "mars" in text or "martian" in text
+        up_prompt = (
+            "Pitch black star-filled space sky directly overhead, sharp stars, zenith view, photorealistic"
+            if not is_mars
+            else "Hazy butterscotch martian sky directly overhead, zenith view, photorealistic"
+        )
+        ground = "rust red martian regolith, dust, and basalt rocks" if is_mars else "fine grey lunar regolith dust, small craters, and scattered moon rocks"
+        down_prompt = f"Untouched {ground} underfoot in {room_name}, nadir view, zero pavement, zero buildings, photorealistic"
+        terrain = "red martian desert plains and eroded mesas" if is_mars else "grey cratered lunar plains and rolling crater rims"
+        vantages = [
+            f"untouched {ground} in the foreground, vast {terrain} stretching to a sharp curved horizon, black sky, Apollo mission photography, zero buildings",
+            f"rim of a deep impact crater in the foreground, {terrain} and distant mountain massifs on the horizon, zero man-made structures",
+            f"boulder field of {ground} in the foreground, desolate {terrain} under harsh unfiltered sunlight, zero buildings",
+            f"low ridge overlook of {ground}, endless {terrain}, Earth hanging in the black sky, zero buildings",
+        ]
+        return up_prompt, down_prompt, vantages
+
+    if any(
+        w in text
+        for w in (
+            "everest",
+            "himalaya",
+            "k2",
+            "alps",
+            "mountain",
+            "peak",
+            "summit",
+            "ridge",
+            "glacier",
+            "icefall",
+            "alpine",
+            "snow",
+            "tundra",
+            "arctic",
+            "antarctica",
+            "ice",
+        )
+    ):
+        up_prompt = (
+            "Crisp high-altitude cobalt alpine sky directly overhead with wispy wind-blown cirrus clouds, "
+            "zenith view, pure natural photography, 8k"
+        )
+        down_prompt = (
+            f"Untouched wind-packed snowdrifts, blue glacial ice, and rugged windswept granite mountain rock "
+            f"underfoot in {room_name}, nadir ground view, zero pavement, zero buildings, photorealistic"
+        )
+        vantages = [
+            "wind-sculpted snow ridge and rugged Himalayan granite crags in the foreground, towering snow-capped mountain peaks and glacial valleys along the horizon, pure untouched alpine wilderness, zero buildings",
+            "crevasse-lined blue glacial icefall and snowfield in the foreground, dramatic serrated mountain ridges and high-altitude peaks surrounding the horizon, pure nature, zero buildings",
+            "high alpine saddle with exposed metamorphic rock and deep powder snow in the foreground, vast sea of clouds below towering mountain summits, untouched nature, zero man-made structures",
+            "exposed summit knife-edge ridge of snow and ice in the foreground, breathtaking 360-degree vista of snow-covered mountain ranges under crystal-clear sky, pure wilderness",
+        ]
+        return up_prompt, down_prompt, vantages
+
+    if any(w in text for w in ("volcano", "caldera", "lava", "magma", "crater")):
+        up_prompt = "Dramatic volcanic ash plumes and glowing twilight sky directly overhead, zenith view, photorealistic"
+        down_prompt = f"Dark Cooling basalt lava rock and obsidian crust underfoot in {room_name}, nadir view, pure nature"
+        vantages = [
+            "rugged black basalt volcanic rock in the foreground, glowing lava fissures and smoking caldera rim along the horizon, untouched geological wilderness, zero buildings",
+            "jagged obsidian ridge in the foreground, molten magma river and volcanic peaks across the horizon, pure natural landscape",
+            "steaming geothermal sulfur vents and volcanic rock in the foreground, towering crater walls on the horizon, zero man-made structures",
+            "high caldera rim overlook of dark volcanic stone, sweeping vista of volcanic cones and lava plains, pure wilderness",
+        ]
+        return up_prompt, down_prompt, vantages
+
+    if any(w in text for w in ("desert", "sahara", "dune", "canyon", "gorge", "mesa", "butte", "badlands")):
+        up_prompt = "Clear sunlit desert sky directly overhead, zenith view, natural landscape photography"
+        down_prompt = f"Wind-rippled golden desert sand and natural sandstone rock underfoot in {room_name}, nadir view, zero pavement"
+        vantages = [
+            "wind-sculpted golden sand dunes and natural red rock in the foreground, sweeping desert horizon and distant canyon mesas, pure untouched nature, zero buildings",
+            "eroded sandstone canyon floor in the foreground, towering striated rock cliffs and natural arches along the horizon, zero man-made structures",
+            "sun-baked desert ridge in the foreground, endless sea of rolling sand dunes at golden hour, pure wilderness",
+            "natural desert plateau overlook in the foreground, vast canyon gorge and wild horizon, zero buildings",
+        ]
+        return up_prompt, down_prompt, vantages
+
+    if any(w in text for w in ("underwater", "ocean floor", "sea floor", "seabed", "abyss", "benthic", "trench", "coral reef", "deep sea", "hydrothermal")):
+        up_prompt = (
+            "Looking up from deep ocean seabed at dark blue water surface, faint shimmering sunlight filtered through deep water, underwater zenith view, photorealistic"
+        )
+        down_prompt = (
+            f"Deep ocean floor seabed with fine silt, sand ripples, scattered sea shells, and abyssal marine sediment underfoot in {room_name}, nadir view, zero pavement, zero buildings"
+        )
+        vantages = [
+            "deep ocean floor seabed in foreground with bioluminescent coral and volcanic vents, vast dark blue abyssal expanse on horizon, zero buildings, zero man-made structures",
+            "benthic trench drop-off with fine oceanic silt in foreground, deep aquatic canyon and distant underwater kelp and sea fans, photorealistic deep sea",
+            "hydrothermal vent mineral chimney and dark basalt seabed in foreground, dark blue oceanic depths, zero architecture, pure marine wilderness",
+            "underwater sand dunes with sea stars and marine sediment in foreground, panoramic deep ocean vista stretching to infinite blue depth, zero buildings",
+        ]
+        return up_prompt, down_prompt, vantages
+
+    if any(w in text for w in ("ocean", "sea", "beach", "coast", "island", "atoll", "lagoon", "reef", "waterfall")):
+        up_prompt = "Sunlit tropical sky with Cumulus clouds directly overhead, zenith view, natural photography"
+        down_prompt = f"Natural wet coastal sand, tidepool stones, and crystal-clear shallow water underfoot in {room_name}, nadir view"
+        vantages = [
+            "natural rocky coastline and turquoise ocean waves in the foreground, open sea horizon and rugged sea cliffs, untouched nature, zero buildings",
+            "pristine sandy shore and tidepools in the foreground, cascading waterfalls and lush natural cliffs along the horizon, zero man-made structures",
+            "natural basalt sea stack overlook in the foreground, panoramic ocean vista and distant wild islands, pure wilderness",
+            "turquoise lagoon edge in the foreground, coral shoals and open ocean horizon, untouched natural landscape",
+        ]
+        return up_prompt, down_prompt, vantages
+
+    if any(w in text for w in ("cave", "cavern", "grotto", "underground", "stalactite")):
+        up_prompt = f"Natural subterranean limestone cavern roof with hanging stalactites overhead in {room_name}, zenith view, photorealistic"
+        down_prompt = f"Natural wet cavern rock floor and mineral pools underfoot in {room_name}, nadir view, zero pavement"
+        vantages = [
+            "natural subterranean cavern floor with stalagmites in the foreground, towering natural rock formations and glowing mineral pools, zero buildings",
+            "underground crystal grotto and natural stone ledge in the foreground, vast cavern chambers receding into the distance, pure geological nature",
+            "subterranean river bank of natural stone in the foreground, vaulted natural rock arches, zero man-made structures",
+            "elevated natural rock shelf inside a massive cavern, dramatic shafts of light piercing natural sinkholes, pure wilderness",
+        ]
+        return up_prompt, down_prompt, vantages
+
+    # Default lush forest / valley / meadow / wilderness
+    up_prompt = "Natural sky seen through towering ancient tree canopy and soft clouds overhead, zenith view, photorealistic"
+    down_prompt = f"Natural forest floor of moss, ferns, fallen leaves, and earth underfoot in {room_name}, nadir view, zero pavement"
+    vantages = [
+        "moss-covered boulders, wild ferns, and natural earth in the foreground, ancient towering trees and misty mountain valley along the horizon, pure untouched wilderness, zero buildings",
+        "clear mountain stream over natural river stones in the foreground, old-growth forest and sunlit natural glade on the horizon, zero man-made structures",
+        "wildflower meadow and rugged granite outcrop in the foreground, sweeping natural valley and distant peaks, pure nature",
+        "elevated natural rock bluff in the foreground, uninterrupted canopy of primeval forest and river gorge, zero buildings",
+    ]
+    return up_prompt, down_prompt, vantages
+
+
 def _build_6face_multi_text_prompts(
     room_name: str, world_prompt: str, room_idx: int
-) -> Tuple[str, List[str]]:
+) -> Tuple[str, List[str], str]:
     """
     Implements JoPano Section 4.4 (Multi-Text Generation):
     Generates directional prompts for each of the 6 cubemap faces [Front, Back, Left, Right, Up, Down]
-    so the Zenith (Up) face always renders clean sky/vaulted ceiling and the Nadir (Down) face
-    always renders continuous stone courtyard/floor pavement without horizon artifacts.
+    and dynamically adapts between pure Natural Wilderness scenes (zero buildings/dojos/pavement)
+    vs. Architectural / Monumental scenes.
+    Returns (anchor_prompt, face_prompts, negative_prompt).
     """
+    base_negative = (
+        "fisheye, little planet, spherical distortion, upside down, inverted, floating islands, "
+        "split screen, collage, border, frame, text, watermark, blurry, deformed, cartoon, painting"
+    )
+
+    if _is_natural_wilderness_scene(room_name, world_prompt):
+        up_prompt, down_prompt, vantages = _classify_nature_ground_and_sky(room_name, world_prompt)
+        vantage = vantages[room_idx % len(vantages)]
+        text_lower = f"{room_name} {world_prompt}".lower()
+        is_space = any(w in text_lower for w in ("moon", "lunar", "mare", "tranquility", "procellarum", "copernicus", "mars", "martian", "asteroid", "planet"))
+        is_underwater = any(w in text_lower for w in ("underwater", "ocean floor", "sea floor", "seabed", "abyss", "benthic", "trench", "deep sea", "hydrothermal", "coral canyon"))
+
+        if is_space:
+            light_desc = "harsh direct cosmic sunlight, deep contrast shadows, stark unfiltered vacuum lighting"
+            neg_add = ", desert sand dunes, terrestrial desert, sand, clouds, blue sky, atmosphere, trees, plants, foliage, red dunes, soil"
+        elif is_underwater:
+            light_desc = "dim diffuse deep ocean ambient lighting, bioluminescent glow in dark blue water"
+            neg_add = ", desert, sand dunes, sun, sky, clouds, sunlight, sunset, sunrise, trees, terrestrial landscape, dry ground, mountain"
+        else:
+            light_desc = "dramatic natural sunlight, crisp ambient outdoor illumination"
+            neg_add = ""
+
+        anchor_prompt = (
+            f"Eye-level rectilinear National Geographic photography of {room_name}, {world_prompt}, "
+            f"{vantage}, straight level horizon, untouched natural wilderness, "
+            f"{light_desc}, ultra-detailed geological textures, photorealistic, 8k"
+        )
+        gate_feature = (
+            "an atmospheric illuminated transit gateway archway receding toward connected sectors"
+            if not is_space and not is_underwater
+            else (
+                "a scientific transit beacon mast on the horizon marking the pathway to adjacent coordinates"
+                if is_space
+                else "a bioluminescent underwater portal archway between oceanic trenches"
+            )
+        )
+        face_prompts = [
+            f"Front view of {room_name}, {world_prompt}, {vantage}, pure natural photography, zero buildings",
+            f"Rear view of {room_name}, {world_prompt}, continuous natural terrain, {gate_feature}, zero buildings, photorealistic",
+            f"Left side view of {room_name}, {world_prompt}, untouched natural wilderness vista, zero buildings, photorealistic",
+            f"Right side view of {room_name}, {world_prompt}, expansive natural landscape, {gate_feature}, zero buildings, photorealistic",
+            up_prompt,
+            down_prompt,
+        ]
+        nature_negative = (
+            f"{base_negative}, building, buildings, house, houses, dojo, pagoda, temple, shrine, palace, "
+            "castle, ruins, wall, walls, column, columns, pillar, pillars, pavement, flagstones, tiled floor, "
+            "courtyard, street, road, bridge, roof, window, door, man-made structure, architecture, urban, city, village, people"
+            f"{neg_add}"
+        )
+        return anchor_prompt, face_prompts, nature_negative
+
     vantage_descriptors = [
         "sunlit stone courtyard pavement in the foreground, grand monumental architecture along the horizon",
         "elevated marble colonnade walkway in the foreground, classical temple porticos and arches",
@@ -706,7 +1045,7 @@ def _build_6face_multi_text_prompts(
         up_prompt,
         down_prompt,
     ]
-    return anchor_prompt, face_prompts
+    return anchor_prompt, face_prompts, base_negative
 
 
 def _estimate_perspective_cubemap_depth(
@@ -839,14 +1178,15 @@ def generate_room_panorama_and_depth(
     ):
         return pano_url, depth_url
 
-    anchor_prompt, face_prompts = _build_6face_multi_text_prompts(room_name, world_prompt, room_idx)
-    negative_prompt = (
-        "fisheye, little planet, spherical distortion, upside down, inverted, floating islands, "
-        "split screen, collage, border, frame, text, watermark, blurry, deformed, cartoon, painting"
+    anchor_prompt, face_prompts, negative_prompt = _build_6face_multi_text_prompts(
+        room_name, world_prompt, room_idx
     )
 
-    seed_str = f"{safe_world}:{safe_room}:{room_name}:{world_prompt}:{room_idx}"
-    seed = int(hashlib.md5(seed_str.encode("utf-8")).hexdigest()[:8], 16) % (2**31 - 1)
+    # Use world-consistent base seed with room offset so connected sub-rooms share atmospheric coherence
+    world_seed_base = int(
+        hashlib.md5(f"{safe_world}:{world_prompt}".encode("utf-8")).hexdigest()[:8], 16
+    ) % (2**30 - 1)
+    seed = world_seed_base + room_idx * 137
 
     with _PIPELINE_LOCK:
         t0 = time.perf_counter()
@@ -888,6 +1228,7 @@ def generate_room_panorama_and_depth(
                 text_in = cube_pipe.tokenizer(
                     face_prompts,
                     max_length=cube_pipe.tokenizer.model_max_length,
+                    truncation=True,
                     padding="max_length",
                     return_tensors="pt",
                 )
@@ -896,6 +1237,7 @@ def generate_room_panorama_and_depth(
                 uncond_in = cube_pipe.tokenizer(
                     [negative_prompt] * t_faces,
                     max_length=cube_pipe.tokenizer.model_max_length,
+                    truncation=True,
                     padding="max_length",
                     return_tensors="pt",
                 )

@@ -40,9 +40,54 @@ function SingleProp({ prop, index, biome, onSelect }: SinglePropProps) {
   const scale = (prop.scale || 1.0) * 0.32 * (hovered ? 1.06 : 1.0);
   const b = biome.toLowerCase();
 
-  const isSpace = b.includes("space") || b.includes("orbital") || b.includes("observatory") || b.includes("station");
-  const isForest = b.includes("forest") || b.includes("garden") || b.includes("babylon");
-  const isClassical = b.includes("tavern") || b.includes("medieval") || b.includes("rome") || b.includes("roman") || b.includes("athens");
+  const isOcean =
+    b.includes("ocean") ||
+    b.includes("sea") ||
+    b.includes("benthic") ||
+    b.includes("trench") ||
+    b.includes("abyss") ||
+    b.includes("hydrothermal") ||
+    b.includes("coral") ||
+    b.includes("underwater") ||
+    b.includes("brine");
+  const isLunar =
+    !isOcean &&
+    (b.includes("moon") ||
+      b.includes("lunar") ||
+      b.includes("mare") ||
+      b.includes("tranquillitatis") ||
+      b.includes("procellarum") ||
+      b.includes("copernicus") ||
+      b.includes("tycho") ||
+      b.includes("apollo") ||
+      b.includes("regolith") ||
+      b.includes("crater"));
+  const isAlpineNature =
+    !isOcean &&
+    !isLunar &&
+    (b.includes("everest") ||
+      b.includes("himalaya") ||
+      b.includes("glacier") ||
+      b.includes("icefall") ||
+      b.includes("snow") ||
+      b.includes("alpine") ||
+      b.includes("summit") ||
+      b.includes("peak") ||
+      b.includes("mountain") ||
+      b.includes("arctic"));
+  const isWildNature =
+    isAlpineNature ||
+    isLunar ||
+    isOcean ||
+    b.includes("canyon") ||
+    b.includes("gorge") ||
+    b.includes("volcano") ||
+    b.includes("wilderness") ||
+    b.includes("trail") ||
+    b.includes("basin");
+  const isSpace = !isWildNature && (b.includes("space") || b.includes("orbital") || b.includes("observatory") || b.includes("station"));
+  const isForest = !isWildNature && (b.includes("forest") || b.includes("garden") || b.includes("babylon"));
+  const isClassical = !isWildNature && (b.includes("tavern") || b.includes("medieval") || b.includes("rome") || b.includes("roman") || b.includes("athens"));
 
   // procedural PBR marble/limestone veining and fluted stone bump texture
   const { stoneMap, stoneBump } = useMemo(() => {
@@ -131,36 +176,142 @@ function SingleProp({ prop, index, biome, onSelect }: SinglePropProps) {
       }}
       onPointerOut={() => setHovered(false)}
     >
-      {/* multi-tiered architectural plinth with bronze molding */}
-      <mesh position={[0, 1.2, 0]}>
-        <boxGeometry args={[14, 2.4, 14]} />
-        <meshStandardMaterial
-          map={stoneMap}
-          bumpMap={stoneBump}
-          bumpScale={0.18}
-          roughness={0.45}
-          metalness={0.15}
-        />
-      </mesh>
-      <mesh position={[0, 3.2, 0]}>
-        <boxGeometry args={[11.2, 1.8, 11.2]} />
-        <meshStandardMaterial
-          color="#c59b27"
-          metalness={0.85}
-          roughness={0.22}
-        />
-      </mesh>
-      <mesh position={[0, 4.6, 0]}>
-        <cylinderGeometry args={[4.4, 5.2, 1.6, 32]} />
-        <meshStandardMaterial
-          map={stoneMap}
-          bumpMap={stoneBump}
-          bumpScale={0.15}
-          roughness={0.4}
-        />
-      </mesh>
+      {/* base foundation: natural boulder/ice shelf in wilderness, or architectural plinth in cities/monuments */}
+      {isWildNature ? (
+        <mesh position={[0, 2.2, 0]} rotation={[0.15, 0.4, -0.1]}>
+          <dodecahedronGeometry args={[6.8, 1]} />
+          <meshStandardMaterial
+            color={isAlpineNature ? "#cbd5e1" : "#57534e"}
+            roughness={0.85}
+            metalness={0.05}
+          />
+        </mesh>
+      ) : (
+        <>
+          <mesh position={[0, 1.2, 0]}>
+            <boxGeometry args={[14, 2.4, 14]} />
+            <meshStandardMaterial
+              map={stoneMap}
+              bumpMap={stoneBump}
+              bumpScale={0.18}
+              roughness={0.45}
+              metalness={0.15}
+            />
+          </mesh>
+          <mesh position={[0, 3.2, 0]}>
+            <boxGeometry args={[11.2, 1.8, 11.2]} />
+            <meshStandardMaterial
+              color="#c59b27"
+              metalness={0.85}
+              roughness={0.22}
+            />
+          </mesh>
+          <mesh position={[0, 4.6, 0]}>
+            <cylinderGeometry args={[4.4, 5.2, 1.6, 32]} />
+            <meshStandardMaterial
+              map={stoneMap}
+              bumpMap={stoneBump}
+              bumpScale={0.15}
+              roughness={0.4}
+            />
+          </mesh>
+        </>
+      )}
 
-      {isSpace ? (
+      {isOcean ? (
+        <>
+          {/* abyssal hydrothermal black smoker mineral spire & bioluminescent deep-sea coral formation */}
+          <mesh position={[0, 11.0, 0]} rotation={[0.05, 0.4, -0.05]}>
+            <cylinderGeometry args={[1.8, 4.5, 20.0, 16]} />
+            <meshStandardMaterial color="#1e293b" roughness={0.92} metalness={0.1} />
+          </mesh>
+          <mesh position={[0, 21.0, 0]}>
+            <sphereGeometry args={[2.5, 16, 16]} />
+            <meshPhysicalMaterial
+              color="#06b6d4"
+              emissive="#0891b2"
+              emissiveIntensity={hovered ? 1.2 : 0.65}
+              roughness={0.15}
+              clearcoat={1.0}
+            />
+          </mesh>
+          <mesh position={[3.2, 7.5, 1.8]} rotation={[-0.2, 0.5, 0.3]}>
+            <coneGeometry args={[2.0, 12.0, 8]} />
+            <meshPhysicalMaterial
+              color="#a855f7"
+              emissive="#7c3aed"
+              emissiveIntensity={0.5}
+              roughness={0.2}
+              transmission={0.4}
+            />
+          </mesh>
+          <mesh position={[-2.8, 5.0, 2.0]} rotation={[0.3, -0.4, -0.2]}>
+            <torusGeometry args={[2.4, 0.5, 12, 24]} />
+            <meshPhysicalMaterial color="#ec4899" emissive="#db2777" emissiveIntensity={0.4} roughness={0.25} />
+          </mesh>
+        </>
+      ) : isLunar ? (
+        <>
+          {/* Apollo scientific laser reflector & lunar regolith survey telemetry sensor */}
+          <mesh position={[0, 5.0, 0]}>
+            <cylinderGeometry args={[1.5, 2.8, 8.0, 12]} />
+            <meshStandardMaterial color="#94a3b8" metalness={0.85} roughness={0.2} />
+          </mesh>
+          <mesh position={[0, 10.5, 0]} rotation={[0.35, 0, 0]}>
+            <boxGeometry args={[7.5, 1.0, 5.5]} />
+            <meshStandardMaterial color="#f8fafc" metalness={0.95} roughness={0.08} />
+          </mesh>
+          <mesh position={[0, 13.5, 0]}>
+            <cylinderGeometry args={[0.15, 0.25, 6.0, 8]} />
+            <meshStandardMaterial color="#d4d4d8" metalness={0.9} roughness={0.1} />
+          </mesh>
+          <mesh position={[0, 16.8, 0]}>
+            <sphereGeometry args={[0.65, 16, 16]} />
+            <meshPhysicalMaterial
+              color="#38bdf8"
+              emissive="#0284c7"
+              emissiveIntensity={hovered ? 1.0 : 0.5}
+              roughness={0.1}
+            />
+          </mesh>
+        </>
+      ) : isAlpineNature ? (
+        <>
+          {/* natural Himalayan glacial ice serac spire and granite rock cairn */}
+          <mesh position={[0, 13.5, 0]} rotation={[0.08, 0.5, -0.05]}>
+            <coneGeometry args={[4.8, 22.0, 6]} />
+            <meshPhysicalMaterial
+              color="#bae6fd"
+              emissive="#0284c7"
+              emissiveIntensity={hovered ? 0.35 : 0.12}
+              roughness={0.18}
+              metalness={0.05}
+              transmission={0.35}
+              clearcoat={0.9}
+            />
+          </mesh>
+          <mesh position={[3.8, 8.2, 2.2]} rotation={[-0.12, 0.2, 0.18]}>
+            <coneGeometry args={[3.2, 13.0, 5]} />
+            <meshPhysicalMaterial
+              color="#e0f2fe"
+              roughness={0.22}
+              clearcoat={0.8}
+            />
+          </mesh>
+        </>
+      ) : isWildNature ? (
+        <>
+          {/* natural geological rock monolith */}
+          <mesh position={[0, 12.5, 0]} rotation={[0.1, 0.3, -0.06]}>
+            <dodecahedronGeometry args={[5.5, 1]} />
+            <meshStandardMaterial color="#78716c" roughness={0.88} metalness={0.06} />
+          </mesh>
+          <mesh position={[0, 19.5, 0]} rotation={[-0.15, 0.8, 0.1]}>
+            <dodecahedronGeometry args={[3.4, 1]} />
+            <meshStandardMaterial color="#a8a29e" roughness={0.82} metalness={0.06} />
+          </mesh>
+        </>
+      ) : isSpace ? (
         <>
           {/* precision brass & brushed-steel celestial armillary sphere */}
           <mesh position={[0, 12.0, 0]}>
@@ -290,15 +441,16 @@ function SingleProp({ prop, index, biome, onSelect }: SinglePropProps) {
 
 interface PropSpawnerProps {
   propsList: PropItem[];
+  roomContext?: string;
   onPropClick?: (prop: PropItem) => void;
 }
 
-export function PropSpawner({ propsList, onPropClick }: PropSpawnerProps) {
+export function PropSpawner({ propsList, roomContext, onPropClick }: PropSpawnerProps) {
   const currentRoomId = useWorldStore((state) => state.currentRoomId);
   const rooms = useWorldStore((state) => state.rooms);
   const worldTitle = useWorldStore((state) => state.worldTitle);
   const activeRoom = rooms[currentRoomId];
-  const biome = `${activeRoom?.biome_type || ""} ${activeRoom?.name || ""} ${worldTitle || ""}`;
+  const biome = roomContext || `${activeRoom?.biome_type || ""} ${activeRoom?.name || ""} ${worldTitle || ""}`;
 
   if (!propsList || propsList.length === 0) {
     return null;

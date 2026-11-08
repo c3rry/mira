@@ -139,7 +139,11 @@ export default function Home() {
 
     const startTime = performance.now();
     try {
-      const res = await fetch("/world/compile", {
+      const backendOrigin =
+        typeof window !== "undefined" && window.location.port === "3000"
+          ? `${window.location.protocol}//${window.location.hostname}:8001`
+          : "";
+      const res = await fetch(`${backendOrigin}/world/compile`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -378,7 +382,7 @@ export default function Home() {
                   borderColor: theme.panelBorder,
                 }}
               >
-                I. Enter Active World ({worldTitle})
+                I. Enter Active World
               </button>
 
               <button
@@ -414,8 +418,8 @@ export default function Home() {
               className="mt-8 pt-4 border-t w-full flex items-center justify-between text-xs italic"
               style={{ borderColor: `${theme.panelBorder}44`, color: theme.mutedText }}
             >
-              <span>Active Realm: {worldTitle}</span>
-              <span>WASD / Mouse to Explore • Click Scholars to Converse</span>
+              <span>{worldTitle}</span>
+              <span>WASD / Mouse to Explore • Click Entities to Converse</span>
             </div>
           </div>
         </div>
@@ -676,50 +680,50 @@ export default function Home() {
       {/* ===================================================================== */}
       {activeScreen === "game" && (
         <>
-          {/* adaptive classical top navigation bar */}
+          {/* sleek translucent top navigation bar */}
           <header
-            className="absolute top-0 left-0 right-0 z-20 flex flex-wrap items-center justify-between px-6 py-3 border-b pointer-events-auto gap-3"
+            className="absolute top-0 left-0 right-0 z-20 flex flex-wrap items-center justify-between px-4 py-1.5 border-b pointer-events-auto gap-2 backdrop-blur-md"
             style={{
-              backgroundColor: theme.panelBg,
-              borderColor: theme.panelBorder,
+              backgroundColor: "rgba(10, 10, 12, 0.72)",
+              borderColor: `${theme.panelBorder}66`,
             }}
           >
-            <div className="flex items-center space-x-4">
+            <div className="flex items-center space-x-3">
               <button
                 onClick={() => setActiveScreen("title")}
-                className="text-base font-bold uppercase tracking-[0.25em] hover:underline"
+                className="text-sm font-bold uppercase tracking-[0.22em] hover:underline"
                 style={{ color: theme.accentColor }}
               >
                 M I R A
               </button>
 
               <div
-                className="px-3 py-0.5 text-xs border uppercase tracking-widest"
+                className="px-2.5 py-0.5 text-[11px] border uppercase tracking-wider"
                 style={{
+                  borderColor: `${theme.panelBorder}55`,
+                  color: theme.accentText,
+                }}
+              >
+                {worldTitle} — <span style={{ color: theme.accentColor }}>{activeRoom?.name || currentRoomId}</span>
+              </div>
+            </div>
+
+            <div className="flex items-center flex-wrap gap-2 text-[11px]">
+              <button
+                onClick={() => setActiveScreen("storage")}
+                className="px-2.5 py-0.5 border uppercase tracking-wider font-bold transition-colors"
+                style={{
+                  backgroundColor: "rgba(0,0,0,0.45)",
                   borderColor: `${theme.panelBorder}88`,
                   color: theme.accentText,
                 }}
               >
-                {worldTitle} — {activeRoom?.name || currentRoomId}
-              </div>
-            </div>
-
-            <div className="flex items-center flex-wrap gap-2.5 text-xs">
-              <button
-                onClick={() => setActiveScreen("storage")}
-                className="px-3 py-1 border uppercase tracking-widest font-bold transition-colors"
-                style={{
-                  backgroundColor: "rgba(0,0,0,0.45)",
-                  borderColor: theme.panelBorder,
-                  color: theme.accentText,
-                }}
-              >
-                World Archives ({savedWorlds.length})
+                Archives ({savedWorlds.length})
               </button>
 
               <button
                 onClick={() => setActiveScreen("create")}
-                className="px-3 py-1 border uppercase tracking-widest font-bold transition-colors"
+                className="px-2.5 py-0.5 border uppercase tracking-wider font-bold transition-colors"
                 style={{
                   backgroundColor: theme.buttonBg,
                   color: theme.buttonText,
@@ -734,35 +738,35 @@ export default function Home() {
                   e.currentTarget.blur();
                   toggleAudioUnlock();
                 }}
-                className="px-3 py-1 border uppercase tracking-widest transition-colors"
+                className="px-2.5 py-0.5 border uppercase tracking-wider transition-colors"
                 style={{
                   backgroundColor: audioActive ? `${theme.accentColor}28` : "rgba(0,0,0,0.45)",
-                  borderColor: theme.panelBorder,
+                  borderColor: `${theme.panelBorder}88`,
                   color: theme.accentText,
                 }}
               >
-                {audioActive ? "Musical Score: On" : "Musical Score: Muted"}
+                {audioActive ? "Audio: On" : "Audio: Off"}
               </button>
             </div>
           </header>
 
-          {/* imaginative world manifestation banner */}
+          {/* compact world manifestation banner */}
           {(isCompilingWorld || diffusionProgress < 98) && (
-            <div className="fixed top-16 left-1/2 -translate-x-1/2 z-30 pointer-events-none select-none w-full max-w-md px-4">
+            <div className="fixed top-12 left-1/2 -translate-x-1/2 z-30 pointer-events-none select-none w-full max-w-sm px-4">
               <div
-                className="p-3 border-2 shadow-2xl text-center"
+                className="p-2 border shadow-xl text-center backdrop-blur-md"
                 style={{
-                  backgroundColor: theme.panelBg,
+                  backgroundColor: "rgba(10, 10, 12, 0.82)",
                   borderColor: theme.panelBorder,
                 }}
               >
                 <div
-                  className="text-xs font-bold uppercase tracking-[0.22em] mb-1.5"
+                  className="text-[11px] font-bold uppercase tracking-[0.2em] mb-1"
                   style={{ color: theme.accentColor }}
                 >
-                  Materializing Architectural Vision — {diffusionProgress}%
+                  Synthesizing 3D World — {diffusionProgress}%
                 </div>
-                <div className="w-full h-2 bg-black/70 border overflow-hidden" style={{ borderColor: theme.panelBorder }}>
+                <div className="w-full h-1.5 bg-black/70 border overflow-hidden" style={{ borderColor: theme.panelBorder }}>
                   <div
                     className="h-full transition-all duration-150"
                     style={{
@@ -771,49 +775,46 @@ export default function Home() {
                     }}
                   />
                 </div>
-                <div className="text-[11px] italic mt-1" style={{ color: theme.mutedText }}>
-                  Weaving light, stone, and memory into three-dimensional form...
-                </div>
               </div>
             </div>
           )}
 
           {/* left floating quick world compiler */}
-          <div className="absolute top-16 left-6 z-20 pointer-events-auto">
+          <div className="absolute top-12 left-4 z-20 pointer-events-auto">
             <PromptRefinementChat />
           </div>
 
           {/* top-right minimap topology */}
-          <div className="absolute top-16 right-6 z-20 pointer-events-auto hidden md:block">
+          <div className="absolute top-12 right-4 z-20 pointer-events-auto hidden md:block">
             <MinimapTopology />
           </div>
 
-          {/* bottom-right solar & relief slider */}
-          <div className="absolute bottom-20 right-6 z-20 pointer-events-auto hidden lg:block">
+          {/* bottom-right collapsible lighting pill */}
+          <div className="absolute bottom-11 right-4 z-20 pointer-events-auto hidden lg:block">
             <MutationControls />
           </div>
 
-          {/* cinematic bottom movie subtitles and dialogue bar */}
+          {/* dialogue modal (only appears when clicking an NPC) */}
           <DialogueModal />
 
-          {/* bottom-most chamber navigation strip */}
+          {/* slim bottom chamber & continuous walk strip */}
           <footer
-            className="absolute bottom-0 left-0 right-0 z-20 flex items-center justify-between px-6 py-2 border-t pointer-events-auto"
+            className="absolute bottom-0 left-0 right-0 z-20 flex items-center justify-between px-4 py-1 border-t pointer-events-auto backdrop-blur-md"
             style={{
-              backgroundColor: theme.panelBg,
-              borderColor: theme.panelBorder,
+              backgroundColor: "rgba(10, 10, 12, 0.72)",
+              borderColor: `${theme.panelBorder}66`,
             }}
           >
-            <div className="text-xs italic hidden sm:block" style={{ color: theme.mutedText }}>
-              Walk: <strong style={{ color: theme.accentColor }}>WASD / Arrows</strong> (Shift to Sprint) • Drag to Look 360°
+            <div className="text-[11px] italic hidden sm:block" style={{ color: theme.mutedText }}>
+              Continuous Walk: <strong style={{ color: theme.accentColor }}>WASD / Arrows</strong> (Shift Sprint) • Drag to Look • Click NPCs to Talk
             </div>
 
-            <div className="flex flex-wrap gap-2 items-center mx-auto sm:mx-0">
+            <div className="flex flex-wrap gap-1.5 items-center mx-auto sm:mx-0">
               <span
-                className="text-xs uppercase tracking-widest mr-1 font-bold"
+                className="text-[10px] uppercase tracking-widest mr-1 font-bold"
                 style={{ color: theme.accentColor }}
               >
-                Chambers:
+                Zones:
               </span>
               {Object.keys(rooms).map((rId, idx) => (
                 <button
@@ -824,13 +825,13 @@ export default function Home() {
                       setCurrentRoom(rId);
                     });
                   }}
-                  className="px-3 py-1 text-xs border uppercase tracking-wider transition-all"
+                  className="px-2 py-0.5 text-[11px] border uppercase tracking-wider transition-all"
                   style={{
                     backgroundColor:
                       rId === currentRoomId ? theme.buttonBg : "rgba(0,0,0,0.45)",
                     color: rId === currentRoomId ? theme.buttonText : theme.accentText,
                     borderColor:
-                      rId === currentRoomId ? theme.accentColor : `${theme.panelBorder}66`,
+                      rId === currentRoomId ? theme.accentColor : `${theme.panelBorder}55`,
                     fontWeight: rId === currentRoomId ? "bold" : "normal",
                   }}
                 >

@@ -300,7 +300,27 @@ def synthesize_prompt_world_graph(
             ("Porch of the Caryatids", "Ionic sanctuary of the Erechtheion supported by sculpted marble maidens", "Pericles of Cholargos", "Statesman and patron of the Golden Age architectural renewal."),
             ("Theater of Dionysus", "Curved limestone auditorium carved into the southern slope of the Acropolis", "Sophocles of Colonus", "Tragic playwright rehearsing chorus odes beneath the Attic sun."),
         ]
-    elif any(k in lower_p for k in ["space", "orbital", "observatory", "station", "cosmos", "astral", "planet", "moon", "mars"]):
+    elif any(k in lower_p for k in ["moon", "lunar", "mars", "martian", "asteroid"]) and not any(
+        k in lower_p for k in ["station", "base", "colony", "observatory", "habitat"]
+    ):
+        is_mars = "mars" in lower_p or "martian" in lower_p
+        title = "Martian Frontier" if is_mars else "Lunar Expanse"
+        room_specs = (
+            [
+                ("Jezero Crater Floor", "Rust red regolith plain scattered with basalt boulders", "Dr. Ares, Planetary Geologist", "Field scientist cataloguing ancient river delta sediments."),
+                ("Valles Marineris Rim", "Edge of a colossal canyon system under a butterscotch sky", "Commander Vega", "Expedition lead surveying the canyon descent routes."),
+                ("Olympus Mons Foothills", "Gently rising volcanic slopes of the largest volcano in the solar system", "Rover Pilot Kade", "Navigator mapping safe traverse paths across lava flows."),
+                ("Utopia Planitia Dunes", "Wind-sculpted dark dune field stretching to the horizon", "Dr. Sol, Atmospheric Scientist", "Researcher tracking dust devils and seasonal frost."),
+            ]
+            if is_mars
+            else [
+                ("Sea of Tranquility", "Flat grey basaltic mare plain under a black star-filled sky", "Commander Armstrong", "Astronaut who studies the untouched regolith of the first landing plain."),
+                ("Copernicus Crater", "Terraced crater walls and central peaks of a vast impact basin", "Dr. Shoemaker, Selenologist", "Geologist reading the impact history in the crater rays."),
+                ("Oceanus Procellarum", "Endless grey Ocean of Storms with sinuous lava rilles", "Navigator Collins", "Pilot charting traverse routes across the volcanic plains."),
+                ("Far Side Basin", "Heavily cratered highlands where Earth never rises", "Dr. Chang'e, Astronomer", "Radio astronomer listening to the quiet cosmos from the far side."),
+            ]
+        )
+    elif any(k in lower_p for k in ["space", "orbital", "observatory", "station", "cosmos", "astral", "planet"]):
         title = "Celestial Orbital Observatory"
         room_specs = [
             ("Grand Astrolabe Rotunda", "Alabaster and brass cupola overlooking the illuminated planetary horizon", "Astronomer Hypatia", "Chief celestial cartographer calculating orbital harmonics and star ephemerides."),
@@ -316,16 +336,36 @@ def synthesize_prompt_world_graph(
             ("The Clockwork Conservatory", "Monumental rotunda housing the central municipal chronometer", "Curator Ada", "Mathematician maintaining the analytical difference engines."),
             ("Plaza of the Guilds", "Flagstone civic forum ringed by illuminated art-deco facades", "Magistrate Sterling", "Speaker of the metropolitan council."),
         ]
+    elif any(k in lower_p for k in ["everest", "himalaya", "k2", "alps", "alpine", "mountain", "peak", "summit", "glacier", "snow", "tundra", "arctic"]):
+        words = [w.capitalize() for w in re.findall(r"[a-zA-Z0-9]+", clean_prompt) if len(w) > 1]
+        subject = " ".join(words[:4]) if words else "Mount Everest"
+        title = subject if "mount" in lower_p or "everest" in lower_p else f"The Alpine Peaks of {subject}"
+        room_specs = [
+            (f"{subject} Khumbu Icefall", f"Towering blue glacial seracs and wind-swept snowfield at the base of {subject}", "Tenzing, Lead Sherpa Guide", f"Veteran high-altitude mountaineer navigating the shifting crevasses of {subject}."),
+            ("Western Cwm Glacial Valley", f"High-altitude sunlit snow basin surrounded by sheer granite faces of {subject}", "Dr. Hillary, Glaciologist", f"Expedition scientist measuring glacial ice cores and katabatic wind patterns on {subject}."),
+            ("South Col Razor Ridge", f"Windswept saddle of metamorphic rock and packed snow at 8,000 meters on {subject}", "Pemba, High Camp Quartermaster", f"Mountaineer maintaining the oxygen caches and weather telemetry along the ridge."),
+            (f"{subject} Summit Crest", f"The highest snow-and-ice pinnacle overlooking a vast sea of Himalayan peaks", "Ang Dorje, Summit Chronicler", f"Keeper of the summit cairn and witness to the curvature of the horizon."),
+        ]
+    elif any(k in lower_p for k in ["canyon", "gorge", "desert", "sahara", "dune", "mesa", "volcano", "caldera", "ocean", "island", "cave", "cavern", "waterfall", "wilderness", "national park", "yosemite"]):
+        words = [w.capitalize() for w in re.findall(r"[a-zA-Z0-9]+", clean_prompt) if len(w) > 2]
+        subject = " ".join(words[:4]) if words else "The Untamed Wilderness"
+        title = f"Expedition to {subject}"
+        room_specs = [
+            (f"{subject} Trailhead Overlook", f"Untouched natural wilderness threshold of {clean_prompt}", "Ranger Elara", f"Field naturalist documenting the geology and ecosystems of {subject}."),
+            (f"{subject} Deep Gorge", f"Expansive natural terrain and formations within {clean_prompt}", "Prof. Thorne, Geologist", f"Earth scientist studying the ancient rock strata of {subject}."),
+            (f"{subject} High Ridge", f"Elevated natural crest surveying the wild horizon of {clean_prompt}", "Kaelen, Wilderness Pathfinder", f"Tracker charting the natural passes across {subject}."),
+            (f"{subject} Heart Basin", f"Pristine inner natural sanctuary at the core of {clean_prompt}", "Dr. Lin, Botanist", f"Researcher preserving the untouched flora of {subject}."),
+        ]
     else:
         # extract meaningful title words from user prompt
         words = [w.capitalize() for w in re.findall(r"[a-zA-Z0-9]+", clean_prompt) if len(w) > 2]
         subject = " ".join(words[:4]) if words else "The Uncharted Realm"
         title = f"Chronicles of {subject}"
         room_specs = [
-            (f"{subject} Grand Courtyard", f"Primary sunlit threshold of {clean_prompt}", "Aurelia, First Chronicler", f"Historian documenting the origins and architecture of {subject}."),
-            (f"Sanctum of {words[0] if words else 'Antiquity'}", f"Inner vaulted hall within {clean_prompt}", "Lord Vaelen", f"Steward safeguarding the central relics of {subject}."),
-            (f"High Terrace of {words[-1] if words else 'Light'}", f"Elevated panoramic overlook across {clean_prompt}", "Lyra the Cartographer", f"Master navigator charting the horizons of {subject}."),
-            (f"The Inner Archive", f"Sacred repository at the heart of {clean_prompt}", "Archivist Solon", f"Keeper of the ancient treaties and inscriptions of {subject}."),
+            (f"{subject} Threshold", f"Primary sunlit entry zone of {clean_prompt}", "Aurelia, First Chronicler", f"Historian documenting the origins and landscape of {subject}."),
+            (f"Heart of {words[0] if words else 'Antiquity'}", f"Central expanse within {clean_prompt}", "Lord Vaelen", f"Steward safeguarding the heritage of {subject}."),
+            (f"High Overlook of {words[-1] if words else 'Light'}", f"Elevated panoramic vista across {clean_prompt}", "Lyra the Cartographer", f"Master navigator charting the horizons of {subject}."),
+            (f"Far Reach of {subject}", f"Distant connected vantage at the edge of {clean_prompt}", "Archivist Solon", f"Keeper of the expedition records of {subject}."),
         ]
 
     rooms: List[NodeState] = []
@@ -417,13 +457,15 @@ async def generate_world_graph(
     theme_cat = detect_theme_category(prompt, biome_hint)
 
     system_instruction = (
-        "You are a master architectural historian and RPG world builder. "
+        "You are a master geographical, natural, and historical RPG world builder. "
         "Generate a rich WorldGraph conforming strictly to the schema for the user's prompt. "
-        "Create 3 to 4 connected rooms with evocative, historically or atmospherically authentic names, "
-        "each containing 1 to 2 named NPCs whose room_id matches their room's room_id. "
-        "For each room's lighting, set ambient_color to a hex color representing the room's sky/zenith hue "
-        "and fog_color to a hex color representing the room's primary stone/ground material hue, "
-        "varying them subtly per room so every sub-room has its own distinct mood while sharing the world's style. "
+        "Create 4 connected sub-zones/rooms with evocative, authentic names. "
+        "CRITICAL RULE: If the user's prompt describes a natural landscape or wilderness (e.g., Mount Everest, "
+        "glacier, mountain peak, forest, canyon, desert, ocean, volcano, the Moon, Mars, or another planet's surface), all room names, descriptions, and props "
+        "MUST be 100% pure natural geological/ecological features (e.g., 'Khumbu Icefall', 'Western Cwm Valley', "
+        "'South Col Ridge', 'Summit Crest') with ZERO buildings, ZERO dojos, ZERO temples, and ZERO courtyards. "
+        "Only include architectural rooms if the prompt is about a city, monument, temple, or building. "
+        "Each room must contain 1 named NPC whose room_id matches their room's room_id. "
         f"Set biome_type to '{theme_cat}'."
     )
 

@@ -9,6 +9,7 @@ export interface DisplacementUniforms {
   uMutationFactor: { value: number };
   uDiffusionNoise: { value: number };
   uTime: { value: number };
+  uOpacity: { value: number };
 }
 
 export const PanoramaDisplacementShader = {
@@ -20,6 +21,7 @@ export const PanoramaDisplacementShader = {
     uMutationFactor: { value: 0.0 },
     uDiffusionNoise: { value: 0.0 },
     uTime: { value: 0.0 },
+    uOpacity: { value: 1.0 },
   },
 
   vertexShader: `
@@ -54,6 +56,7 @@ export const PanoramaDisplacementShader = {
     uniform float uMutationFactor;
     uniform float uDiffusionNoise;
     uniform float uTime;
+    uniform float uOpacity;
     varying vec2 vUv;
     varying vec3 vNormal;
     varying vec3 vPosition;
@@ -110,7 +113,7 @@ export const PanoramaDisplacementShader = {
       // in-situ mutation atmosphere tint
       vec3 mutatedColor = mix(denoisedColor, denoisedColor * vec3(1.12, 0.95, 0.82), uMutationFactor * 0.45);
 
-      gl_FragColor = vec4(mutatedColor, texColor.a);
+      gl_FragColor = vec4(mutatedColor, texColor.a * uOpacity);
     }
   `,
 };
@@ -131,9 +134,11 @@ export function createDisplacementMaterial(
       uMutationFactor: { value: mutationFactor },
       uDiffusionNoise: { value: diffusionNoise },
       uTime: { value: 0.0 },
+      uOpacity: { value: 1.0 },
     },
     vertexShader: PanoramaDisplacementShader.vertexShader,
     fragmentShader: PanoramaDisplacementShader.fragmentShader,
     side: THREE.DoubleSide,
+    transparent: true,
   });
 }

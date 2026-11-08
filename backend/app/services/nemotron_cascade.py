@@ -25,9 +25,9 @@ load_dotenv()
 logger = logging.getLogger("mira.cascade")
 
 NVIDIA_NIM_ENDPOINT = "https://integrate.api.nvidia.com/v1/chat/completions"
-NEMOTRON_MODEL = "nvidia/llama-3.1-nemotron-70b-instruct"
-NEMOTRON_TIMEOUT_SECONDS = 4.5
-GEMINI_TIMEOUT_SECONDS = 4.2
+NEMOTRON_MODEL = "meta/llama-3.2-90b-vision-instruct"
+NEMOTRON_TIMEOUT_SECONDS = 5.0
+GEMINI_TIMEOUT_SECONDS = 12.0
 
 # out-of-domain anachronism patterns (coding, algorithms, modern tech, ai jailbreaks)
 ANACHRONISM_PATTERNS = [
@@ -219,7 +219,7 @@ async def call_gemini_tier(
     loop = asyncio.get_running_loop()
 
     def _sync_call():
-        for candidate in ["gemini-3.5-flash-lite", "gemini-3.8-flash", "gemini-3-flash-preview"]:
+        for candidate in ["gemini-3.1-flash-lite", "gemini-3.5-flash-lite", "gemini-3.8-flash"]:
             try:
                 return client.models.generate_content(
                     model=candidate,
@@ -227,9 +227,9 @@ async def call_gemini_tier(
                     config=types.GenerateContentConfig(
                         system_instruction=system_instruction,
                         response_mime_type="application/json",
-                        max_output_tokens=280,
-                        temperature=0.65,
-                        http_options=types.HttpOptions(timeout=3500),
+                        max_output_tokens=320,
+                        temperature=0.75,
+                        http_options=types.HttpOptions(timeout=10000),
                     ),
                 )
             except Exception:

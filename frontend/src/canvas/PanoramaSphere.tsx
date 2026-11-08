@@ -1,129 +1,146 @@
-// inverted panorama sphere mesh with 16-bit depth displacement and latent diffusion denoising
+// seamless infinite-distance 360 sky panorama with room-to-room crossfade and latent denoise reveal
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useFrame } from "@react-three/fiber";
 import * as THREE from "three";
 import { loadPanoramaTexture } from "./loaders/TextureLoader";
-import { createDisplacementMaterial } from "./shaders/displacementShader";
 import { useWorldStore } from "@/store/useWorldStore";
 
 interface PanoramaSphereProps {
   panoramaUrl: string;
-  depthUrl?: string;
-  displacementScale?: number;
+  // same-world panorama shown while a background sub-room is still synthesizing
+  fallbackUrl?: string;
   mutationFactor?: number;
+  radius?: number;
 }
+
+const skyVertexShader = `
+  varying vec2 vUv;
+  void main() {
+    vUv = uv;
+    gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+  }
+`;
+
+// crossfades two equirect textures and overlays latent diffusion noise while compiling
+const skyFragmentShader = `
+  uniform sampler2D uTexA;
+  uniform sampler2D uTexB;
+  uniform float uMix;
+  uniform float uNoise;
+  uniform float uMutation;
+  uniform float uTime;
+  varying vec2 vUv;
+
+  float hash21(vec2 p) {
+    p = fract(p * vec2(234.34, 435.345));
+    p += dot(p, p + 34.23);
+    return fract(p.x * p.y);
+  }
+
+  void main() {
+    vec3 a = texture2D(uTexA, vUv).rgb;
+    vec3 b = texture2D(uTexB, vUv).rgb;
+    vec3 col = mix(a, b, uMix);
+    vec3 grain = vec3(hash21(vUv * 512.0 + uTime), hash21(vUv * 512.0 + uTime + 1.3), hash21(vUv * 512.0 + uTime + 2.9));
+    col = mix(col, grain, clamp(uNoise * 0.9, 0.0, 0.92));
+    col = mix(col, col * vec3(1.12, 0.95, 0.82), uMutation * 0.45);
+    gl_FragColor = vec4(col, 1.0);
+  }
+`;
 
 export function PanoramaSphere({
   panoramaUrl,
-  depthUrl,
-  displacementScale = 25.0,
+  fallbackUrl,
   mutationFactor = 0.0,
+  radius = 900,
 }: PanoramaSphereProps) {
-  const meshRef = useRef<THREE.Mesh>(null);
-  const [texture, setTexture] = useState<THREE.Texture | null>(null);
-  const [depthTexture, setDepthTexture] = useState<THREE.Texture | null>(null);
-  const noiseRef = useRef<number>(0.85);
-
+  const [targetTex, setTargetTex] = useState<THREE.Texture | null>(null);
+  const noiseRef = useRef<number>(0.65);
+  const mixRef = useRef<number>(1.0);
   const isCompilingWorld = useWorldStore((state) => state.isCompilingWorld);
   const setDiffusionProgress = useWorldStore((state) => state.setDiffusionProgress);
 
+  const material = useMemo(
+    () =>
+      new THREE.ShaderMaterial({
+        uniforms: {
+          uTexA: { value: null },
+          uTexB: { value: null },
+          uMix: { value: 1.0 },
+          uNoise: { value: 0.65 },
+          uMutation: { value: 0.0 },
+          uTime: { value: 0.0 },
+        },
+        vertexShader: skyVertexShader,
+        fragmentShader: skyFragmentShader,
+        side: THREE.DoubleSide,
+        depthWrite: false,
+      }),
+    []
+  );
+
+  // load target texture, polling while a background sub-room is still being synthesized
   useEffect(() => {
-    let isMounted = true;
-    // trigger latent diffusion noise burst when room texture changes
-    noiseRef.current = panoramaUrl.includes("custom=1") ? 0.94 : 0.65;
+    let alive = true;
+    let timer: ReturnType<typeof setTimeout> | null = null;
 
-    loadPanoramaTexture(panoramaUrl).then((loadedTex) => {
-      if (isMounted) {
-        loadedTex.needsUpdate = true;
-        setTexture(loadedTex);
-      }
-    });
-
-    if (depthUrl) {
-      loadPanoramaTexture(depthUrl, "/cached_worlds/desert_oasis/depth.png").then((loadedDepth) => {
-        if (isMounted) {
-          loadedDepth.needsUpdate = true;
-          setDepthTexture(loadedDepth);
+    const attempt = (n: number) => {
+      loadPanoramaTexture(panoramaUrl, fallbackUrl).then((tex) => {
+        if (!alive) return;
+        setTargetTex(tex);
+        if (tex.userData?.isFallback && n < 20) {
+          timer = setTimeout(() => alive && attempt(n + 1), 3000);
         }
       });
-    } else {
-      setDepthTexture(null);
-    }
+    };
+    attempt(0);
 
     return () => {
-      isMounted = false;
+      alive = false;
+      if (timer) clearTimeout(timer);
     };
-  }, [panoramaUrl, depthUrl]);
+  }, [panoramaUrl, fallbackUrl]);
+
+  // start a crossfade from the previous sky to the new one
+  useEffect(() => {
+    if (!targetTex) return;
+    const u = material.uniforms;
+    const current = mixRef.current >= 0.5 ? u.uTexB.value : u.uTexA.value;
+    u.uTexA.value = current || targetTex;
+    u.uTexB.value = targetTex;
+    mixRef.current = current ? 0.0 : 1.0;
+    u.uMix.value = mixRef.current;
+  }, [targetTex, material]);
 
   useEffect(() => {
-    if (isCompilingWorld) {
-      noiseRef.current = 0.98;
-    }
+    if (isCompilingWorld) noiseRef.current = 0.98;
   }, [isCompilingWorld]);
 
-  const shaderMaterial = useMemo(() => {
-    if (!texture) return null;
-    if (depthTexture) {
-      return createDisplacementMaterial(
-        texture,
-        depthTexture,
-        displacementScale,
-        mutationFactor,
-        noiseRef.current
-      );
-    }
-    return new THREE.MeshBasicMaterial({
-      map: texture,
-      side: THREE.DoubleSide,
-    });
-  }, [texture, depthTexture]);
-
-  useEffect(() => {
-    if (!shaderMaterial) return;
-    if ("uniforms" in shaderMaterial) {
-      shaderMaterial.uniforms.uTexture.value = texture;
-      shaderMaterial.uniforms.uDepthMap.value = depthTexture;
-      shaderMaterial.uniforms.uDisplacementScale.value = displacementScale;
-      shaderMaterial.uniforms.uMutationFactor.value = mutationFactor;
-      shaderMaterial.needsUpdate = true;
-    } else if ("map" in shaderMaterial) {
-      (shaderMaterial as THREE.MeshBasicMaterial).map = texture;
-      shaderMaterial.needsUpdate = true;
-    }
-    if (meshRef.current) {
-      meshRef.current.material = shaderMaterial;
-    }
-  }, [shaderMaterial, texture, depthTexture, displacementScale, mutationFactor]);
-
   useFrame(({ clock }, delta) => {
-    if (!shaderMaterial || !("uniforms" in shaderMaterial)) return;
-    shaderMaterial.uniforms.uTime.value = clock.getElapsedTime();
+    const u = material.uniforms;
+    u.uTime.value = clock.getElapsedTime();
+    u.uMutation.value = mutationFactor;
+
+    if (mixRef.current < 1.0) {
+      mixRef.current = Math.min(1.0, mixRef.current + delta * 1.1);
+      u.uMix.value = mixRef.current;
+    }
 
     if (isCompilingWorld) {
       noiseRef.current = Math.min(0.98, noiseRef.current + delta * 1.8);
     } else if (noiseRef.current > 0.001) {
-      // progressively denoise latent space to clear image over ~3 seconds
       noiseRef.current = Math.max(0.0, noiseRef.current - delta * 0.34);
     }
-
-    shaderMaterial.uniforms.uDiffusionNoise.value = noiseRef.current;
-    if (setDiffusionProgress) {
-      const pct = Math.round((1.0 - noiseRef.current) * 100);
-      setDiffusionProgress(pct);
-    }
+    u.uNoise.value = noiseRef.current;
+    setDiffusionProgress(Math.round((1.0 - noiseRef.current) * 100));
   });
 
   return (
-    <mesh ref={meshRef} scale={[-1, 1, 1]} key={panoramaUrl}>
-      {/* 500 radius sphere with 128x64 segments per specification */}
-      <sphereGeometry args={[500, 128, 64]} />
-      {shaderMaterial ? (
-        <primitive object={shaderMaterial} attach="material" />
-      ) : (
-        <meshBasicMaterial color="#1c1610" wireframe={true} side={THREE.DoubleSide} />
-      )}
+    <mesh renderOrder={-1} frustumCulled={false} scale={[-1, 1, 1]}>
+      <sphereGeometry args={[radius, 96, 48]} />
+      <primitive object={material} attach="material" />
     </mesh>
   );
 }
