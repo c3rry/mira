@@ -280,7 +280,7 @@ export default function Home() {
         setBackendHealth("archive_mode");
       });
 
-    // initialize with the sunlit necropolis of giza world archive
+    // initialize with the continuous procedural noise manifold
     if (BUILTIN_ARCHIVES.length > 0) {
       hydrateFromMockWorld(BUILTIN_ARCHIVES[0].world_data);
     }

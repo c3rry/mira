@@ -30,6 +30,16 @@ function classifySceneArchetype(roomName: string, promptText: string, biome: str
   const full = `${specific} ${biome}`.toLowerCase();
 
   if (
+    full.includes("noise") ||
+    full.includes("quantum") ||
+    full.includes("latent") ||
+    full.includes("manifold") ||
+    full.includes("procedural")
+  ) {
+    return "continuous_noise";
+  }
+
+  if (
     specific.includes("rome") ||
     specific.includes("roman") ||
     specific.includes("forum") ||
@@ -166,7 +176,127 @@ function createPromptDrivenPanorama(url: string): THREE.Texture {
   }
 
   if (ctx) {
-    if (archetype === "rome") {
+    if (archetype === "continuous_noise") {
+      // 0. Continuous Multi-Scale Latent Quantum Noise Field
+      // Pure continuous procedural spherical harmonic interference patterns
+      const spatialPhase = (worldX * 0.032 + worldZ * 0.048) + roomIdx * 0.95;
+      const imgData = ctx.createImageData(w, h);
+      const data = imgData.data;
+
+      // Sector-adaptive chromatic palette based on coordinate quadrants
+      const isEast = worldX > 40;
+      const isWest = worldX < -40;
+      const isSouth = worldZ > 40;
+      const isNorth = worldZ < -40;
+
+      for (let py = 0; py < h; py += 2) {
+        const v = py / h;
+        const phi = (1.0 - v) * Math.PI;
+        const sinPhi = Math.sin(phi);
+        const cosPhi = Math.cos(phi);
+
+        for (let px = 0; px < w; px += 2) {
+          const u = px / w;
+          const theta = (u - 0.5) * 2 * Math.PI;
+
+          const dx = sinPhi * Math.sin(theta);
+          const dy = cosPhi;
+          const dz = sinPhi * Math.cos(theta);
+
+          // Multi-frequency continuous procedural harmonic field
+          const n1 = Math.sin(dx * 4.2 + spatialPhase) * Math.cos(dz * 4.2 + spatialPhase * 0.7);
+          const n2 = Math.sin(dx * 8.8 - spatialPhase * 1.3 + dy * 5.5) * Math.cos(dz * 9.2 + dy * 5.0);
+          const n3 = Math.sin(dy * 13.5 + n1 * 2.2) * Math.cos(dx * 11.5 - n2 * 1.8);
+          const val = Math.max(0.0, Math.min(1.0, (n1 * 0.48 + n2 * 0.32 + n3 * 0.2 + 1.0) * 0.5));
+
+          // Quadrant-adaptive continuous color map
+          let r = 0, g = 0, b = 0;
+          if (isEast) {
+            // East: Electric Azure & Solar Gold
+            r = Math.floor(val * 45 + (1.0 - val) * 6);
+            g = Math.floor(val * 180 + (1.0 - val) * 120);
+            b = Math.floor(val * 245 + (1.0 - val) * 210);
+          } else if (isSouth) {
+            // South: Emerald Flux & Cyan
+            r = Math.floor(val * 16 + (1.0 - val) * 4);
+            g = Math.floor(val * 220 + (1.0 - val) * 110);
+            b = Math.floor(val * 160 + (1.0 - val) * 85);
+          } else if (isWest) {
+            // West: Amber Wave & Deep Coral
+            r = Math.floor(val * 245 + (1.0 - val) * 120);
+            g = Math.floor(val * 140 + (1.0 - val) * 45);
+            b = Math.floor(val * 35 + (1.0 - val) * 15);
+          } else if (isNorth) {
+            // North: Spectral Violet & Crimson
+            r = Math.floor(val * 192 + (1.0 - val) * 45);
+            g = Math.floor(val * 65 + (1.0 - val) * 15);
+            b = Math.floor(val * 245 + (1.0 - val) * 120);
+          } else {
+            // Origin: Full Quantum Spectrum (Indigo -> Cyan -> Magenta)
+            if (val < 0.5) {
+              const t = val * 2.0;
+              r = Math.floor(18 + t * (6 - 18));
+              g = Math.floor(8 + t * (182 - 8));
+              b = Math.floor(45 + t * (212 - 45));
+            } else {
+              const t = (val - 0.5) * 2.0;
+              r = Math.floor(6 + t * (236 - 6));
+              g = Math.floor(182 + t * (72 - 182));
+              b = Math.floor(212 + t * (153 - 212));
+            }
+          }
+
+          // Stamp 2x2 block
+          for (let oy = 0; oy < 2; oy++) {
+            const iy = py + oy;
+            if (iy >= h) continue;
+            const rOff = iy * w * 4;
+            for (let ox = 0; ox < 2; ox++) {
+              const ix = px + ox;
+              if (ix >= w) continue;
+              const idx = rOff + ix * 4;
+              data[idx] = r;
+              data[idx + 1] = g;
+              data[idx + 2] = b;
+              data[idx + 3] = 255;
+            }
+          }
+        }
+      }
+
+      ctx.putImageData(imgData, 0, 0);
+
+      // Perspective quantum coordinate grid overlay on floor
+      ctx.strokeStyle = "rgba(56, 189, 248, 0.4)";
+      ctx.lineWidth = 1.5;
+      for (let x = 0; x <= w; x += 128) {
+        const spread = (x - w / 2) * 2.6;
+        ctx.beginPath();
+        ctx.moveTo(x, horizonY);
+        ctx.lineTo(w / 2 + spread, h);
+        ctx.stroke();
+      }
+      for (let y = horizonY + 22; y < h; y += 36) {
+        ctx.beginPath();
+        ctx.moveTo(0, y);
+        ctx.lineTo(w, y);
+        ctx.stroke();
+      }
+
+      // Central glowing resonant quantum core sphere
+      const coreX = w / 2;
+      const coreY = horizonY - 140;
+      const coreGrad = ctx.createRadialGradient(coreX, coreY, 15, coreX, coreY, 180);
+      coreGrad.addColorStop(0, "#ffffff");
+      coreGrad.addColorStop(0.3, "rgba(56, 189, 248, 0.88)");
+      coreGrad.addColorStop(0.65, "rgba(168, 85, 247, 0.42)");
+      coreGrad.addColorStop(1, "rgba(9, 5, 20, 0.0)");
+      ctx.fillStyle = coreGrad;
+      ctx.beginPath();
+      ctx.arc(coreX, coreY, 180, 0, Math.PI * 2);
+      ctx.fill();
+
+    } else if (archetype === "rome") {
       // 1. Imperial Forum of Rome — 4 distinct sub-rooms sharing Roman Classical travertine & porphyry style
       if (subRoomVariant === 1) {
         // Sub-Room 1: Rotunda of the Pantheon (Interior Coffered Dome & Central Sunbeam Oculus)
@@ -1300,33 +1430,11 @@ export function loadPanoramaTexture(
       },
       undefined,
       () => {
-        // First fallback: attempt fallbackUrl if specified and different
-        const cleanFallback = fallbackUrl ? fallbackUrl.split("?")[0] : "";
-        if (cleanFallback && cleanFallback !== cleanFileUrl) {
-          loader.load(
-            cleanFallback,
-            (fallbackTexture) => {
-              const configured = configureTexture(fallbackTexture);
-              configured.userData.isFallback = true;
-              textureCache.set(url, configured);
-              resolve(configured);
-            },
-            undefined,
-            () => {
-              // High-resolution bespoke procedural panorama synthesized synchronously — NEVER a black screen!
-              const synthesizedTex = createPromptDrivenPanorama(url);
-              synthesizedTex.userData.isFallback = true;
-              textureCache.set(url, synthesizedTex);
-              resolve(synthesizedTex);
-            }
-          );
-        } else {
-          // Immediately synthesize high-resolution bespoke procedural panorama — NEVER a black screen!
-          const synthesizedTex = createPromptDrivenPanorama(url);
-          synthesizedTex.userData.isFallback = true;
-          textureCache.set(url, synthesizedTex);
-          resolve(synthesizedTex);
-        }
+        // High-resolution bespoke procedural panorama synthesized immediately — NEVER reuse Room 0's static image!
+        const synthesizedTex = createPromptDrivenPanorama(url);
+        synthesizedTex.userData.isFallback = true;
+        textureCache.set(url, synthesizedTex);
+        resolve(synthesizedTex);
       }
     );
   });

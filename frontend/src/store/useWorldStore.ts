@@ -266,6 +266,135 @@ const ARCHIVE_STORAGE_KEY = "mira_world_archives_v12_photoreal_raw";
 
 export const BUILTIN_ARCHIVES: SavedWorldEntry[] = [
   {
+    world_id: "archive_continuous_noise",
+    title: "Continuous Latent Expanse",
+    prompt: "Continuous multi-dimensional procedural noise chamber with iridescent quantum interference fields and harmonic manifolds",
+    biome_hint: "continuous_noise",
+    created_at: "Procedural Manifold",
+    world_data: {
+      world_id: "archive_continuous_noise",
+      title: "Continuous Latent Expanse",
+      initial_room_id: "noise_origin",
+      rooms: [
+        {
+          room_id: "noise_origin",
+          name: "Continuous Noise Chamber",
+          biome_type: "continuous_noise",
+          worldX: 0,
+          worldZ: 0,
+          panorama_url: "/generated_worlds/archive_continuous_noise/noise_origin_panorama.webp?room=Continuous%20Noise%20Chamber&prompt=Continuous%20Latent%20Expanse&biome=continuous_noise&x=0&z=0&idx=0&sky=%23090514&floor=%231e1b4b",
+          depth_url: "/generated_worlds/archive_continuous_noise/noise_origin_depth.png",
+          adjacent_room_ids: ["noise_north", "noise_east", "noise_south", "noise_west"],
+          mutation_level: 0.25,
+          visual_palette: {
+            sky_tone: "#090514",
+            floor_tone: "#1e1b4b",
+            dominant_color: "#38bdf8",
+            accent_color: "#a855f7",
+          },
+          npcs: [
+            {
+              npc_id: "npc_aethel",
+              name: "Aethel, Quantum Chronicler",
+              room_id: "noise_origin",
+              persona_description: "Observer of the continuous procedural manifold and keeper of multi-dimensional latent harmonics.",
+              thought_log: [
+                "[MEMORY] The continuous noise waves propagate across the 4-way coordinate axes.",
+                "[REFLECTION] An explorer arrives at the origin of the procedural manifold.",
+                "[PLANNING] Reveal how expanding outward morphs the noise field into new harmonic domains.",
+                "[ACTION] Welcome traveler to the Continuous Noise Chamber.",
+              ],
+              inventory: ["quantum_prism", "latent_vector_key"],
+              hp: 100,
+              position: { r: 500, theta: -0.22, phi: 1.65 },
+            },
+          ],
+        },
+        {
+          room_id: "noise_north",
+          name: "Quantum Interference Spire — North",
+          biome_type: "continuous_noise",
+          worldX: 0,
+          worldZ: -220,
+          panorama_url: "/generated_worlds/archive_continuous_noise/noise_north_panorama.webp?room=Quantum%20Interference%20Spire&prompt=Continuous%20Latent%20Expanse&from=Continuous%20Noise%20Chamber&dir=north&biome=continuous_noise&x=0&z=-220&idx=1&sky=%230284c7&floor=%23090514",
+          depth_url: "/generated_worlds/archive_continuous_noise/noise_north_depth.png",
+          adjacent_room_ids: ["noise_origin"],
+          mutation_level: 0.25,
+          visual_palette: {
+            sky_tone: "#0284c7",
+            floor_tone: "#090514",
+            dominant_color: "#06b6d4",
+            accent_color: "#38bdf8",
+          },
+          npcs: [],
+        },
+        {
+          room_id: "noise_east",
+          name: "Harmonic Resonance Terrace — East",
+          biome_type: "continuous_noise",
+          worldX: 220,
+          worldZ: 0,
+          panorama_url: "/generated_worlds/archive_continuous_noise/noise_east_panorama.webp?room=Harmonic%20Resonance%20Terrace&prompt=Continuous%20Latent%20Expanse&from=Continuous%20Noise%20Chamber&dir=east&biome=continuous_noise&x=220&z=0&idx=2&sky=%23a855f7&floor=%231e1b4b",
+          depth_url: "/generated_worlds/archive_continuous_noise/noise_east_depth.png",
+          adjacent_room_ids: ["noise_origin"],
+          mutation_level: 0.25,
+          visual_palette: {
+            sky_tone: "#a855f7",
+            floor_tone: "#1e1b4b",
+            dominant_color: "#c084fc",
+            accent_color: "#f43f5e",
+          },
+          npcs: [],
+        },
+        {
+          room_id: "noise_south",
+          name: "Sub-Dimensional Flux Basin — South",
+          biome_type: "continuous_noise",
+          worldX: 0,
+          worldZ: 220,
+          panorama_url: "/generated_worlds/archive_continuous_noise/noise_south_panorama.webp?room=Sub-Dimensional%20Flux%20Basin&prompt=Continuous%20Latent%20Expanse&from=Continuous%20Noise%20Chamber&dir=south&biome=continuous_noise&x=0&z=220&idx=3&sky=%2310b981&floor=%23064e3b",
+          depth_url: "/generated_worlds/archive_continuous_noise/noise_south_depth.png",
+          adjacent_room_ids: ["noise_origin"],
+          mutation_level: 0.25,
+          visual_palette: {
+            sky_tone: "#10b981",
+            floor_tone: "#064e3b",
+            dominant_color: "#34d399",
+            accent_color: "#facc15",
+          },
+          npcs: [],
+        },
+        {
+          room_id: "noise_west",
+          name: "Perlin Domain Warp Ridge — West",
+          biome_type: "continuous_noise",
+          worldX: -220,
+          worldZ: 0,
+          panorama_url: "/generated_worlds/archive_continuous_noise/noise_west_panorama.webp?room=Perlin%20Domain%20Warp%20Ridge&prompt=Continuous%20Latent%20Expanse&from=Continuous%20Noise%20Chamber&dir=west&biome=continuous_noise&x=-220&z=0&idx=4&sky=%23f59e0b&floor=%23451a03",
+          depth_url: "/generated_worlds/archive_continuous_noise/noise_west_depth.png",
+          adjacent_room_ids: ["noise_origin"],
+          mutation_level: 0.25,
+          visual_palette: {
+            sky_tone: "#f59e0b",
+            floor_tone: "#451a03",
+            dominant_color: "#fbbf24",
+            accent_color: "#38bdf8",
+          },
+          npcs: [],
+        },
+      ],
+      quests: [
+        {
+          quest_id: "quest_noise_01",
+          title: "Harmonize the Continuous Noise Manifold",
+          description: "Traverse the 4-way cardinal gateways to explore continuous procedural morphing across the latent field.",
+          completed: false,
+          trigger_flag: "explored_noise_origin",
+        },
+      ],
+    },
+  },
+  {
     world_id: "archive_giza_necropolis",
     title: "The Necropolis of Giza",
     prompt: "The Great Pyramids of Giza at golden hour with the Sphinx causeway and Old Kingdom temples",
@@ -716,6 +845,26 @@ export function generateThematicRoomName(
   const dirLabel = dir.charAt(0).toUpperCase() + dir.slice(1);
 
   if (
+    t.includes("noise") ||
+    t.includes("latent") ||
+    t.includes("quantum") ||
+    t.includes("procedural") ||
+    t.includes("manifold")
+  ) {
+    const ring = Math.max(1, Math.round(Math.hypot(x, z) / 220));
+    const names: Record<string, string[]> = {
+      north: ["Quantum Interference Spire", "Phase Coherence Zenith", "Spectral Flux Column", "Superposition Pinnacle"],
+      south: ["Sub-Dimensional Flux Basin", "Entanglement Nexus", "Wavefunction Collapse Terrace", "Harmonic Interference Hollow"],
+      east: ["Harmonic Resonance Promenade", "Frequency Domain Vista", "Eigenstate Corridor", "Phase-Locked Loop Arcade"],
+      west: ["Perlin Domain Warp Ridge", "Fractal Horizon Crest", "Cellular Voronoi Bluff", "Continuous Gradient Canyon"],
+    };
+    const list = names[dir] || names.north;
+    const idx = Math.abs(Math.round((x * 3 + z * 7) / 220)) % list.length;
+    const ringSuffix = ring > 1 ? ` — Sector ${ring}` : "";
+    return `${list[idx]}${ringSuffix}`;
+  }
+
+  if (
     t.includes("everest") ||
     t.includes("himalaya") ||
     t.includes("mountain") ||
@@ -932,8 +1081,8 @@ export interface WorldState {
 }
 
 export const useWorldStore = create<WorldState>((set, get) => ({
-  currentRoomId: "giza_forecourt",
-  worldTitle: "The Necropolis of Giza",
+  currentRoomId: "noise_origin",
+  worldTitle: "Continuous Latent Expanse",
   topologyType: "nature_open",
   isExpanding: false,
   rooms: {},
@@ -1366,7 +1515,7 @@ export const useWorldStore = create<WorldState>((set, get) => ({
         const newRoom: WorldRoom = {
           room_id: safeId,
           name,
-          panorama_url: `/generated_worlds/${safeWorld}/${safeId}_panorama.webp?room=${encodeURIComponent(name)}&prompt=${encodeURIComponent(state.worldTitle)}&from=${encodeURIComponent(sourceRoom.name)}&dir=${offset.dir}&biome=${encodeURIComponent(biome)}&sky=${encodeURIComponent(pal.sky_tone)}&floor=${encodeURIComponent(pal.floor_tone)}&u_back=${uBack.toFixed(3)}`,
+          panorama_url: `/generated_worlds/${safeWorld}/${safeId}_panorama.webp?room=${encodeURIComponent(name)}&prompt=${encodeURIComponent(state.worldTitle)}&from=${encodeURIComponent(sourceRoom.name)}&dir=${offset.dir}&biome=${encodeURIComponent(biome)}&sky=${encodeURIComponent(pal.sky_tone)}&floor=${encodeURIComponent(pal.floor_tone)}&u_back=${uBack.toFixed(3)}&x=${targetX}&z=${targetZ}&idx=${Object.keys(currentRooms).length + 1}`,
           depth_url: `/generated_worlds/${safeWorld}/${safeId}_depth.png`,
           adjacent_room_ids: [sourceRoom.room_id],
           mutation_level: 0,

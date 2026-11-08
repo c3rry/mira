@@ -43,6 +43,8 @@ class InfiniteWorldField:
         self.archetype = self._classify_archetype(self.world_prompt)
 
     def _classify_archetype(self, prompt: str) -> str:
+        if any(w in prompt for w in ["noise", "continuous", "latent", "quantum", "matrix", "procedural", "manifold"]):
+            return "noise"
         if any(w in prompt for w in ["space", "station", "orbital", "cosmos", "spire"]):
             return "space"
         if any(w in prompt for w in ["cyber", "metropolis", "tokyo", "arcade", "city", "neon"]):
@@ -72,7 +74,9 @@ class InfiniteWorldField:
 
         ring = int(dist // 200)
 
-        if self.archetype == "desert":
+        if self.archetype == "noise":
+            return self._sample_noise_field(x, z, dist, deg, ring, noise_moisture, noise_elevation)
+        elif self.archetype == "desert":
             return self._sample_desert_field(x, z, dist, deg, ring, noise_moisture, noise_elevation)
         elif self.archetype == "gardens":
             return self._sample_gardens_field(x, z, dist, deg, ring, noise_moisture, noise_elevation)
@@ -80,6 +84,91 @@ class InfiniteWorldField:
             return self._sample_space_field(x, z, dist, deg, ring, noise_moisture, noise_elevation)
         else:
             return self._sample_general_field(x, z, dist, deg, ring, noise_moisture, noise_elevation)
+
+    def _sample_noise_field(
+        self, x: float, z: float, dist: float, deg: float, ring: int, moisture: float, elevation: float
+    ) -> Dict[str, Any]:
+        if dist < 90:
+            sector_type = "noise_origin"
+            name = "Continuous Noise Chamber"
+            desc = "Origin of the infinite multi-dimensional latent procedural manifold with shimmering quantum interference fields."
+            dominant_feature = "quantum_core"
+            sky_hex = "#090514"
+            floor_hex = "#1e1b4b"
+            accent_hex = "#a855f7"
+            npc_title = "Aethel, Quantum Chronicler"
+            npc_role = "Observer of the infinite procedural manifold and keeper of multi-dimensional latent harmonics."
+        elif 45 <= deg < 135:
+            # East
+            sector_type = "resonance"
+            name = f"Harmonic Resonance Promenade — Sector {ring}"
+            desc = "Interference corridor resonating with synchronized chromatic standing waves."
+            dominant_feature = "standing_waves"
+            sky_hex = "#0284c7"
+            floor_hex = "#0c4a6e"
+            accent_hex = "#38bdf8"
+            npc_title = f"Harmonicist Lyra of Sector {ring}"
+            npc_role = "Tuning spatial frequencies across the eastern manifold."
+        elif 135 <= deg < 225:
+            # South
+            sector_type = "flux"
+            name = f"Sub-Dimensional Flux Basin — Sector {ring}"
+            desc = "Undulating quantum energy basin with iridescent emerald and cyan particle streams."
+            dominant_feature = "energy_well"
+            sky_hex = "#064e3b"
+            floor_hex = "#022c22"
+            accent_hex = "#34d399"
+            npc_title = f"Flux Custodian Vane of Sector {ring}"
+            npc_role = "Monitoring wavefunction gradients in the southern basin."
+        elif 225 <= deg < 315:
+            # West
+            sector_type = "warp"
+            name = f"Perlin Domain Warp Ridge — Sector {ring}"
+            desc = "Stratified topological ridges sculpted by continuous multi-octave domain warping."
+            dominant_feature = "warp_ridges"
+            sky_hex = "#78350f"
+            floor_hex = "#451a03"
+            accent_hex = "#fbbf24"
+            npc_title = f"Topologist Kaelen of Sector {ring}"
+            npc_role = "Surveying non-Euclidean contours on the western ridge."
+        else:
+            # North
+            sector_type = "interference"
+            name = f"Quantum Interference Spire — Sector {ring}"
+            desc = "Monumental crystalline spire concentrating high-frequency latent interference patterns."
+            dominant_feature = "crystalline_spire"
+            sky_hex = "#1e1b4b"
+            floor_hex = "#0f0728"
+            accent_hex = "#c084fc"
+            npc_title = f"Spectroscopist Thorne of Sector {ring}"
+            npc_role = "Channeling coherent phase alignment across the northern spire."
+
+        palette = RoomVisualPalette(
+            sky_tone=sky_hex,
+            floor_tone=floor_hex,
+            dominant_color=accent_hex,
+            accent_color=accent_hex,
+        )
+
+        lighting = LightingConfig(
+            ambient_color=accent_hex,
+            ambient_intensity=1.2,
+            fog_color=sky_hex,
+            fog_density=0.003,
+        )
+
+        return {
+            "x": x,
+            "z": z,
+            "sector_type": sector_type,
+            "name": name,
+            "description": desc,
+            "dominant_feature": dominant_feature,
+            "palette": palette,
+            "lighting": lighting,
+            "npc_title": npc_title,
+            "npc_role": npc_role,
+        }
 
     def _sample_desert_field(
         self, x: float, z: float, dist: float, deg: float, ring: int, moisture: float, elevation: float
@@ -435,7 +524,17 @@ class InfiniteWorldField:
         fwd_cx = (portal_cx + w // 2) % w
         feat = info["dominant_feature"]
 
-        if feat in ["oasis_grove", "terraced_pools"]:
+        if feat in ["quantum_core", "standing_waves", "energy_well", "warp_ridges", "crystalline_spire"]:
+            # Iridescent quantum interference rings & floating energy core
+            cx = fwd_cx
+            for r_ring in [260, 190, 130, 75]:
+                draw.ellipse(
+                    [(cx - r_ring) % w, int(horizon_y - 140 - r_ring * 0.55), (cx + r_ring) % w, int(horizon_y - 140 + r_ring * 0.55)],
+                    outline=(56, 189, 248),
+                    width=3,
+                )
+            draw.ellipse([(cx - 45) % w, horizon_y - 185, (cx + 45) % w, horizon_y - 95], fill=(255, 255, 255), outline=(168, 85, 247), width=4)
+        elif feat in ["oasis_grove", "terraced_pools"]:
             # Lush Date Palms & Emerald Water Reflection Basin
             for px_i in [fwd_cx - 260, fwd_cx - 90, fwd_cx + 120, fwd_cx + 290]:
                 draw_palm_tree(draw, px_i % w, horizon_y, height=270)
