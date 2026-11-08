@@ -68,7 +68,11 @@ export function PromptRefinementChat() {
     const startTime = performance.now();
 
     try {
-      const res = await fetch("/world/compile", {
+      const backendOrigin =
+        typeof window !== "undefined" && window.location.port === "3000"
+          ? `${window.location.protocol}//${window.location.hostname}:8001`
+          : "";
+      const res = await fetch(`${backendOrigin}/world/compile`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

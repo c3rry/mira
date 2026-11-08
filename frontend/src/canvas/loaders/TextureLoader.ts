@@ -1044,16 +1044,19 @@ export function loadPanoramaTexture(
     return Promise.resolve(textureCache.get(url)!);
   }
 
-  // if url encodes custom prompt-driven synthesis parameters, render bespoke 360 canvas
-  if (url.includes("custom=1") || url.startsWith("procedural://")) {
+  // Only synthesize procedural 2D canvas if explicitly requested via procedural:// scheme
+  if (url.startsWith("procedural://")) {
     const customTex = createPromptDrivenPanorama(url);
     textureCache.set(url, customTex);
     return Promise.resolve(customTex);
   }
 
+  // Strip query string when loading static/generated .webp or .png files from disk so Next.js serves the real JoPano image
+  const cleanFileUrl = url.split("?")[0];
+
   return new Promise((resolve) => {
     loader.load(
-      url,
+      cleanFileUrl,
       (texture) => {
         texture.colorSpace = THREE.SRGBColorSpace;
         texture.minFilter = THREE.LinearFilter;

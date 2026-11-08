@@ -21,6 +21,7 @@ from backend.app.schemas import (
     SphericalCoord,
     WorldGraph,
 )
+from backend.app.services.local_diffusion import generate_room_panorama_and_depth
 
 load_dotenv(os.path.join(os.path.dirname(__file__), "..", "..", ".env"))
 load_dotenv()
@@ -162,11 +163,47 @@ def enrich_and_normalize_graph(
         # pass lighting colors and architectural style into panorama_url so custom worlds render uniquely
         amb_col = urllib.parse.quote(getattr(room.lighting, "ambient_color", "") or "")
         fog_col = urllib.parse.quote(getattr(room.lighting, "fog_color", "") or "")
-        room.panorama_url = (
-            f"{base_pano}?custom=1&room={q_room}&biome={q_biome}"
-            f"&prompt={q_prompt}&idx={idx}&sky={amb_col}&floor={fog_col}"
-        )
-        room.depth_url = base_depth
+
+        # Synchronously synthesize the initial room (idx == 0) via JoPano 6-Face Cubemap + Poisson CFB (~2.8s)
+        # and synthesize rooms 1..N asynchronously in a background thread so /world/compile never hits proxy timeout!
+        if idx == 0:
+            local_assets = generate_room_panorama_and_depth(
+                world_id=graph.world_id,
+                room_id=room.room_id,
+                room_name=room.name,
+                world_prompt=prompt,
+                biome_type=b_type,
+                room_idx=idx,
+                ambient_color=getattr(room.lighting, "ambient_color", "") or "",
+                fog_color=getattr(room.lighting, "fog_color", "") or "",
+            )
+            if local_assets is not None:
+                room.panorama_url, room.depth_url = local_assets
+            else:
+                room.panorama_url = base_pano
+                room.depth_url = base_depth
+        else:
+            safe_world = re.sub(r"[^a-zA-Z0-9_-]", "", graph.world_id or "world_default")
+            safe_room = re.sub(r"[^a-zA-Z0-9_-]", "", room.room_id or f"room_{idx}")
+            room.panorama_url = f"/generated_worlds/{safe_world}/{safe_room}_panorama.webp"
+            room.depth_url = f"/generated_worlds/{safe_world}/{safe_room}_depth.png"
+
+            import threading
+
+            threading.Thread(
+                target=generate_room_panorama_and_depth,
+                kwargs={
+                    "world_id": graph.world_id,
+                    "room_id": room.room_id,
+                    "room_name": room.name,
+                    "world_prompt": prompt,
+                    "biome_type": b_type,
+                    "room_idx": idx,
+                    "ambient_color": getattr(room.lighting, "ambient_color", "") or "",
+                    "fog_color": getattr(room.lighting, "fog_color", "") or "",
+                },
+                daemon=True,
+            ).start()
 
         # ensure connected adjacency graph
         if not room.adjacent_room_ids:
@@ -394,7 +431,7 @@ async def generate_world_graph(
     if biome_hint:
         full_prompt += f" (theme: {biome_hint})"
 
-    candidate_models = ["gemini-3.5-flash-lite", "gemini-3.8-flash", "gemini-3-flash-preview"]
+    candidate_models = ["gemini-3.5-flash-lite", "gemini-3.8-flash"]
     clean_schema = get_clean_world_graph_schema()
     loop = asyncio.get_running_loop()
 
@@ -409,13 +446,13 @@ async def generate_world_graph(
                         response_mime_type="application/json",
                         response_schema=clean_schema,
                         temperature=0.7,
-                        http_options=types.HttpOptions(timeout=6500),
+                        http_options=types.HttpOptions(timeout=12000),
                     ),
                 )
 
             response = await asyncio.wait_for(
                 loop.run_in_executor(None, _call_model),
-                timeout=7.5,
+                timeout=12.5,
             )
 
             if not response or not response.text:

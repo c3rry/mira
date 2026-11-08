@@ -1,4 +1,4 @@
-// primary react three fiber canvas container with walkable world-root group, props and characters
+// primary react three fiber canvas container with decoupled 360 skybox and walkable 3d room floor
 "use client";
 
 import { useMemo, useRef } from "react";
@@ -19,6 +19,7 @@ export function WorldCanvas({ displacementScale = 28.0 }: WorldCanvasProps) {
   const { currentRoomId, rooms, npcs } = useWorldStore();
   const currentRoom = rooms[currentRoomId];
   const worldGroupRef = useRef<THREE.Group>(null);
+  const skyboxGroupRef = useRef<THREE.Group>(null);
 
   // fallback to default cached assets if room has no url
   const panoramaUrl = currentRoom?.panorama_url || "/cached_worlds/desert_oasis/panorama.webp";
@@ -32,9 +33,16 @@ export function WorldCanvas({ displacementScale = 28.0 }: WorldCanvasProps) {
   }, [npcs, currentRoomId]);
 
   return (
-    <div className="w-full h-full relative select-none">
+    <div
+      className="w-full h-full relative select-none outline-none"
+      tabIndex={0}
+      onPointerDown={(e) => {
+        // ensure keyboard focus returns to the 3d viewport when clicking the canvas
+        e.currentTarget.focus();
+      }}
+    >
       <Canvas
-        camera={{ position: [0, 0, 0.1], fov: 75 }}
+        camera={{ position: [0, 0, 0.5], fov: 75 }}
         dpr={[1, 1.5]}
         gl={{ antialias: true, alpha: false }}
         style={{ width: "100%", height: "100%", background: "#050508" }}
@@ -44,17 +52,19 @@ export function WorldCanvas({ displacementScale = 28.0 }: WorldCanvasProps) {
         <directionalLight position={[20, 60, 30]} intensity={1.65} />
         <pointLight position={[0, 10, 0]} intensity={0.9} />
 
-        {/* walkable world group: translated by WASD locomotion while OrbitControls rotates look direction */}
-        <group ref={worldGroupRef} name="walkable-world-root">
-          {/* panoramic inverted sphere with 16-bit depth displacement */}
+        {/* distant 360 skybox enclosure following camera with subtle 0.12x parallax */}
+        <group ref={skyboxGroupRef} name="skybox-enclosure-root">
           <PanoramaSphere
             panoramaUrl={panoramaUrl}
             depthUrl={depthUrl}
             displacementScale={displacementScale}
             mutationFactor={mutationLevel}
           />
+        </group>
 
-          {/* tactile 3d architectural floor compass */}
+        {/* walkable 3d architectural room floor, monuments, and patrolling npcs */}
+        <group ref={worldGroupRef} name="walkable-world-root">
+          {/* eye-level 3d architectural floor plane at y = -6.0 */}
           <ReflectiveFloorGrid />
 
           {/* interactive 3d props spawned at grounded coordinates */}
@@ -64,11 +74,12 @@ export function WorldCanvas({ displacementScale = 28.0 }: WorldCanvasProps) {
           <CharacterSpawner npcs={currentRoomNPCs} />
         </group>
 
-        {/* street view camera controller + WASD walking locomotion */}
+        {/* walkable first-person camera controller + WASD locomotion */}
         <CameraController
           enableZoom={false}
           rotateSpeed={-0.35}
           worldGroupRef={worldGroupRef}
+          skyboxGroupRef={skyboxGroupRef}
         />
       </Canvas>
     </div>

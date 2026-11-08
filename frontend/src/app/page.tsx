@@ -730,7 +730,10 @@ export default function Home() {
               </button>
 
               <button
-                onClick={toggleAudioUnlock}
+                onClick={(e) => {
+                  e.currentTarget.blur();
+                  toggleAudioUnlock();
+                }}
                 className="px-3 py-1 border uppercase tracking-widest transition-colors"
                 style={{
                   backgroundColor: audioActive ? `${theme.accentColor}28` : "rgba(0,0,0,0.45)",
@@ -815,7 +818,8 @@ export default function Home() {
               {Object.keys(rooms).map((rId, idx) => (
                 <button
                   key={rId}
-                  onClick={() => {
+                  onClick={(e) => {
+                    e.currentTarget.blur();
                     startTransition(() => {
                       setCurrentRoom(rId);
                     });

@@ -54,6 +54,10 @@ async def test_compile_circuit_breaker_timeout_fallback(monkeypatch):
     monkeypatch.setattr(
         "backend.app.services.compiler.CIRCUIT_BREAKER_TIMEOUT_SECONDS", 0.1
     )
+    monkeypatch.setattr(
+        "backend.app.services.gemini_generator.generate_room_panorama_and_depth",
+        lambda **kwargs: None,
+    )
 
     async with AsyncClient(
         transport=ASGITransport(app=app), base_url="http://test"
@@ -80,6 +84,10 @@ async def test_compile_upstream_exception_fallback(monkeypatch):
 
     monkeypatch.setattr(
         "backend.app.services.compiler.generate_world_graph", mock_failing_generate
+    )
+    monkeypatch.setattr(
+        "backend.app.services.gemini_generator.generate_room_panorama_and_depth",
+        lambda **kwargs: None,
     )
 
     async with AsyncClient(

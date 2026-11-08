@@ -15,7 +15,7 @@ from backend.app.services.gemini_generator import (
 
 logger = logging.getLogger("mira.compiler")
 
-CIRCUIT_BREAKER_TIMEOUT_SECONDS = 15.0
+CIRCUIT_BREAKER_TIMEOUT_SECONDS = 25.0
 
 
 async def compile_world_with_circuit_breaker(

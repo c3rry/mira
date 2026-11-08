@@ -17,8 +17,9 @@ async def test_root_endpoint():
 
 
 @pytest.mark.asyncio
-async def test_health_endpoint_with_lifespan():
+async def test_health_endpoint_with_lifespan(monkeypatch):
     # test health endpoint returns healthy with pre-loaded mock world
+    monkeypatch.setenv("WARMUP_LOCAL_DIFFUSION", "false")
     async with AsyncClient(
         transport=ASGITransport(app=app), base_url="http://test"
     ) as client:

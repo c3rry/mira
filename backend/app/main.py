@@ -33,6 +33,13 @@ async def lifespan(app: FastAPI):
         app.state.mock_world = None
         print(f"[LIFESPAN] Warning: Mock world not found at {shared_path}")
 
+    # optionally warm up local gpu diffusion in background thread so first compile is fast
+    if os.getenv("WARMUP_LOCAL_DIFFUSION", "true").lower() in ("1", "true", "yes"):
+        import threading
+        from backend.app.services.local_diffusion import warmup_local_diffusion
+
+        threading.Thread(target=warmup_local_diffusion, daemon=True).start()
+
     yield
 
     # clean shutdown

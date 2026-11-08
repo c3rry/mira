@@ -1,4 +1,4 @@
-// clamped panoramic camera controller with polar angle limits and WASD / arrow key world-space walking locomotion
+// clamped panoramic camera controller with true walkable OrbitControls camera+target rig and WASD locomotion
 "use client";
 
 import { RefObject, useEffect, useRef } from "react";
@@ -36,12 +36,14 @@ interface CameraControllerProps {
   enableZoom?: boolean;
   rotateSpeed?: number;
   worldGroupRef?: RefObject<THREE.Group | null>;
+  skyboxGroupRef?: RefObject<THREE.Group | null>;
 }
 
 export function CameraController({
   enableZoom = false,
   rotateSpeed = -0.35,
   worldGroupRef,
+  skyboxGroupRef,
 }: CameraControllerProps) {
   const controlsRef = useRef<OrbitControlsImpl>(null);
   const { camera } = useThree();
@@ -62,25 +64,26 @@ export function CameraController({
     sprint: false,
   });
 
-  const playerOffsetRef = useRef<THREE.Vector3>(new THREE.Vector3(0, 0, 0));
   const walkBobPhase = useRef<number>(0);
 
-  // reset player position to center of chamber when changing rooms
+  // reset player camera and target to center of chamber when changing rooms
   useEffect(() => {
-    playerOffsetRef.current.set(0, 0, 0);
     if (worldGroupRef?.current) {
       worldGroupRef.current.position.set(0, 0, 0);
     }
+    if (skyboxGroupRef?.current) {
+      skyboxGroupRef.current.position.set(0, 0, 0);
+    }
     if (controlsRef.current) {
+      camera.position.set(0, 0, 0.5);
       controlsRef.current.target.set(0, 0, 0);
-      camera.position.set(0, 0, 0.1);
       controlsRef.current.update();
     }
-  }, [currentRoomId, camera, worldGroupRef]);
+  }, [currentRoomId, camera, worldGroupRef, skyboxGroupRef]);
 
   useEffect(() => {
     const isInputFocused = (e: KeyboardEvent) => {
-      const el = e.target as HTMLElement | null;
+      const el = (e.target || document.activeElement) as HTMLElement | null;
       if (!el) return false;
       return (
         el.tagName === "INPUT" ||
@@ -92,19 +95,30 @@ export function CameraController({
     const handleKeyDown = (e: KeyboardEvent) => {
       if (isInputFocused(e)) return;
       const k = e.key.toLowerCase();
-      if (k === "w" || e.key === "ArrowUp") keysRef.current.forward = true;
-      if (k === "s" || e.key === "ArrowDown") keysRef.current.backward = true;
-      if (k === "a" || e.key === "ArrowLeft") keysRef.current.left = true;
-      if (k === "d" || e.key === "ArrowRight") keysRef.current.right = true;
+      const code = e.code;
+
+      // blur focused HUD buttons automatically so WASD/arrow keys always drive movement
+      if (
+        document.activeElement instanceof HTMLButtonElement &&
+        ["w", "a", "s", "d", "arrowup", "arrowdown", "arrowleft", "arrowright"].includes(k)
+      ) {
+        document.activeElement.blur();
+      }
+
+      if (k === "w" || code === "KeyW" || e.key === "ArrowUp") keysRef.current.forward = true;
+      if (k === "s" || code === "KeyS" || e.key === "ArrowDown") keysRef.current.backward = true;
+      if (k === "a" || code === "KeyA" || e.key === "ArrowLeft") keysRef.current.left = true;
+      if (k === "d" || code === "KeyD" || e.key === "ArrowRight") keysRef.current.right = true;
       if (e.key === "Shift") keysRef.current.sprint = true;
     };
 
     const handleKeyUp = (e: KeyboardEvent) => {
       const k = e.key.toLowerCase();
-      if (k === "w" || e.key === "ArrowUp") keysRef.current.forward = false;
-      if (k === "s" || e.key === "ArrowDown") keysRef.current.backward = false;
-      if (k === "a" || e.key === "ArrowLeft") keysRef.current.left = false;
-      if (k === "d" || e.key === "ArrowRight") keysRef.current.right = false;
+      const code = e.code;
+      if (k === "w" || code === "KeyW" || e.key === "ArrowUp") keysRef.current.forward = false;
+      if (k === "s" || code === "KeyS" || e.key === "ArrowDown") keysRef.current.backward = false;
+      if (k === "a" || code === "KeyA" || e.key === "ArrowLeft") keysRef.current.left = false;
+      if (k === "d" || code === "KeyD" || e.key === "ArrowRight") keysRef.current.right = false;
       if (e.key === "Shift") keysRef.current.sprint = false;
     };
 
@@ -129,13 +143,14 @@ export function CameraController({
   }, []);
 
   useFrame((_, delta) => {
-    if (activeScreen !== "game" || !worldGroupRef?.current) return;
+    if (activeScreen !== "game" || !controlsRef.current) return;
 
     const { forward, backward, left, right, sprint } = keysRef.current;
     const isMoving = forward || backward || left || right;
+    const controls = controlsRef.current;
 
     if (isMoving) {
-      const moveSpeed = (sprint ? 72.0 : 44.0) * Math.min(delta, 0.1);
+      const moveSpeed = (sprint ? 26.0 : 15.0) * Math.min(delta, 0.1);
 
       // compute horizontal forward and right vectors from camera look direction
       const forwardVec = new THREE.Vector3();
@@ -157,42 +172,46 @@ export function CameraController({
 
       if (moveDelta.lengthSq() > 0) {
         moveDelta.normalize().multiplyScalar(moveSpeed);
-        playerOffsetRef.current.add(moveDelta);
 
-        // clamp player walking radius inside chamber bounds so player stays inside the 500-unit sphere
-        const maxWalkRadius = 175.0;
-        const horizLen = Math.hypot(playerOffsetRef.current.x, playerOffsetRef.current.z);
-        if (horizLen > maxWalkRadius) {
-          const clampRatio = maxWalkRadius / horizLen;
-          playerOffsetRef.current.x *= clampRatio;
-          playerOffsetRef.current.z *= clampRatio;
+        // clamp walkable radius inside the architectural floor bounds (max 110 units)
+        const nextTargetX = controls.target.x + moveDelta.x;
+        const nextTargetZ = controls.target.z + moveDelta.z;
+        const maxWalkRadius = 110.0;
+        const dist = Math.hypot(nextTargetX, nextTargetZ);
+        if (dist > maxWalkRadius) {
+          const clampedX = (nextTargetX / dist) * maxWalkRadius;
+          const clampedZ = (nextTargetZ / dist) * maxWalkRadius;
+          moveDelta.x = clampedX - controls.target.x;
+          moveDelta.z = clampedZ - controls.target.z;
         }
+
+        // translate camera.position and controls.target together before controls.update()
+        camera.position.add(moveDelta);
+        controls.target.add(moveDelta);
       }
 
-      walkBobPhase.current += delta * (sprint ? 13.0 : 9.0);
+      walkBobPhase.current += delta * (sprint ? 12.5 : 8.5);
     } else {
-      // smoothly settle head-bob back to zero when standing still
       walkBobPhase.current = THREE.MathUtils.lerp(walkBobPhase.current, 0, 0.15);
     }
 
-    const bobOffset = isMoving ? Math.sin(walkBobPhase.current) * 0.65 : 0;
+    // apply subtle vertical footstep head-bob to world floor while keeping horizon steady
+    const bobOffset = isMoving ? Math.sin(walkBobPhase.current) * 0.22 : 0;
+    if (worldGroupRef?.current) {
+      worldGroupRef.current.position.y = THREE.MathUtils.lerp(
+        worldGroupRef.current.position.y,
+        -bobOffset,
+        0.25
+      );
+    }
 
-    // translate the world root oppositely to player offset so player walks through the 3D room
-    worldGroupRef.current.position.x = THREE.MathUtils.lerp(
-      worldGroupRef.current.position.x,
-      -playerOffsetRef.current.x,
-      0.18
-    );
-    worldGroupRef.current.position.z = THREE.MathUtils.lerp(
-      worldGroupRef.current.position.z,
-      -playerOffsetRef.current.z,
-      0.18
-    );
-    worldGroupRef.current.position.y = THREE.MathUtils.lerp(
-      worldGroupRef.current.position.y,
-      -bobOffset,
-      0.22
-    );
+    // keep PanoramaSphere centered around camera with 0.88x follow (0.12x subtle parallax)
+    if (skyboxGroupRef?.current) {
+      skyboxGroupRef.current.position.x = camera.position.x * 0.88;
+      skyboxGroupRef.current.position.z = camera.position.z * 0.88;
+    }
+
+    controls.update();
   });
 
   return (

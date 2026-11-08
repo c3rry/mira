@@ -251,7 +251,7 @@ export function resolveAdaptiveTheme(
   };
 }
 
-const ARCHIVE_STORAGE_KEY = "mira_world_archives_v3";
+const ARCHIVE_STORAGE_KEY = "mira_world_archives_v6_jopano";
 
 export const BUILTIN_ARCHIVES: SavedWorldEntry[] = [
   {
@@ -269,8 +269,8 @@ export const BUILTIN_ARCHIVES: SavedWorldEntry[] = [
           room_id: "giza_forecourt",
           name: "Great Pyramid Forecourt",
           biome_type: "desert_oasis",
-          panorama_url: "/cached_worlds/desert_oasis/panorama.webp?custom=1&room=Great+Pyramid+Forecourt&biome=desert_oasis&prompt=Pyramids+of+Giza&idx=0",
-          depth_url: "/cached_worlds/desert_oasis/depth.png",
+          panorama_url: "/generated_worlds/archive_giza_necropolis/giza_forecourt_panorama.webp?v=jopano",
+          depth_url: "/generated_worlds/archive_giza_necropolis/giza_forecourt_depth.png?v=jopano",
           adjacent_room_ids: ["sphinx_causeway", "khufu_gallery", "solar_barque"],
           mutation_level: 0.0,
           npcs: [
@@ -295,8 +295,8 @@ export const BUILTIN_ARCHIVES: SavedWorldEntry[] = [
           room_id: "sphinx_causeway",
           name: "Sanctuary of the Great Sphinx",
           biome_type: "desert_oasis",
-          panorama_url: "/cached_worlds/desert_oasis/panorama.webp?custom=1&room=Sanctuary+of+the+Great+Sphinx&biome=desert_oasis&prompt=Great+Sphinx+of+Giza&idx=1",
-          depth_url: "/cached_worlds/desert_oasis/depth.png",
+          panorama_url: "/generated_worlds/archive_giza_necropolis/giza_causeway_panorama.webp?v=jopano",
+          depth_url: "/generated_worlds/archive_giza_necropolis/giza_causeway_depth.png?v=jopano",
           adjacent_room_ids: ["giza_forecourt", "khufu_gallery"],
           mutation_level: 0.0,
           npcs: [
@@ -321,8 +321,8 @@ export const BUILTIN_ARCHIVES: SavedWorldEntry[] = [
           room_id: "khufu_gallery",
           name: "Grand Gallery of Khufu",
           biome_type: "desert_oasis",
-          panorama_url: "/cached_worlds/desert_oasis/panorama.webp?custom=1&room=Grand+Gallery+of+Khufu&biome=desert_oasis&prompt=Grand+Gallery+Pyramid+of+Giza&idx=2",
-          depth_url: "/cached_worlds/desert_oasis/depth.png",
+          panorama_url: "/generated_worlds/archive_giza_necropolis/giza_antechamber_panorama.webp?v=jopano",
+          depth_url: "/generated_worlds/archive_giza_necropolis/giza_antechamber_depth.png?v=jopano",
           adjacent_room_ids: ["giza_forecourt", "solar_barque"],
           mutation_level: 0.0,
           npcs: [
@@ -347,8 +347,8 @@ export const BUILTIN_ARCHIVES: SavedWorldEntry[] = [
           room_id: "solar_barque",
           name: "Court of the Solar Barque",
           biome_type: "desert_oasis",
-          panorama_url: "/cached_worlds/desert_oasis/panorama.webp?custom=1&room=Court+of+the+Solar+Barque&biome=desert_oasis&prompt=Egyptian+Solar+Barque+Temple&idx=3",
-          depth_url: "/cached_worlds/desert_oasis/depth.png",
+          panorama_url: "/cached_worlds/desert_oasis_panorama.webp?v=jopano",
+          depth_url: "/cached_worlds/desert_oasis_depth.png?v=jopano",
           adjacent_room_ids: ["giza_forecourt", "khufu_gallery"],
           mutation_level: 0.0,
           npcs: [
@@ -395,8 +395,8 @@ export const BUILTIN_ARCHIVES: SavedWorldEntry[] = [
           room_id: "rome_forum",
           name: "Via Sacra & Roman Forum",
           biome_type: "medieval_tavern",
-          panorama_url: "/cached_worlds/medieval_tavern/panorama.webp?custom=1&room=Via+Sacra+Roman+Forum&biome=medieval_tavern&prompt=Imperial+Forum+of+Rome&idx=0",
-          depth_url: "/cached_worlds/medieval_tavern/depth.png",
+          panorama_url: "/generated_worlds/archive_imperial_rome/rome_forum_panorama.webp?v=jopano",
+          depth_url: "/generated_worlds/archive_imperial_rome/rome_forum_depth.png?v=jopano",
           adjacent_room_ids: ["rome_pantheon", "rome_colosseum"],
           mutation_level: 0.0,
           npcs: [
@@ -421,8 +421,8 @@ export const BUILTIN_ARCHIVES: SavedWorldEntry[] = [
           room_id: "rome_pantheon",
           name: "Rotunda of the Pantheon",
           biome_type: "medieval_tavern",
-          panorama_url: "/cached_worlds/medieval_tavern/panorama.webp?custom=1&room=Rotunda+of+the+Pantheon&biome=medieval_tavern&prompt=Pantheon+Rotunda+Rome&idx=1",
-          depth_url: "/cached_worlds/medieval_tavern/depth.png",
+          panorama_url: "/generated_worlds/archive_imperial_rome/rome_basilica_panorama.webp?v=jopano",
+          depth_url: "/generated_worlds/archive_imperial_rome/rome_basilica_depth.png?v=jopano",
           adjacent_room_ids: ["rome_forum", "rome_colosseum"],
           mutation_level: 0.0,
           npcs: [
@@ -447,8 +447,8 @@ export const BUILTIN_ARCHIVES: SavedWorldEntry[] = [
           room_id: "rome_colosseum",
           name: "Flavian Amphitheater Colonnade",
           biome_type: "medieval_tavern",
-          panorama_url: "/cached_worlds/medieval_tavern/panorama.webp?custom=1&room=Flavian+Amphitheater+Colonnade&biome=medieval_tavern&prompt=Roman+Colosseum+Arena&idx=2",
-          depth_url: "/cached_worlds/medieval_tavern/depth.png",
+          panorama_url: "/generated_worlds/archive_imperial_rome/rome_tabularium_panorama.webp?v=jopano",
+          depth_url: "/generated_worlds/archive_imperial_rome/rome_tabularium_depth.png?v=jopano",
           adjacent_room_ids: ["rome_forum", "rome_pantheon"],
           mutation_level: 0.0,
           npcs: [
@@ -488,8 +488,8 @@ export const BUILTIN_ARCHIVES: SavedWorldEntry[] = [
           room_id: "babylon_terrace",
           name: "Upper Cedar Terrace",
           biome_type: "enchanted_forest",
-          panorama_url: "/cached_worlds/enchanted_forest/panorama.webp?custom=1&room=Upper+Cedar+Terrace&biome=enchanted_forest&prompt=Hanging+Gardens+of+Babylon&idx=0",
-          depth_url: "/cached_worlds/enchanted_forest/depth.png",
+          panorama_url: "/generated_worlds/archive_sylvan_gardens/sylvan_glade_panorama.webp?v=jopano",
+          depth_url: "/generated_worlds/archive_sylvan_gardens/sylvan_glade_depth.png?v=jopano",
           adjacent_room_ids: ["babylon_aqueduct"],
           mutation_level: 0.0,
           npcs: [
@@ -514,8 +514,8 @@ export const BUILTIN_ARCHIVES: SavedWorldEntry[] = [
           room_id: "babylon_aqueduct",
           name: "Ishtar Water Pavilion",
           biome_type: "enchanted_forest",
-          panorama_url: "/cached_worlds/enchanted_forest/panorama.webp?custom=1&room=Ishtar+Water+Pavilion&biome=enchanted_forest&prompt=Babylon+Water+Gardens&idx=1",
-          depth_url: "/cached_worlds/enchanted_forest/depth.png",
+          panorama_url: "/generated_worlds/archive_sylvan_gardens/sylvan_bridge_panorama.webp?v=jopano",
+          depth_url: "/generated_worlds/archive_sylvan_gardens/sylvan_bridge_depth.png?v=jopano",
           adjacent_room_ids: ["babylon_terrace"],
           mutation_level: 0.0,
           npcs: [
@@ -757,15 +757,11 @@ export const useWorldStore = create<WorldState>((set, get) => ({
     worldData.rooms.forEach((r: any, idx: number) => {
       const inferredBiome = r.biome_type || "medieval_tavern";
       const rawPano = r.panorama_url || `/cached_worlds/${inferredBiome}/panorama.webp`;
-      const worldPrompt = worldData.title || r.name || "Architectural Sanctuary";
-      const enrichedPanoUrl = rawPano.includes("custom=1")
-        ? rawPano
-        : `${rawPano}?custom=1&room=${encodeURIComponent(r.name)}&biome=${encodeURIComponent(inferredBiome)}&prompt=${encodeURIComponent(worldPrompt)}&idx=${idx}`;
 
       roomsMap[r.room_id] = {
         room_id: r.room_id,
         name: r.name,
-        panorama_url: enrichedPanoUrl,
+        panorama_url: rawPano,
         depth_url: r.depth_url || `/cached_worlds/${inferredBiome}/depth.png`,
         adjacent_room_ids: r.adjacent_room_ids || [],
         mutation_level: r.mutation_level || 0.0,
