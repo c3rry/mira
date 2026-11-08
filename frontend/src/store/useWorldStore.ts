@@ -358,7 +358,16 @@ const ARCHIVE_STORAGE_KEY = "mira_world_archives_v12_photoreal_raw";
 const CHECKPOINTS_STORAGE_KEY = "mira_world_checkpoints_v1";
 const ACTIVE_STATE_STORAGE_KEY = "mira_active_game_state_v1";
 
-export const BUILTIN_ARCHIVES: SavedWorldEntry[] = [];
+import builtinWorldsData from "./builtin_worlds.json";
+
+export const BUILTIN_ARCHIVES: SavedWorldEntry[] = (builtinWorldsData as any[]).map((w) => ({
+  world_id: w.world_id,
+  title: w.title,
+  prompt: w.description || w.title,
+  biome_hint: w.biome_hint,
+  created_at: "Pre-compiled Spatial Chronicle",
+  world_data: w,
+}));
 
 export function inferTopologyType(text?: string): "linear" | "nature_open" | "city_grid" | "hub_spoke" {
   const t = (text || "").toLowerCase();

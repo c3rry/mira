@@ -486,13 +486,13 @@ export default function Home() {
                   className="text-xs uppercase tracking-[0.28em] mb-1"
                   style={{ color: theme.accentColor }}
                 >
-                  World Chronicles
+                  Expansive Chronicles Catalog
                 </div>
                 <h2
                   className="text-2xl font-bold uppercase tracking-[0.18em]"
                   style={{ color: theme.accentText }}
                 >
-                  Saved Chronicles
+                  Choose Your Exploration Realm
                 </h2>
               </div>
 
@@ -525,10 +525,10 @@ export default function Home() {
                   className="text-sm font-bold uppercase tracking-[0.2em]"
                   style={{ color: theme.accentColor }}
                 >
-                  Chronicles Ledger
+                  Chronicles Ledger (10 Expansive Realms)
                 </h3>
                 <span className="text-xs italic" style={{ color: theme.mutedText }}>
-                  Select any chronicle to begin your journey
+                  Mira presents 10 expansive realms: select any realm below to enter immediately
                 </span>
               </div>
 
@@ -661,14 +661,14 @@ export default function Home() {
             <div className="flex items-center flex-wrap gap-2 text-[11px]">
               <button
                 onClick={() => setActiveScreen("storage")}
-                className="px-2.5 py-0.5 border uppercase tracking-wider font-bold transition-colors"
+                className="px-2.5 py-0.5 border uppercase tracking-wider font-bold transition-all flex items-center gap-1 hover:scale-[1.02]"
                 style={{
-                  backgroundColor: "rgba(0,0,0,0.45)",
-                  borderColor: `${theme.panelBorder}88`,
-                  color: theme.accentText,
+                  backgroundColor: `${theme.accentColor}24`,
+                  borderColor: theme.accentColor,
+                  color: theme.accentColor,
                 }}
               >
-                Archives
+                Choose Realm (10)
               </button>
 
               <button

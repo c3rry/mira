@@ -1,0 +1,1176 @@
+[
+  {
+    "world_id": "times_square_world_01",
+    "title": "Neon Metropolis",
+    "biome_hint": "cyberpunk_alley",
+    "initial_room_id": "room_neon_avenue",
+    "description": "Luminous rain-slicked city streets, neon billboards, and towering high-density corporate towers.",
+    "rooms": [
+      {
+        "room_id": "room_neon_avenue",
+        "name": "Neon Avenue",
+        "biome_type": "cyberpunk_alley",
+        "panorama_url": "/generated_worlds/times_square_world_01/room_neon_avenue_panorama.webp",
+        "depth_url": "/generated_worlds/times_square_world_01/room_neon_avenue_depth.png",
+        "adjacent_room_ids": [
+          "room_broadway_junction",
+          "room_cyber_plaza"
+        ],
+        "worldX": 0,
+        "worldZ": 0,
+        "topology_type": "city_grid",
+        "visual_palette": {
+          "dominant_color": "#7c3aed",
+          "accent_color": "#06b6d4",
+          "sky_tone": "#0f172a",
+          "floor_tone": "#18181b"
+        },
+        "npcs": [
+          {
+            "npc_id": "npc_jesse",
+            "name": "Skyline Observer Jesse",
+            "room_id": "room_neon_avenue",
+            "persona_description": "Urban scout monitoring the neon grid pathways.",
+            "thought_log": [
+              "Observing neon traffic.",
+              "Welcoming explorer."
+            ],
+            "inventory": [
+              "holo_scanner"
+            ],
+            "hp": 100,
+            "position": {
+              "r": 500,
+              "theta": 0.78,
+              "phi": 2.2
+            }
+          }
+        ]
+      },
+      {
+        "room_id": "room_broadway_junction",
+        "name": "Broadway Junction",
+        "biome_type": "cyberpunk_alley",
+        "panorama_url": "/generated_worlds/times_square_world_01/room_broadway_junction_panorama.webp",
+        "depth_url": "/generated_worlds/times_square_world_01/room_broadway_junction_depth.png",
+        "adjacent_room_ids": [
+          "room_neon_avenue",
+          "room_subway_terminal"
+        ],
+        "worldX": 220,
+        "worldZ": 0,
+        "topology_type": "city_grid",
+        "visual_palette": {
+          "dominant_color": "#06b6d4",
+          "accent_color": "#f59e0b",
+          "sky_tone": "#0f172a",
+          "floor_tone": "#18181b"
+        }
+      },
+      {
+        "room_id": "room_cyber_plaza",
+        "name": "Cyber Plaza",
+        "biome_type": "cyberpunk_alley",
+        "panorama_url": "/generated_worlds/times_square_world_01/room_cyber_plaza_panorama.webp",
+        "depth_url": "/generated_worlds/times_square_world_01/room_cyber_plaza_depth.png",
+        "adjacent_room_ids": [
+          "room_neon_avenue",
+          "room_c4114f_5"
+        ],
+        "worldX": 0,
+        "worldZ": -220,
+        "topology_type": "city_grid",
+        "visual_palette": {
+          "dominant_color": "#ec4899",
+          "accent_color": "#06b6d4",
+          "sky_tone": "#0f172a",
+          "floor_tone": "#18181b"
+        }
+      },
+      {
+        "room_id": "room_subway_terminal",
+        "name": "Subway Terminal",
+        "biome_type": "cyberpunk_alley",
+        "panorama_url": "/generated_worlds/times_square_world_01/room_subway_terminal_panorama.webp",
+        "depth_url": "/generated_worlds/times_square_world_01/room_subway_terminal_depth.png",
+        "adjacent_room_ids": [
+          "room_broadway_junction"
+        ],
+        "worldX": 220,
+        "worldZ": -220,
+        "topology_type": "city_grid",
+        "visual_palette": {
+          "dominant_color": "#f59e0b",
+          "accent_color": "#3b82f6",
+          "sky_tone": "#0f172a",
+          "floor_tone": "#18181b"
+        }
+      },
+      {
+        "room_id": "room_c4114f_5",
+        "name": "Upper Skyline Terrace",
+        "biome_type": "cyberpunk_alley",
+        "panorama_url": "/generated_worlds/times_square_world_01/room_c4114f_5_panorama.webp",
+        "depth_url": "/generated_worlds/times_square_world_01/room_c4114f_5_depth.png",
+        "adjacent_room_ids": [
+          "room_cyber_plaza"
+        ],
+        "worldX": -220,
+        "worldZ": -220,
+        "topology_type": "city_grid",
+        "visual_palette": {
+          "dominant_color": "#38bdf8",
+          "accent_color": "#a855f7",
+          "sky_tone": "#0a0a0f",
+          "floor_tone": "#18181b"
+        }
+      }
+    ]
+  },
+  {
+    "world_id": "archive_giza_necropolis",
+    "title": "The Necropolis of Giza",
+    "biome_hint": "desert_oasis",
+    "initial_room_id": "giza_forecourt",
+    "description": "Colossal limestone pyramids, sun-drenched causeways, and the timeless mystery of the Great Sphinx.",
+    "rooms": [
+      {
+        "room_id": "giza_forecourt",
+        "name": "Pyramid Forecourt",
+        "biome_type": "desert_oasis",
+        "panorama_url": "/generated_worlds/archive_giza_necropolis/giza_forecourt_panorama.webp",
+        "depth_url": "/generated_worlds/archive_giza_necropolis/giza_forecourt_depth.png",
+        "adjacent_room_ids": [
+          "giza_causeway",
+          "sphinx_causeway"
+        ],
+        "worldX": 0,
+        "worldZ": 0,
+        "topology_type": "nature_open",
+        "visual_palette": {
+          "dominant_color": "#d97706",
+          "accent_color": "#fbbf24",
+          "sky_tone": "#fed7aa",
+          "floor_tone": "#78350f"
+        },
+        "npcs": [
+          {
+            "npc_id": "npc_merer",
+            "name": "Inspector Merer",
+            "room_id": "giza_forecourt",
+            "persona_description": "Ancient papyrus scribe overseeing royal transport.",
+            "thought_log": [
+              "Reviewing stone deliveries.",
+              "Observing horizon."
+            ],
+            "inventory": [
+              "papyrus_journal"
+            ],
+            "hp": 100,
+            "position": {
+              "r": 500,
+              "theta": 1.1,
+              "phi": 2.1
+            }
+          }
+        ]
+      },
+      {
+        "room_id": "giza_causeway",
+        "name": "Grand Causeway",
+        "biome_type": "desert_oasis",
+        "panorama_url": "/generated_worlds/archive_giza_necropolis/giza_causeway_panorama.webp",
+        "depth_url": "/generated_worlds/archive_giza_necropolis/giza_causeway_depth.png",
+        "adjacent_room_ids": [
+          "giza_forecourt",
+          "khufu_gallery"
+        ],
+        "worldX": 220,
+        "worldZ": 0,
+        "topology_type": "nature_open",
+        "visual_palette": {
+          "dominant_color": "#d97706",
+          "accent_color": "#fbbf24",
+          "sky_tone": "#fed7aa",
+          "floor_tone": "#78350f"
+        }
+      },
+      {
+        "room_id": "khufu_gallery",
+        "name": "Great Pyramid Gallery",
+        "biome_type": "desert_oasis",
+        "panorama_url": "/generated_worlds/archive_giza_necropolis/khufu_gallery_panorama.webp",
+        "depth_url": "/generated_worlds/archive_giza_necropolis/khufu_gallery_depth.png",
+        "adjacent_room_ids": [
+          "giza_causeway",
+          "solar_barque"
+        ],
+        "worldX": 440,
+        "worldZ": 0,
+        "topology_type": "nature_open",
+        "visual_palette": {
+          "dominant_color": "#b45309",
+          "accent_color": "#f59e0b",
+          "sky_tone": "#fed7aa",
+          "floor_tone": "#451a03"
+        }
+      },
+      {
+        "room_id": "solar_barque",
+        "name": "Solar Barque Sanctum",
+        "biome_type": "desert_oasis",
+        "panorama_url": "/generated_worlds/archive_giza_necropolis/solar_barque_panorama.webp",
+        "depth_url": "/generated_worlds/archive_giza_necropolis/solar_barque_depth.png",
+        "adjacent_room_ids": [
+          "khufu_gallery"
+        ],
+        "worldX": 440,
+        "worldZ": 220,
+        "topology_type": "nature_open",
+        "visual_palette": {
+          "dominant_color": "#d97706",
+          "accent_color": "#fbbf24",
+          "sky_tone": "#fed7aa",
+          "floor_tone": "#78350f"
+        }
+      },
+      {
+        "room_id": "sphinx_causeway",
+        "name": "Sphinx Causeway",
+        "biome_type": "desert_oasis",
+        "panorama_url": "/generated_worlds/archive_giza_necropolis/sphinx_causeway_panorama.webp",
+        "depth_url": "/generated_worlds/archive_giza_necropolis/sphinx_causeway_depth.png",
+        "adjacent_room_ids": [
+          "giza_forecourt",
+          "giza_antechamber"
+        ],
+        "worldX": 0,
+        "worldZ": -220,
+        "topology_type": "nature_open",
+        "visual_palette": {
+          "dominant_color": "#d97706",
+          "accent_color": "#fbbf24",
+          "sky_tone": "#fed7aa",
+          "floor_tone": "#78350f"
+        }
+      },
+      {
+        "room_id": "giza_antechamber",
+        "name": "Temple Antechamber",
+        "biome_type": "desert_oasis",
+        "panorama_url": "/generated_worlds/archive_giza_necropolis/giza_antechamber_panorama.webp",
+        "depth_url": "/generated_worlds/archive_giza_necropolis/giza_antechamber_depth.png",
+        "adjacent_room_ids": [
+          "sphinx_causeway"
+        ],
+        "worldX": 220,
+        "worldZ": -220,
+        "topology_type": "nature_open",
+        "visual_palette": {
+          "dominant_color": "#b45309",
+          "accent_color": "#f59e0b",
+          "sky_tone": "#fed7aa",
+          "floor_tone": "#451a03"
+        }
+      }
+    ]
+  },
+  {
+    "world_id": "archive_imperial_rome",
+    "title": "Imperial Forum of Rome",
+    "biome_hint": "medieval_tavern",
+    "initial_room_id": "rome_forum",
+    "description": "Sunlit travertine colonnades, the monumental Colosseum, and the rotunda of the Pantheon.",
+    "rooms": [
+      {
+        "room_id": "rome_forum",
+        "name": "Roman Forum Plaza",
+        "biome_type": "medieval_tavern",
+        "panorama_url": "/generated_worlds/archive_imperial_rome/rome_forum_panorama.webp",
+        "depth_url": "/generated_worlds/archive_imperial_rome/rome_forum_depth.png",
+        "adjacent_room_ids": [
+          "rome_colosseum",
+          "rome_basilica"
+        ],
+        "worldX": 0,
+        "worldZ": 0,
+        "topology_type": "nature_open",
+        "visual_palette": {
+          "dominant_color": "#b45309",
+          "accent_color": "#f59e0b",
+          "sky_tone": "#fef3c7",
+          "floor_tone": "#451a03"
+        },
+        "npcs": [
+          {
+            "npc_id": "npc_tiberius",
+            "name": "Curator Tiberius",
+            "room_id": "rome_forum",
+            "persona_description": "Imperial archivist recording Senate edicts.",
+            "thought_log": [
+              "Reviewing marble inscriptions."
+            ],
+            "inventory": [
+              "bronze_stylus"
+            ],
+            "hp": 100,
+            "position": {
+              "r": 500,
+              "theta": 0.95,
+              "phi": 2.15
+            }
+          }
+        ]
+      },
+      {
+        "room_id": "rome_colosseum",
+        "name": "Colosseum Arcades",
+        "biome_type": "medieval_tavern",
+        "panorama_url": "/generated_worlds/archive_imperial_rome/rome_colosseum_panorama.webp",
+        "depth_url": "/generated_worlds/archive_imperial_rome/rome_colosseum_depth.png",
+        "adjacent_room_ids": [
+          "rome_forum",
+          "rome_pantheon"
+        ],
+        "worldX": 220,
+        "worldZ": 0,
+        "topology_type": "nature_open",
+        "visual_palette": {
+          "dominant_color": "#b45309",
+          "accent_color": "#f59e0b",
+          "sky_tone": "#fef3c7",
+          "floor_tone": "#451a03"
+        }
+      },
+      {
+        "room_id": "rome_pantheon",
+        "name": "Pantheon Rotunda",
+        "biome_type": "medieval_tavern",
+        "panorama_url": "/generated_worlds/archive_imperial_rome/rome_pantheon_panorama.webp",
+        "depth_url": "/generated_worlds/archive_imperial_rome/rome_pantheon_depth.png",
+        "adjacent_room_ids": [
+          "rome_colosseum"
+        ],
+        "worldX": 440,
+        "worldZ": 0,
+        "topology_type": "nature_open",
+        "visual_palette": {
+          "dominant_color": "#b45309",
+          "accent_color": "#fbbf24",
+          "sky_tone": "#fef3c7",
+          "floor_tone": "#451a03"
+        }
+      },
+      {
+        "room_id": "rome_basilica",
+        "name": "Basilica of Maxentius",
+        "biome_type": "medieval_tavern",
+        "panorama_url": "/generated_worlds/archive_imperial_rome/rome_basilica_panorama.webp",
+        "depth_url": "/generated_worlds/archive_imperial_rome/rome_basilica_depth.png",
+        "adjacent_room_ids": [
+          "rome_forum",
+          "rome_tabularium"
+        ],
+        "worldX": 0,
+        "worldZ": -220,
+        "topology_type": "nature_open",
+        "visual_palette": {
+          "dominant_color": "#b45309",
+          "accent_color": "#f59e0b",
+          "sky_tone": "#fef3c7",
+          "floor_tone": "#451a03"
+        }
+      },
+      {
+        "room_id": "rome_tabularium",
+        "name": "Capitoline Tabularium",
+        "biome_type": "medieval_tavern",
+        "panorama_url": "/generated_worlds/archive_imperial_rome/rome_tabularium_panorama.webp",
+        "depth_url": "/generated_worlds/archive_imperial_rome/rome_tabularium_depth.png",
+        "adjacent_room_ids": [
+          "rome_basilica"
+        ],
+        "worldX": 220,
+        "worldZ": -220,
+        "topology_type": "nature_open",
+        "visual_palette": {
+          "dominant_color": "#b45309",
+          "accent_color": "#f59e0b",
+          "sky_tone": "#fef3c7",
+          "floor_tone": "#451a03"
+        }
+      }
+    ]
+  },
+  {
+    "world_id": "archive_sylvan_gardens",
+    "title": "Hanging Gardens of Babylon",
+    "biome_hint": "enchanted_forest",
+    "initial_room_id": "babylon_terrace",
+    "description": "Cascading botanical terraces, aqueduct waterfalls, and fragrant cedar pavilions.",
+    "rooms": [
+      {
+        "room_id": "babylon_terrace",
+        "name": "Grand Botanical Terrace",
+        "biome_type": "enchanted_forest",
+        "panorama_url": "/generated_worlds/archive_sylvan_gardens/babylon_terrace_panorama.webp",
+        "depth_url": "/generated_worlds/archive_sylvan_gardens/babylon_terrace_depth.png",
+        "adjacent_room_ids": [
+          "babylon_aqueduct",
+          "sylvan_bridge"
+        ],
+        "worldX": 0,
+        "worldZ": 0,
+        "topology_type": "nature_open",
+        "visual_palette": {
+          "dominant_color": "#15803d",
+          "accent_color": "#86efac",
+          "sky_tone": "#bbf7d0",
+          "floor_tone": "#14532d"
+        },
+        "npcs": [
+          {
+            "npc_id": "npc_samiramis",
+            "name": "Botanist Shammuramat",
+            "room_id": "babylon_terrace",
+            "persona_description": "Keeper of the terraced waters and flora.",
+            "thought_log": [
+              "Inspecting mountain cedars."
+            ],
+            "inventory": [
+              "silver_watering_pitcher"
+            ],
+            "hp": 100,
+            "position": {
+              "r": 500,
+              "theta": 1.2,
+              "phi": 2.1
+            }
+          }
+        ]
+      },
+      {
+        "room_id": "babylon_aqueduct",
+        "name": "Marble Aqueduct Cascades",
+        "biome_type": "enchanted_forest",
+        "panorama_url": "/generated_worlds/archive_sylvan_gardens/babylon_aqueduct_panorama.webp",
+        "depth_url": "/generated_worlds/archive_sylvan_gardens/babylon_aqueduct_depth.png",
+        "adjacent_room_ids": [
+          "babylon_terrace",
+          "sylvan_sanctum"
+        ],
+        "worldX": 220,
+        "worldZ": 0,
+        "topology_type": "nature_open",
+        "visual_palette": {
+          "dominant_color": "#15803d",
+          "accent_color": "#38bdf8",
+          "sky_tone": "#bbf7d0",
+          "floor_tone": "#14532d"
+        }
+      },
+      {
+        "room_id": "sylvan_bridge",
+        "name": "Sylvan Cedar Bridge",
+        "biome_type": "enchanted_forest",
+        "panorama_url": "/generated_worlds/archive_sylvan_gardens/sylvan_bridge_panorama.webp",
+        "depth_url": "/generated_worlds/archive_sylvan_gardens/sylvan_bridge_depth.png",
+        "adjacent_room_ids": [
+          "babylon_terrace",
+          "sylvan_glade"
+        ],
+        "worldX": 0,
+        "worldZ": -220,
+        "topology_type": "nature_open",
+        "visual_palette": {
+          "dominant_color": "#15803d",
+          "accent_color": "#86efac",
+          "sky_tone": "#bbf7d0",
+          "floor_tone": "#14532d"
+        }
+      },
+      {
+        "room_id": "sylvan_glade",
+        "name": "Sacred Lotus Glade",
+        "biome_type": "enchanted_forest",
+        "panorama_url": "/generated_worlds/archive_sylvan_gardens/sylvan_glade_panorama.webp",
+        "depth_url": "/generated_worlds/archive_sylvan_gardens/sylvan_glade_depth.png",
+        "adjacent_room_ids": [
+          "sylvan_bridge"
+        ],
+        "worldX": 220,
+        "worldZ": -220,
+        "topology_type": "nature_open",
+        "visual_palette": {
+          "dominant_color": "#15803d",
+          "accent_color": "#fbbf24",
+          "sky_tone": "#bbf7d0",
+          "floor_tone": "#14532d"
+        }
+      },
+      {
+        "room_id": "sylvan_sanctum",
+        "name": "High Terrace Pavilion",
+        "biome_type": "enchanted_forest",
+        "panorama_url": "/generated_worlds/archive_sylvan_gardens/sylvan_sanctum_panorama.webp",
+        "depth_url": "/generated_worlds/archive_sylvan_gardens/sylvan_sanctum_depth.png",
+        "adjacent_room_ids": [
+          "babylon_aqueduct"
+        ],
+        "worldX": 440,
+        "worldZ": 0,
+        "topology_type": "nature_open",
+        "visual_palette": {
+          "dominant_color": "#15803d",
+          "accent_color": "#86efac",
+          "sky_tone": "#bbf7d0",
+          "floor_tone": "#14532d"
+        }
+      }
+    ]
+  },
+  {
+    "world_id": "everest_glacier_01",
+    "title": "Mount Everest Summit",
+    "biome_hint": "space_station",
+    "initial_room_id": "khumbu_icefall",
+    "description": "Glacial seracs, the Western Cwm valley, and the windswept Himalayan summit crest.",
+    "rooms": [
+      {
+        "room_id": "khumbu_icefall",
+        "name": "Khumbu Icefall Base",
+        "biome_type": "space_station",
+        "panorama_url": "/generated_worlds/everest_glacier_01/khumbu_icefall_panorama.webp",
+        "depth_url": "/generated_worlds/everest_glacier_01/khumbu_icefall_depth.png",
+        "adjacent_room_ids": [
+          "western_cwm",
+          "south_col"
+        ],
+        "worldX": 0,
+        "worldZ": 0,
+        "topology_type": "nature_open",
+        "visual_palette": {
+          "dominant_color": "#0284c7",
+          "accent_color": "#e0f2fe",
+          "sky_tone": "#38bdf8",
+          "floor_tone": "#0c4a6e"
+        },
+        "npcs": [
+          {
+            "npc_id": "npc_tenzing",
+            "name": "Sherpa Lead Ang",
+            "room_id": "khumbu_icefall",
+            "persona_description": "High-altitude guide navigating seracs and crevasses.",
+            "thought_log": [
+              "Checking route ropes."
+            ],
+            "inventory": [
+              "ice_axe"
+            ],
+            "hp": 100,
+            "position": {
+              "r": 500,
+              "theta": 0.85,
+              "phi": 2.1
+            }
+          }
+        ]
+      },
+      {
+        "room_id": "western_cwm",
+        "name": "Western Cwm Glacial Valley",
+        "biome_type": "space_station",
+        "panorama_url": "/generated_worlds/everest_glacier_01/western_cwm_panorama.webp",
+        "depth_url": "/generated_worlds/everest_glacier_01/western_cwm_depth.png",
+        "adjacent_room_ids": [
+          "khumbu_icefall",
+          "summit_crest"
+        ],
+        "worldX": 220,
+        "worldZ": 0,
+        "topology_type": "nature_open",
+        "visual_palette": {
+          "dominant_color": "#0284c7",
+          "accent_color": "#e0f2fe",
+          "sky_tone": "#38bdf8",
+          "floor_tone": "#0c4a6e"
+        }
+      },
+      {
+        "room_id": "south_col",
+        "name": "South Col High Camp",
+        "biome_type": "space_station",
+        "panorama_url": "/generated_worlds/everest_glacier_01/south_col_panorama.webp",
+        "depth_url": "/generated_worlds/everest_glacier_01/south_col_depth.png",
+        "adjacent_room_ids": [
+          "khumbu_icefall",
+          "summit_crest"
+        ],
+        "worldX": 0,
+        "worldZ": -220,
+        "topology_type": "nature_open",
+        "visual_palette": {
+          "dominant_color": "#0284c7",
+          "accent_color": "#f8fafc",
+          "sky_tone": "#0284c7",
+          "floor_tone": "#0c4a6e"
+        }
+      },
+      {
+        "room_id": "summit_crest",
+        "name": "Everest Summit Ridge",
+        "biome_type": "space_station",
+        "panorama_url": "/generated_worlds/everest_glacier_01/summit_crest_panorama.webp",
+        "depth_url": "/generated_worlds/everest_glacier_01/summit_crest_depth.png",
+        "adjacent_room_ids": [
+          "western_cwm",
+          "south_col"
+        ],
+        "worldX": 220,
+        "worldZ": -220,
+        "topology_type": "nature_open",
+        "visual_palette": {
+          "dominant_color": "#0284c7",
+          "accent_color": "#fbbf24",
+          "sky_tone": "#38bdf8",
+          "floor_tone": "#0c4a6e"
+        }
+      }
+    ]
+  },
+  {
+    "world_id": "space_station_sector_01",
+    "title": "Celestial Orbital Station",
+    "biome_hint": "space_station",
+    "initial_room_id": "room_core",
+    "description": "High planetary orbit observation decks, gravity rings, and vacuum airlocks overlooking deep cosmos.",
+    "rooms": [
+      {
+        "room_id": "room_core",
+        "name": "Orbital Command Core",
+        "biome_type": "space_station",
+        "panorama_url": "/generated_worlds/space_station_sector_01/room_core_panorama.webp",
+        "depth_url": "/generated_worlds/space_station_sector_01/room_core_depth.png",
+        "adjacent_room_ids": [
+          "room_corridor",
+          "room_junction"
+        ],
+        "worldX": 0,
+        "worldZ": 0,
+        "topology_type": "city_grid",
+        "visual_palette": {
+          "dominant_color": "#3b82f6",
+          "accent_color": "#60a5fa",
+          "sky_tone": "#0a0a14",
+          "floor_tone": "#1e293b"
+        },
+        "npcs": [
+          {
+            "npc_id": "npc_orion",
+            "name": "Station Commander Vance",
+            "room_id": "room_core",
+            "persona_description": "Orbital flight director supervising planetary telemetry.",
+            "thought_log": [
+              "Monitoring orbit stabilization."
+            ],
+            "inventory": [
+              "telemetry_pad"
+            ],
+            "hp": 100,
+            "position": {
+              "r": 500,
+              "theta": 0.75,
+              "phi": 2.1
+            }
+          }
+        ]
+      },
+      {
+        "room_id": "room_corridor",
+        "name": "Hydroponics Transit Corridor",
+        "biome_type": "space_station",
+        "panorama_url": "/generated_worlds/space_station_sector_01/room_corridor_panorama.webp",
+        "depth_url": "/generated_worlds/space_station_sector_01/room_corridor_depth.png",
+        "adjacent_room_ids": [
+          "room_core",
+          "room_airlock"
+        ],
+        "worldX": 220,
+        "worldZ": 0,
+        "topology_type": "city_grid",
+        "visual_palette": {
+          "dominant_color": "#3b82f6",
+          "accent_color": "#34d399",
+          "sky_tone": "#0a0a14",
+          "floor_tone": "#1e293b"
+        }
+      },
+      {
+        "room_id": "room_airlock",
+        "name": "Spacewalk Airlock Chamber",
+        "biome_type": "space_station",
+        "panorama_url": "/generated_worlds/space_station_sector_01/room_airlock_panorama.webp",
+        "depth_url": "/generated_worlds/space_station_sector_01/room_airlock_depth.png",
+        "adjacent_room_ids": [
+          "room_corridor"
+        ],
+        "worldX": 440,
+        "worldZ": 0,
+        "topology_type": "city_grid",
+        "visual_palette": {
+          "dominant_color": "#3b82f6",
+          "accent_color": "#ef4444",
+          "sky_tone": "#000005",
+          "floor_tone": "#1e293b"
+        }
+      },
+      {
+        "room_id": "room_junction",
+        "name": "Observation Spire Junction",
+        "biome_type": "space_station",
+        "panorama_url": "/generated_worlds/space_station_sector_01/room_junction_panorama.webp",
+        "depth_url": "/generated_worlds/space_station_sector_01/room_junction_depth.png",
+        "adjacent_room_ids": [
+          "room_core"
+        ],
+        "worldX": 0,
+        "worldZ": -220,
+        "topology_type": "city_grid",
+        "visual_palette": {
+          "dominant_color": "#3b82f6",
+          "accent_color": "#60a5fa",
+          "sky_tone": "#0a0a14",
+          "floor_tone": "#1e293b"
+        }
+      }
+    ]
+  },
+  {
+    "world_id": "tokyo_night_01",
+    "title": "Tokyo Shinjuku Midnight",
+    "biome_hint": "cyberpunk_alley",
+    "initial_room_id": "room_kabukicho",
+    "description": "Vibrant lantern corridors, bustling izakaya alleys, and dazzling neon pedestrian crossings.",
+    "rooms": [
+      {
+        "room_id": "room_kabukicho",
+        "name": "Kabukicho Lantern Gate",
+        "biome_type": "cyberpunk_alley",
+        "panorama_url": "/generated_worlds/tokyo_night_01/room_kabukicho_panorama.webp",
+        "depth_url": "/generated_worlds/tokyo_night_01/room_kabukicho_depth.png",
+        "adjacent_room_ids": [
+          "room_shinjuku_crossing",
+          "room_backstreet_ramen"
+        ],
+        "worldX": 0,
+        "worldZ": 0,
+        "topology_type": "city_grid",
+        "visual_palette": {
+          "dominant_color": "#dc2626",
+          "accent_color": "#f59e0b",
+          "sky_tone": "#0f172a",
+          "floor_tone": "#18181b"
+        },
+        "npcs": [
+          {
+            "npc_id": "npc_kenji",
+            "name": "Night Guide Kenji",
+            "room_id": "room_kabukicho",
+            "persona_description": "Local street chronicler who knows every neon alleyway.",
+            "thought_log": [
+              "Watching midnight crowd."
+            ],
+            "inventory": [
+              "transit_pass"
+            ],
+            "hp": 100,
+            "position": {
+              "r": 500,
+              "theta": 0.82,
+              "phi": 2.15
+            }
+          }
+        ]
+      },
+      {
+        "room_id": "room_shinjuku_crossing",
+        "name": "Shinjuku Main Crossing",
+        "biome_type": "cyberpunk_alley",
+        "panorama_url": "/generated_worlds/tokyo_night_01/room_shinjuku_crossing_panorama.webp",
+        "depth_url": "/generated_worlds/tokyo_night_01/room_shinjuku_crossing_depth.png",
+        "adjacent_room_ids": [
+          "room_kabukicho",
+          "room_roppongi_rooftop"
+        ],
+        "worldX": 220,
+        "worldZ": 0,
+        "topology_type": "city_grid",
+        "visual_palette": {
+          "dominant_color": "#ec4899",
+          "accent_color": "#06b6d4",
+          "sky_tone": "#0f172a",
+          "floor_tone": "#18181b"
+        }
+      },
+      {
+        "room_id": "room_backstreet_ramen",
+        "name": "Omoide Yokocho Alley",
+        "biome_type": "cyberpunk_alley",
+        "panorama_url": "/generated_worlds/tokyo_night_01/room_backstreet_ramen_panorama.webp",
+        "depth_url": "/generated_worlds/tokyo_night_01/room_backstreet_ramen_depth.png",
+        "adjacent_room_ids": [
+          "room_kabukicho"
+        ],
+        "worldX": 0,
+        "worldZ": -220,
+        "topology_type": "city_grid",
+        "visual_palette": {
+          "dominant_color": "#d97706",
+          "accent_color": "#fbbf24",
+          "sky_tone": "#0f172a",
+          "floor_tone": "#18181b"
+        }
+      },
+      {
+        "room_id": "room_roppongi_rooftop",
+        "name": "Roppongi Skyline Overlook",
+        "biome_type": "cyberpunk_alley",
+        "panorama_url": "/generated_worlds/tokyo_night_01/room_roppongi_rooftop_panorama.webp",
+        "depth_url": "/generated_worlds/tokyo_night_01/room_roppongi_rooftop_depth.png",
+        "adjacent_room_ids": [
+          "room_shinjuku_crossing"
+        ],
+        "worldX": 220,
+        "worldZ": -220,
+        "topology_type": "city_grid",
+        "visual_palette": {
+          "dominant_color": "#7c3aed",
+          "accent_color": "#06b6d4",
+          "sky_tone": "#0a0a14",
+          "floor_tone": "#18181b"
+        }
+      }
+    ]
+  },
+  {
+    "world_id": "london_modern_01",
+    "title": "London Thames Embankment",
+    "biome_hint": "medieval_tavern",
+    "initial_room_id": "room_thames_embankment",
+    "description": "Cobblestone quays along the River Thames, iconic clocktower vistas, and historic market squares.",
+    "rooms": [
+      {
+        "room_id": "room_thames_embankment",
+        "name": "Thames River Embankment",
+        "biome_type": "medieval_tavern",
+        "panorama_url": "/generated_worlds/london_modern_01/room_thames_embankment_panorama.webp",
+        "depth_url": "/generated_worlds/london_modern_01/room_thames_embankment_depth.png",
+        "adjacent_room_ids": [
+          "room_westminster_bridge",
+          "room_covent_garden"
+        ],
+        "worldX": 0,
+        "worldZ": 0,
+        "topology_type": "nature_open",
+        "visual_palette": {
+          "dominant_color": "#475569",
+          "accent_color": "#f59e0b",
+          "sky_tone": "#64748b",
+          "floor_tone": "#1e293b"
+        },
+        "npcs": [
+          {
+            "npc_id": "npc_arthur",
+            "name": "Thames Boatman Arthur",
+            "room_id": "room_thames_embankment",
+            "persona_description": "Veteran waterman watching river tides.",
+            "thought_log": [
+              "Checking boat moorings."
+            ],
+            "inventory": [
+              "pocket_watch"
+            ],
+            "hp": 100,
+            "position": {
+              "r": 500,
+              "theta": 1.0,
+              "phi": 2.1
+            }
+          }
+        ]
+      },
+      {
+        "room_id": "room_westminster_bridge",
+        "name": "Westminster Bridge Arch",
+        "biome_type": "medieval_tavern",
+        "panorama_url": "/generated_worlds/london_modern_01/room_westminster_bridge_panorama.webp",
+        "depth_url": "/generated_worlds/london_modern_01/room_westminster_bridge_depth.png",
+        "adjacent_room_ids": [
+          "room_thames_embankment",
+          "room_soho_square"
+        ],
+        "worldX": 220,
+        "worldZ": 0,
+        "topology_type": "nature_open",
+        "visual_palette": {
+          "dominant_color": "#475569",
+          "accent_color": "#fbbf24",
+          "sky_tone": "#64748b",
+          "floor_tone": "#1e293b"
+        }
+      },
+      {
+        "room_id": "room_covent_garden",
+        "name": "Covent Garden Arcade",
+        "biome_type": "medieval_tavern",
+        "panorama_url": "/generated_worlds/london_modern_01/room_covent_garden_panorama.webp",
+        "depth_url": "/generated_worlds/london_modern_01/room_covent_garden_depth.png",
+        "adjacent_room_ids": [
+          "room_thames_embankment"
+        ],
+        "worldX": 0,
+        "worldZ": -220,
+        "topology_type": "nature_open",
+        "visual_palette": {
+          "dominant_color": "#b45309",
+          "accent_color": "#f59e0b",
+          "sky_tone": "#64748b",
+          "floor_tone": "#451a03"
+        }
+      },
+      {
+        "room_id": "room_soho_square",
+        "name": "Soho Historic Square",
+        "biome_type": "medieval_tavern",
+        "panorama_url": "/generated_worlds/london_modern_01/room_soho_square_panorama.webp",
+        "depth_url": "/generated_worlds/london_modern_01/room_soho_square_depth.png",
+        "adjacent_room_ids": [
+          "room_westminster_bridge"
+        ],
+        "worldX": 220,
+        "worldZ": -220,
+        "topology_type": "nature_open",
+        "visual_palette": {
+          "dominant_color": "#475569",
+          "accent_color": "#38bdf8",
+          "sky_tone": "#64748b",
+          "floor_tone": "#1e293b"
+        }
+      }
+    ]
+  },
+  {
+    "world_id": "ocean_floor_01",
+    "title": "Abyssal Trench Sanctuary",
+    "biome_hint": "space_station",
+    "initial_room_id": "room_abyssal_trench",
+    "description": "Deep-sea hydrothermal vents, glowing bioluminescent coral ridges, and sub-aquatic research outposts.",
+    "rooms": [
+      {
+        "room_id": "room_abyssal_trench",
+        "name": "Abyssal Chasm Floor",
+        "biome_type": "space_station",
+        "panorama_url": "/generated_worlds/ocean_floor_01/room_abyssal_trench_panorama.webp",
+        "depth_url": "/generated_worlds/ocean_floor_01/room_abyssal_trench_depth.png",
+        "adjacent_room_ids": [
+          "room_coral_ridge",
+          "room_hydrothermal_vents"
+        ],
+        "worldX": 0,
+        "worldZ": 0,
+        "topology_type": "nature_open",
+        "visual_palette": {
+          "dominant_color": "#0369a1",
+          "accent_color": "#38bdf8",
+          "sky_tone": "#082f49",
+          "floor_tone": "#0284c7"
+        },
+        "npcs": [
+          {
+            "npc_id": "npc_nautilus",
+            "name": "Submersible Pilot Clara",
+            "room_id": "room_abyssal_trench",
+            "persona_description": "Deep ocean researcher surveying hydrothermal thermal plumes.",
+            "thought_log": [
+              "Tracking bioluminescent pulses."
+            ],
+            "inventory": [
+              "sonar_beacon"
+            ],
+            "hp": 100,
+            "position": {
+              "r": 500,
+              "theta": 0.72,
+              "phi": 2.15
+            }
+          }
+        ]
+      },
+      {
+        "room_id": "room_coral_ridge",
+        "name": "Bioluminescent Coral Shelf",
+        "biome_type": "space_station",
+        "panorama_url": "/generated_worlds/ocean_floor_01/room_coral_ridge_panorama.webp",
+        "depth_url": "/generated_worlds/ocean_floor_01/room_coral_ridge_depth.png",
+        "adjacent_room_ids": [
+          "room_abyssal_trench",
+          "room_sunken_shelf"
+        ],
+        "worldX": 220,
+        "worldZ": 0,
+        "topology_type": "nature_open",
+        "visual_palette": {
+          "dominant_color": "#0891b2",
+          "accent_color": "#a5f3fc",
+          "sky_tone": "#082f49",
+          "floor_tone": "#0e7490"
+        }
+      },
+      {
+        "room_id": "room_hydrothermal_vents",
+        "name": "Black Smoker Vents",
+        "biome_type": "space_station",
+        "panorama_url": "/generated_worlds/ocean_floor_01/room_hydrothermal_vents_panorama.webp",
+        "depth_url": "/generated_worlds/ocean_floor_01/room_hydrothermal_vents_depth.png",
+        "adjacent_room_ids": [
+          "room_abyssal_trench"
+        ],
+        "worldX": 0,
+        "worldZ": -220,
+        "topology_type": "nature_open",
+        "visual_palette": {
+          "dominant_color": "#b45309",
+          "accent_color": "#fbbf24",
+          "sky_tone": "#082f49",
+          "floor_tone": "#451a03"
+        }
+      },
+      {
+        "room_id": "room_sunken_shelf",
+        "name": "Sunken Abyssal Ridge",
+        "biome_type": "space_station",
+        "panorama_url": "/generated_worlds/ocean_floor_01/room_sunken_shelf_panorama.webp",
+        "depth_url": "/generated_worlds/ocean_floor_01/room_sunken_shelf_depth.png",
+        "adjacent_room_ids": [
+          "room_coral_ridge"
+        ],
+        "worldX": 220,
+        "worldZ": -220,
+        "topology_type": "nature_open",
+        "visual_palette": {
+          "dominant_color": "#0369a1",
+          "accent_color": "#38bdf8",
+          "sky_tone": "#082f49",
+          "floor_tone": "#0284c7"
+        }
+      }
+    ]
+  },
+  {
+    "world_id": "amazon_rainforest_01",
+    "title": "Amazon Deep Rainforest",
+    "biome_hint": "enchanted_forest",
+    "initial_room_id": "canopy_floor",
+    "description": "Ancient towering kapok trees, misty sunlit riverbanks, and the rich symphony of the tropical canopy.",
+    "rooms": [
+      {
+        "room_id": "canopy_floor",
+        "name": "Primordial Forest Floor",
+        "biome_type": "enchanted_forest",
+        "panorama_url": "/generated_worlds/amazon_rainforest_01/canopy_floor_panorama.webp",
+        "depth_url": "/generated_worlds/amazon_rainforest_01/canopy_floor_depth.png",
+        "adjacent_room_ids": [
+          "river_bank",
+          "hollow_tree"
+        ],
+        "worldX": 0,
+        "worldZ": 0,
+        "topology_type": "nature_open",
+        "visual_palette": {
+          "dominant_color": "#166534",
+          "accent_color": "#86efac",
+          "sky_tone": "#bbf7d0",
+          "floor_tone": "#14532d"
+        },
+        "npcs": [
+          {
+            "npc_id": "npc_mateo",
+            "name": "Canopy Ranger Mateo",
+            "room_id": "canopy_floor",
+            "persona_description": "Forest ecologist studying ancient canopy biodiversity.",
+            "thought_log": [
+              "Cataloging birdcalls."
+            ],
+            "inventory": [
+              "field_compass"
+            ],
+            "hp": 100,
+            "position": {
+              "r": 500,
+              "theta": 1.15,
+              "phi": 2.1
+            }
+          }
+        ]
+      },
+      {
+        "room_id": "river_bank",
+        "name": "Misty River Basin",
+        "biome_type": "enchanted_forest",
+        "panorama_url": "/generated_worlds/amazon_rainforest_01/river_bank_panorama.webp",
+        "depth_url": "/generated_worlds/amazon_rainforest_01/river_bank_depth.png",
+        "adjacent_room_ids": [
+          "canopy_floor",
+          "sunlit_glade"
+        ],
+        "worldX": 220,
+        "worldZ": 0,
+        "topology_type": "nature_open",
+        "visual_palette": {
+          "dominant_color": "#166534",
+          "accent_color": "#38bdf8",
+          "sky_tone": "#bbf7d0",
+          "floor_tone": "#14532d"
+        }
+      },
+      {
+        "room_id": "hollow_tree",
+        "name": "Sacred Hollow Kapok",
+        "biome_type": "enchanted_forest",
+        "panorama_url": "/generated_worlds/amazon_rainforest_01/hollow_tree_panorama.webp",
+        "depth_url": "/generated_worlds/amazon_rainforest_01/hollow_tree_depth.png",
+        "adjacent_room_ids": [
+          "canopy_floor"
+        ],
+        "worldX": 0,
+        "worldZ": -220,
+        "topology_type": "nature_open",
+        "visual_palette": {
+          "dominant_color": "#166534",
+          "accent_color": "#fbbf24",
+          "sky_tone": "#bbf7d0",
+          "floor_tone": "#14532d"
+        }
+      },
+      {
+        "room_id": "sunlit_glade",
+        "name": "Sunlit Orchid Glade",
+        "biome_type": "enchanted_forest",
+        "panorama_url": "/generated_worlds/amazon_rainforest_01/sunlit_glade_panorama.webp",
+        "depth_url": "/generated_worlds/amazon_rainforest_01/sunlit_glade_depth.png",
+        "adjacent_room_ids": [
+          "river_bank"
+        ],
+        "worldX": 220,
+        "worldZ": -220,
+        "topology_type": "nature_open",
+        "visual_palette": {
+          "dominant_color": "#166534",
+          "accent_color": "#86efac",
+          "sky_tone": "#bbf7d0",
+          "floor_tone": "#14532d"
+        }
+      }
+    ]
+  }
+]

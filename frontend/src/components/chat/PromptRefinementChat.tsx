@@ -7,33 +7,63 @@ import { resolveAdaptiveTheme, useWorldStore } from "@/store/useWorldStore";
 const ARCHITECTURAL_PRESETS = [
   {
     numeral: "I",
+    label: "Neon Metropolis",
+    biome: "cyberpunk_alley",
+    prompt: "Luminous rain-slicked city streets, neon billboards, and towering high-density corporate towers",
+  },
+  {
+    numeral: "II",
     label: "Pyramids of Giza",
     biome: "desert_oasis",
     prompt: "The Great Pyramids of Giza at golden hour with the Sphinx causeway and Old Kingdom temples",
   },
   {
-    numeral: "II",
+    numeral: "III",
     label: "Imperial Forum of Rome",
     biome: "medieval_tavern",
     prompt: "Sunlit Roman Forum, Colosseum travertine arcades, and the Rotunda of the Pantheon",
   },
   {
-    numeral: "III",
+    numeral: "IV",
     label: "Gardens of Babylon",
     biome: "enchanted_forest",
     prompt: "Sunlit terraced botanical sanctuary with marble aqueducts, waterfalls, and cedar pavilions",
-  },
-  {
-    numeral: "IV",
-    label: "Acropolis of Athens",
-    biome: "medieval_tavern",
-    prompt: "Sunlit Pentelic marble Parthenon colonnade atop the Acropolis overlooking the Aegean Sea",
   },
   {
     numeral: "V",
     label: "Mount Everest Summit",
     biome: "space_station",
     prompt: "Mount Everest Khumbu Icefall, Western Cwm glacial valley, and snow-covered Himalayan summit ridge",
+  },
+  {
+    numeral: "VI",
+    label: "Celestial Station",
+    biome: "space_station",
+    prompt: "High planetary orbit observation decks, gravity rings, and vacuum airlocks overlooking deep cosmos",
+  },
+  {
+    numeral: "VII",
+    label: "Tokyo Midnight",
+    biome: "cyberpunk_alley",
+    prompt: "Vibrant lantern corridors, bustling izakaya alleys, and dazzling neon pedestrian crossings",
+  },
+  {
+    numeral: "VIII",
+    label: "London Thames",
+    biome: "medieval_tavern",
+    prompt: "Cobblestone quays along the River Thames, iconic clocktower vistas, and historic market squares",
+  },
+  {
+    numeral: "IX",
+    label: "Abyssal Trench",
+    biome: "space_station",
+    prompt: "Deep-sea hydrothermal vents, glowing bioluminescent coral ridges, and sub-aquatic research outposts",
+  },
+  {
+    numeral: "X",
+    label: "Amazon Rainforest",
+    biome: "enchanted_forest",
+    prompt: "Ancient towering kapok trees, misty sunlit riverbanks, and the rich symphony of the tropical canopy",
   },
 ];
 
@@ -51,6 +81,8 @@ export function PromptRefinementChat() {
     setIsCompilingWorld,
     hydrateFromMockWorld,
     saveWorldToArchive,
+    savedWorlds,
+    loadArchivedWorld,
     setLastTelemetry,
     setActiveScreen,
   } = useWorldStore();
@@ -182,12 +214,22 @@ export function PromptRefinementChat() {
               <button
                 key={chip.label}
                 onClick={() => {
-                  setPromptText(chip.prompt);
-                  setSelectedBiome(chip.biome);
-                  handleCompile(chip.prompt, chip.biome);
+                  const match = savedWorlds.find(
+                    (w) =>
+                      w.title.toLowerCase().includes(chip.label.toLowerCase()) ||
+                      chip.label.toLowerCase().includes(w.title.toLowerCase())
+                  );
+                  if (match) {
+                    loadArchivedWorld(match);
+                    setIsOpen(false);
+                  } else {
+                    setPromptText(chip.prompt);
+                    setSelectedBiome(chip.biome);
+                    handleCompile(chip.prompt, chip.biome);
+                  }
                 }}
                 disabled={isCompilingWorld}
-                className="text-xs px-2.5 py-1 border transition-all text-left"
+                className="text-xs px-2.5 py-1 border transition-all text-left hover:scale-[1.01]"
                 style={{
                   backgroundColor:
                     promptText === chip.prompt ? `${theme.accentColor}28` : "rgba(0,0,0,0.4)",
