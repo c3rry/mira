@@ -87,7 +87,7 @@ export function PromptRefinementChat() {
   }, [promptText, isOpen]);
 
   const fetchClarifyingQuestions = async (p: string) => {
-    const raw = p.split(" — [")[0].trim();
+    const raw = p.trim();
     if (!raw) return;
     setIsRefining(true);
     try {
@@ -117,23 +117,29 @@ export function PromptRefinementChat() {
     }
   };
 
+  // Toggle selection on/off (allowing undo) and do it discretely without touching the text box
   const handleSelectOption = (questionId: string, opt: ClarifyingOption) => {
-    const updated = { ...selectedOptions, [questionId]: opt.enhancement };
-    setSelectedOptions(updated);
-
-    const base = promptText.split(" — [")[0].trim();
-    const joined = Object.values(updated).join(", ");
-    setPromptText(`${base} — [${joined}]`);
+    setSelectedOptions((prev) => {
+      const updated = { ...prev };
+      if (updated[questionId] === opt.enhancement) {
+        // Toggle off (undo selection)
+        delete updated[questionId];
+      } else {
+        // Select option
+        updated[questionId] = opt.enhancement;
+      }
+      return updated;
+    });
   };
 
   const handleCompile = async (overridePrompt?: string, overrideBiome?: string) => {
     let activePrompt = (overridePrompt || promptText || "The Great Pyramids of Giza").trim();
     let activeBiome = overrideBiome !== undefined ? overrideBiome : selectedBiome || undefined;
 
-    // If options were selected, append them to clarify diffusion
-    if (Object.keys(selectedOptions).length > 0 && !activePrompt.includes(" — [")) {
-      const joined = Object.values(selectedOptions).join(", ");
-      activePrompt = `${activePrompt} — [${joined}]`;
+    // Discretely append selected options into compilation payload without polluting user text box
+    const selectedEnhancements = Object.values(selectedOptions).filter(Boolean);
+    if (selectedEnhancements.length > 0) {
+      activePrompt = `${activePrompt}, ${selectedEnhancements.join(", ")}`;
     }
 
     setIsCompilingWorld(true);
@@ -300,7 +306,9 @@ export function PromptRefinementChat() {
                   Clarify Realm Atmosphere & Vantage
                 </span>
                 <span className="text-[9px] uppercase tracking-wider" style={{ color: theme.mutedText }}>
-                  Click to Refine
+                  {Object.keys(selectedOptions).length > 0
+                    ? `${Object.keys(selectedOptions).length} selected (click to undo)`
+                    : "Click chip to select"}
                 </span>
               </div>
 

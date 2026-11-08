@@ -297,8 +297,8 @@ export function CameraController({
       rotateSpeed={rotateSpeed}
       enableDamping={true}
       dampingFactor={0.06}
-      minPolarAngle={0.1}
-      maxPolarAngle={Math.PI - 0.1}
+      minPolarAngle={0.001}
+      maxPolarAngle={Math.PI - 0.001}
     />
   );
 }
