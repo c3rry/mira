@@ -873,7 +873,7 @@ export const useWorldStore = create<WorldState>((set, get) => ({
   },
 
   setIsCompilingWorld: (compiling) => {
-    set({ isCompilingWorld: compiling, diffusionProgress: compiling ? 5 : get().diffusionProgress });
+    set({ isCompilingWorld: compiling, diffusionProgress: compiling ? 15 : 100 });
   },
 
   setDiffusionProgress: (progress) => {

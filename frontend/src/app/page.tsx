@@ -727,26 +727,27 @@ export default function Home() {
           </header>
 
           {/* compact world manifestation banner */}
-          {(isCompilingWorld && diffusionProgress < 100) && (
+          {isCompilingWorld && (
             <div className="fixed top-12 left-1/2 -translate-x-1/2 z-30 pointer-events-none select-none w-full max-w-sm px-4">
               <div
                 className="p-2 border shadow-xl text-center backdrop-blur-md"
                 style={{
-                  backgroundColor: "rgba(10, 10, 12, 0.82)",
+                  backgroundColor: "rgba(10, 10, 12, 0.85)",
                   borderColor: theme.panelBorder,
                 }}
               >
                 <div
-                  className="text-[11px] font-bold uppercase tracking-[0.2em] mb-1"
+                  className="text-[11px] font-bold uppercase tracking-[0.2em] mb-1 flex items-center justify-between"
                   style={{ color: theme.accentColor }}
                 >
-                  Entering World : {diffusionProgress}%
+                  <span>Synthesizing World</span>
+                  <span>{Math.min(100, Math.max(5, diffusionProgress))}%</span>
                 </div>
                 <div className="w-full h-1.5 bg-black/70 border overflow-hidden" style={{ borderColor: theme.panelBorder }}>
                   <div
-                    className="h-full transition-all duration-150"
+                    className="h-full transition-all duration-200 ease-out"
                     style={{
-                      width: `${diffusionProgress}%`,
+                      width: `${Math.min(100, Math.max(5, diffusionProgress))}%`,
                       backgroundColor: theme.accentColor,
                     }}
                   />

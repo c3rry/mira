@@ -323,16 +323,11 @@ export function PanoramaSphere({
     }
 
     if (isCompilingWorld) {
-      rainbowFogRef.current = Math.min(0.35, rainbowFogRef.current + delta * 0.8);
-      noiseRef.current = Math.min(0.25, noiseRef.current + delta * 0.8);
-      const currentProg = useWorldStore.getState().diffusionProgress;
-      if (currentProg < 92) {
-        setDiffusionProgress(Math.min(92, currentProg + Math.max(1, Math.round(delta * 16))));
-      }
+      rainbowFogRef.current = Math.min(0.2, rainbowFogRef.current + delta * 0.5);
+      noiseRef.current = Math.min(0.15, noiseRef.current + delta * 0.5);
     } else {
       rainbowFogRef.current = Math.max(0.0, rainbowFogRef.current - delta * 4.0);
       noiseRef.current = Math.max(0.0, noiseRef.current - delta * 4.0);
-      setDiffusionProgress(100);
     }
     u.uRainbowFog.value = rainbowFogRef.current;
     u.uNoise.value = noiseRef.current;

@@ -65,6 +65,13 @@ export function PromptRefinementChat() {
     setIsCompilingWorld(true);
     setStatusMessage("Synthesizing neural environment...");
 
+    const progressTimer = setInterval(() => {
+      const current = useWorldStore.getState().diffusionProgress;
+      if (current < 90) {
+        useWorldStore.getState().setDiffusionProgress(current + Math.floor(Math.random() * 8 + 5));
+      }
+    }, 280);
+
     const startTime = performance.now();
 
     try {
@@ -118,9 +125,11 @@ export function PromptRefinementChat() {
       console.warn("world compile request error:", err);
       setStatusMessage("Synthesized world via offline pipeline.");
     } finally {
+      clearInterval(progressTimer);
+      useWorldStore.getState().setDiffusionProgress(100);
       setTimeout(() => {
         setIsCompilingWorld(false);
-      }, 300);
+      }, 500);
     }
   };
 
