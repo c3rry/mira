@@ -6,8 +6,13 @@ import { resolveAdaptiveTheme, useWorldStore, inferRoomVisualPalette } from "@/s
 import { isNaturalBiomeContext } from "@/canvas/environment/ReflectiveFloorGrid";
 
 export function MinimapTopology() {
+  const [mounted, setMounted] = useState(false);
   const [expanded, setExpanded] = useState(false);
   const [hoveredRoomId, setHoveredRoomId] = useState<string | null>(null);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
   const {
     currentRoomId,
     rooms,
@@ -188,6 +193,8 @@ export function MinimapTopology() {
   const originSvgY = spatialLayout.toSvgY(0);
   const unitSpan = Math.max(28, interRoomDistanceSvg);
   const hoveredRoom = hoveredRoomId ? rooms[hoveredRoomId] : null;
+
+  if (!mounted) return null;
 
   return (
     <div

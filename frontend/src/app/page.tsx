@@ -8,11 +8,24 @@ import {
   useWorldStore,
 } from "@/store/useWorldStore";
 import { AudioManager } from "@/audio/AudioManager";
-import { DialogueModal } from "@/components/hud/DialogueModal";
 import { GodModePalette } from "@/components/GodModePalette";
-import { GodModeNarrativeDirector } from "@/components/director/GodModeNarrativeDirector";
-import { MinimapTopology } from "@/components/minimap/MinimapTopology";
-import { PromptRefinementChat } from "@/components/chat/PromptRefinementChat";
+
+const DialogueModal = dynamic(
+  () => import("@/components/hud/DialogueModal").then((mod) => mod.DialogueModal),
+  { ssr: false }
+);
+const GodModeNarrativeDirector = dynamic(
+  () => import("@/components/director/GodModeNarrativeDirector").then((mod) => mod.GodModeNarrativeDirector),
+  { ssr: false }
+);
+const MinimapTopology = dynamic(
+  () => import("@/components/minimap/MinimapTopology").then((mod) => mod.MinimapTopology),
+  { ssr: false }
+);
+const PromptRefinementChat = dynamic(
+  () => import("@/components/chat/PromptRefinementChat").then((mod) => mod.PromptRefinementChat),
+  { ssr: false }
+);
 
 
 // dynamically import 3d canvas to prevent ssr webgl errors
