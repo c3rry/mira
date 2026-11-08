@@ -42,7 +42,7 @@ async def compile_world(body: WorldCompileRequest, request: Request):
 
 
 @router.post("/world/expand", response_model=WorldExpandResponse)
-async def expand_world_endpoint(body: WorldExpandRequest, request: Request):
+def expand_world_endpoint(body: WorldExpandRequest, request: Request):
     from_room = None
     cached_world = getattr(request.app.state, "mock_world", None)
     if cached_world and getattr(cached_world, "rooms", None):

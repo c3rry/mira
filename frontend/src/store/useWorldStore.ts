@@ -798,6 +798,28 @@ export interface WorldState {
   initializeSync: () => void;
 }
 
+import initialWorldData from "./initial_world.json";
+
+const initialRoomsMap: Record<string, WorldRoom> = {};
+const initialNpcsMap: Record<string, NPCAgent> = {};
+
+if (initialWorldData && Array.isArray((initialWorldData as any).rooms)) {
+  (initialWorldData as any).rooms.forEach((r: any) => {
+    initialRoomsMap[r.room_id] = {
+      ...r,
+      visual_palette: inferRoomVisualPalette(r.biome_type, r.name),
+    };
+    if (Array.isArray(r.npcs)) {
+      r.npcs.forEach((n: any) => {
+        initialNpcsMap[n.npc_id] = n;
+      });
+    }
+  });
+}
+
+const initialRoomId = (initialWorldData as any)?.initial_room_id || "room_cyber_lab_01";
+const initialWorldTitle = (initialWorldData as any)?.title || "The Shrouded Frontier";
+
 const expansionQueue: Array<{
   fromRoomId?: string;
   direction?: string;
@@ -806,14 +828,14 @@ const expansionQueue: Array<{
 }> = [];
 
 export const useWorldStore = create<WorldState>((set, get) => ({
-  currentRoomId: "noise_origin",
-  worldTitle: "Continuous Latent Expanse",
-  worldPrompt: "Continuous multi-dimensional procedural noise chamber with iridescent quantum interference fields and harmonic manifolds",
-  topologyType: "nature_open",
+  currentRoomId: initialRoomId,
+  worldTitle: initialWorldTitle,
+  worldPrompt: "Exploring the ancient ruins and neon chambers of the frontier",
+  topologyType: "metropolis_grid",
   isExpanding: false,
-  rooms: {},
-  npcs: {},
-  quests: [],
+  rooms: initialRoomsMap,
+  npcs: initialNpcsMap,
+  quests: (initialWorldData as any)?.quests || [],
   lastTelemetry: {
     provider: "gemini_flash",
     latency_ms: 420.0,
@@ -833,7 +855,7 @@ export const useWorldStore = create<WorldState>((set, get) => ({
   playerPosition: { x: 0, z: 0, yaw: 0 },
   teleportTrigger: 0,
   transitionDirection: [0, 0, -1],
-  renderedRoomIds: { noise_origin: true },
+  renderedRoomIds: { [initialRoomId]: true },
   isPriorityWorkerActive: false,
 
   storyGraph: null,

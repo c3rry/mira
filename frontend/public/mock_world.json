@@ -1,0 +1,422 @@
+{
+  "world_id": "mira_offline_world_01",
+  "title": "The Shrouded Frontier",
+  "initial_room_id": "room_cyber_lab_01",
+  "rooms": [
+    {
+      "room_id": "room_cyber_lab_01",
+      "name": "Abandoned Cryo-Genomics Lab",
+      "biome_type": "cyberpunk_facility",
+      "panorama_url": "/cached_worlds/cyber_lab_01/panorama.webp",
+      "depth_url": "/cached_worlds/cyber_lab_01/depth.png",
+      "adjacent_room_ids": ["room_cyber_lab_02", "room_neon_alley_01"],
+      "mutation_level": 0.0,
+      "lighting": {
+        "ambient_color": "#4da6ff",
+        "ambient_intensity": 0.8,
+        "fog_color": "#0a192f",
+        "fog_density": 0.015
+      },
+      "npcs": [
+        {
+          "npc_id": "npc_cipher",
+          "name": "Cipher",
+          "room_id": "room_cyber_lab_01",
+          "persona_description": "Rogue bio-synthetic hacker seeking the neural decryption keys.",
+          "thought_log": [
+            "Initialized standby sequence.",
+            "Observed player arrival."
+          ],
+          "active_plan": "Verify player credentials before granting datapad access.",
+          "inventory": ["encrypted_datapad", "cryo_capsule"],
+          "hp": 100,
+          "position": {
+            "r": 500.0,
+            "theta": 0.785398,
+            "phi": 2.356194
+          }
+        }
+      ],
+      "props": [
+        {
+          "prop_id": "prop_cryo_terminal",
+          "name": "Cryo Terminal",
+          "mesh_url": "/cached_worlds/models/terminal.glb",
+          "position": {
+            "r": 500.0,
+            "theta": -0.5,
+            "phi": 2.1
+          },
+          "scale": 1.0,
+          "interactive": true
+        }
+      ]
+    },
+    {
+      "room_id": "room_cyber_lab_02",
+      "name": "Containment Stasis Corridor",
+      "biome_type": "cyberpunk_facility",
+      "panorama_url": "/cached_worlds/cyber_lab_02/panorama.webp",
+      "depth_url": "/cached_worlds/cyber_lab_02/depth.png",
+      "adjacent_room_ids": ["room_cyber_lab_01", "room_cyber_lab_03"],
+      "mutation_level": 0.0,
+      "lighting": {
+        "ambient_color": "#00ffcc",
+        "ambient_intensity": 0.7,
+        "fog_color": "#001a1a",
+        "fog_density": 0.018
+      },
+      "npcs": [],
+      "props": [
+        {
+          "prop_id": "prop_stasis_pod",
+          "name": "Stasis Pod Alpha",
+          "mesh_url": "/cached_worlds/models/stasis_pod.glb",
+          "position": {
+            "r": 500.0,
+            "theta": 1.2,
+            "phi": 2.0
+          },
+          "scale": 1.0,
+          "interactive": true
+        }
+      ]
+    },
+    {
+      "room_id": "room_cyber_lab_03",
+      "name": "Central Server Core",
+      "biome_type": "cyberpunk_facility",
+      "panorama_url": "/cached_worlds/cyber_lab_03/panorama.webp",
+      "depth_url": "/cached_worlds/cyber_lab_03/depth.png",
+      "adjacent_room_ids": ["room_cyber_lab_02", "room_ruins_01"],
+      "mutation_level": 0.0,
+      "lighting": {
+        "ambient_color": "#ff3366",
+        "ambient_intensity": 0.9,
+        "fog_color": "#1f000b",
+        "fog_density": 0.012
+      },
+      "npcs": [
+        {
+          "npc_id": "npc_sentinel_core",
+          "name": "Sentinel AI Fragment",
+          "room_id": "room_cyber_lab_03",
+          "persona_description": "Damaged mainframe defense AI evaluating biometric clearance.",
+          "thought_log": [
+            "Thermal surge detected in secondary junction.",
+            "Tracking unidentified humanoid signature."
+          ],
+          "active_plan": "Demand vocal authentication phrase.",
+          "inventory": ["subroutine_override_card"],
+          "hp": 250,
+          "position": {
+            "r": 500.0,
+            "theta": 0.0,
+            "phi": 2.2
+          }
+        }
+      ],
+      "props": []
+    },
+    {
+      "room_id": "room_neon_alley_01",
+      "name": "Drizzle Alleyway",
+      "biome_type": "neon_sub_alley",
+      "panorama_url": "/cached_worlds/neon_alley_01/panorama.webp",
+      "depth_url": "/cached_worlds/neon_alley_01/depth.png",
+      "adjacent_room_ids": ["room_cyber_lab_01", "room_neon_alley_02"],
+      "mutation_level": 0.0,
+      "lighting": {
+        "ambient_color": "#ff0099",
+        "ambient_intensity": 0.75,
+        "fog_color": "#100014",
+        "fog_density": 0.02
+      },
+      "npcs": [
+        {
+          "npc_id": "npc_khalid",
+          "name": "Khalid the Fixer",
+          "room_id": "room_neon_alley_01",
+          "persona_description": "Black-market broker who trades stolen firmware updates.",
+          "thought_log": [
+            "Checking police radio frequencies.",
+            "Eyeing the newcomer."
+          ],
+          "active_plan": "Offer black market trade route info.",
+          "inventory": ["counterfeit_passkey"],
+          "hp": 120,
+          "position": {
+            "r": 500.0,
+            "theta": -1.57,
+            "phi": 2.3
+          }
+        }
+      ],
+      "props": []
+    },
+    {
+      "room_id": "room_neon_alley_02",
+      "name": "Synapse Noodle Bar",
+      "biome_type": "neon_sub_alley",
+      "panorama_url": "/cached_worlds/neon_alley_02/panorama.webp",
+      "depth_url": "/cached_worlds/neon_alley_02/depth.png",
+      "adjacent_room_ids": ["room_neon_alley_01", "room_neon_alley_03"],
+      "mutation_level": 0.0,
+      "lighting": {
+        "ambient_color": "#ffaa00",
+        "ambient_intensity": 0.85,
+        "fog_color": "#1a0d00",
+        "fog_density": 0.015
+      },
+      "npcs": [],
+      "props": []
+    },
+    {
+      "room_id": "room_neon_alley_03",
+      "name": "Underpass Junkyard",
+      "biome_type": "neon_sub_alley",
+      "panorama_url": "/cached_worlds/neon_alley_03/panorama.webp",
+      "depth_url": "/cached_worlds/neon_alley_03/depth.png",
+      "adjacent_room_ids": ["room_neon_alley_02", "room_cavern_01"],
+      "mutation_level": 0.0,
+      "lighting": {
+        "ambient_color": "#9933ff",
+        "ambient_intensity": 0.65,
+        "fog_color": "#0d001a",
+        "fog_density": 0.022
+      },
+      "npcs": [],
+      "props": []
+    },
+    {
+      "room_id": "room_ruins_01",
+      "name": "Sunken Botanical Atrium",
+      "biome_type": "overgrown_ruins",
+      "panorama_url": "/cached_worlds/ruins_01/panorama.webp",
+      "depth_url": "/cached_worlds/ruins_01/depth.png",
+      "adjacent_room_ids": ["room_cyber_lab_03", "room_ruins_02"],
+      "mutation_level": 0.0,
+      "lighting": {
+        "ambient_color": "#66ff66",
+        "ambient_intensity": 0.8,
+        "fog_color": "#001a05",
+        "fog_density": 0.014
+      },
+      "npcs": [
+        {
+          "npc_id": "npc_botanist_elena",
+          "name": "Dr. Elena Vance",
+          "room_id": "room_ruins_01",
+          "persona_description": "Exiled geneticist studying bioluminescent flora mutations.",
+          "thought_log": [
+            "Flora cycle accelerating under atmospheric radiation.",
+            "Recording spore dispersion rates."
+          ],
+          "active_plan": "Warn explorer of toxic spore pockets.",
+          "inventory": ["spore_sampler", "antidote_vial"],
+          "hp": 90,
+          "position": {
+            "r": 500.0,
+            "theta": 2.1,
+            "phi": 2.25
+          }
+        }
+      ],
+      "props": []
+    },
+    {
+      "room_id": "room_ruins_02",
+      "name": "Collapsed Monolith Hall",
+      "biome_type": "overgrown_ruins",
+      "panorama_url": "/cached_worlds/ruins_02/panorama.webp",
+      "depth_url": "/cached_worlds/ruins_02/depth.png",
+      "adjacent_room_ids": ["room_ruins_01", "room_ruins_03"],
+      "mutation_level": 0.0,
+      "lighting": {
+        "ambient_color": "#88cc88",
+        "ambient_intensity": 0.7,
+        "fog_color": "#061206",
+        "fog_density": 0.016
+      },
+      "npcs": [],
+      "props": []
+    },
+    {
+      "room_id": "room_ruins_03",
+      "name": "Canopy Overlook",
+      "biome_type": "overgrown_ruins",
+      "panorama_url": "/cached_worlds/ruins_03/panorama.webp",
+      "depth_url": "/cached_worlds/ruins_03/depth.png",
+      "adjacent_room_ids": ["room_ruins_02", "room_spire_01"],
+      "mutation_level": 0.0,
+      "lighting": {
+        "ambient_color": "#aaffaa",
+        "ambient_intensity": 0.9,
+        "fog_color": "#0d1a0d",
+        "fog_density": 0.01
+      },
+      "npcs": [],
+      "props": []
+    },
+    {
+      "room_id": "room_cavern_01",
+      "name": "Obsidian Steam Fissure",
+      "biome_type": "geothermal_cavern",
+      "panorama_url": "/cached_worlds/cavern_01/panorama.webp",
+      "depth_url": "/cached_worlds/cavern_01/depth.png",
+      "adjacent_room_ids": ["room_neon_alley_03", "room_cavern_02"],
+      "mutation_level": 0.0,
+      "lighting": {
+        "ambient_color": "#ff4411",
+        "ambient_intensity": 0.7,
+        "fog_color": "#1a0600",
+        "fog_density": 0.025
+      },
+      "npcs": [
+        {
+          "npc_id": "npc_miner_vance",
+          "name": "Brant the Prospector",
+          "room_id": "room_cavern_01",
+          "persona_description": "Hardened plasma drill operator scouting geothermal energy pockets.",
+          "thought_log": [
+            "Fissure pressure rising steadily.",
+            "Tightening respirator seal."
+          ],
+          "active_plan": "Warn about sudden sulfur eruptions.",
+          "inventory": ["geothermal_gauge", "flare_pack"],
+          "hp": 150,
+          "position": {
+            "r": 500.0,
+            "theta": -0.8,
+            "phi": 2.4
+          }
+        }
+      ],
+      "props": []
+    },
+    {
+      "room_id": "room_cavern_02",
+      "name": "Bismuth Crystal Chamber",
+      "biome_type": "geothermal_cavern",
+      "panorama_url": "/cached_worlds/cavern_02/panorama.webp",
+      "depth_url": "/cached_worlds/cavern_02/depth.png",
+      "adjacent_room_ids": ["room_cavern_01", "room_cavern_03"],
+      "mutation_level": 0.0,
+      "lighting": {
+        "ambient_color": "#00e1ff",
+        "ambient_intensity": 0.85,
+        "fog_color": "#00141a",
+        "fog_density": 0.015
+      },
+      "npcs": [],
+      "props": []
+    },
+    {
+      "room_id": "room_cavern_03",
+      "name": "Magma Siphon Basin",
+      "biome_type": "geothermal_cavern",
+      "panorama_url": "/cached_worlds/cavern_03/panorama.webp",
+      "depth_url": "/cached_worlds/cavern_03/depth.png",
+      "adjacent_room_ids": ["room_cavern_02", "room_spire_02"],
+      "mutation_level": 0.0,
+      "lighting": {
+        "ambient_color": "#ff2200",
+        "ambient_intensity": 0.9,
+        "fog_color": "#200400",
+        "fog_density": 0.02
+      },
+      "npcs": [],
+      "props": []
+    },
+    {
+      "room_id": "room_spire_01",
+      "name": "Ascension Docking Ring",
+      "biome_type": "orbital_spire",
+      "panorama_url": "/cached_worlds/spire_01/panorama.webp",
+      "depth_url": "/cached_worlds/spire_01/depth.png",
+      "adjacent_room_ids": ["room_ruins_03", "room_spire_02"],
+      "mutation_level": 0.0,
+      "lighting": {
+        "ambient_color": "#ffffff",
+        "ambient_intensity": 0.95,
+        "fog_color": "#080c14",
+        "fog_density": 0.008
+      },
+      "npcs": [],
+      "props": []
+    },
+    {
+      "room_id": "room_spire_02",
+      "name": "Solar Array Conduit",
+      "biome_type": "orbital_spire",
+      "panorama_url": "/cached_worlds/spire_02/panorama.webp",
+      "depth_url": "/cached_worlds/spire_02/depth.png",
+      "adjacent_room_ids": ["room_spire_01", "room_cavern_03", "room_spire_03"],
+      "mutation_level": 0.0,
+      "lighting": {
+        "ambient_color": "#fff0cc",
+        "ambient_intensity": 0.9,
+        "fog_color": "#141008",
+        "fog_density": 0.01
+      },
+      "npcs": [],
+      "props": []
+    },
+    {
+      "room_id": "room_spire_03",
+      "name": "Celestial Apex Observatory",
+      "biome_type": "orbital_spire",
+      "panorama_url": "/cached_worlds/spire_03/panorama.webp",
+      "depth_url": "/cached_worlds/spire_03/depth.png",
+      "adjacent_room_ids": ["room_spire_02"],
+      "mutation_level": 0.0,
+      "lighting": {
+        "ambient_color": "#d9b3ff",
+        "ambient_intensity": 1.0,
+        "fog_color": "#0d0514",
+        "fog_density": 0.005
+      },
+      "npcs": [
+        {
+          "npc_id": "npc_oracle_nexus",
+          "name": "Nexus Oracle",
+          "room_id": "room_spire_03",
+          "persona_description": "Transcendent cybernetic observer guarding the final planetary egress uplink.",
+          "thought_log": [
+            "All sub-nodes reporting converging energy signatures.",
+            "Evaluating candidate readiness."
+          ],
+          "active_plan": "Deliver verdict on planetary fate.",
+          "inventory": ["orbital_uplink_cipher"],
+          "hp": 500,
+          "position": {
+            "r": 500.0,
+            "theta": 0.0,
+            "phi": 1.8
+          }
+        }
+      ],
+      "props": []
+    }
+  ],
+  "quests": [
+    {
+      "quest_id": "quest_relic_vault",
+      "title": "Unlock the Cryo Vault",
+      "is_completed": false,
+      "trigger_flag": "CRYO_VAULT_UNLOCKED"
+    },
+    {
+      "quest_id": "quest_neural_link",
+      "title": "Establish Neural Link with Cipher",
+      "is_completed": false,
+      "trigger_flag": "NEURAL_LINK_ESTABLISHED"
+    },
+    {
+      "quest_id": "quest_apex_uplink",
+      "title": "Synchronize with Celestial Apex Observatory",
+      "is_completed": false,
+      "trigger_flag": "ORBITAL_UPLINK_SYNCHRONIZED"
+    }
+  ]
+}

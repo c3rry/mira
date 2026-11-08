@@ -289,11 +289,26 @@ export default function Home() {
     }
   }, [hydrateFromMockWorld, initializeSync]);
 
+  const resolveTrackUrl = (biome?: string) => {
+    const valid = [
+      "cyberpunk_alley",
+      "cyberpunk_facility",
+      "desert_oasis",
+      "enchanted_forest",
+      "medieval_tavern",
+      "space_station",
+    ];
+    if (biome && valid.includes(biome)) {
+      return `/audio/tracks/${biome}.wav`;
+    }
+    return `/audio/tracks/cyberpunk_alley.wav`;
+  };
+
   // cross-fade musical score when room changes
   useEffect(() => {
     if (activeRoom) {
       const audioMgr = AudioManager.getInstance();
-      const trackUrl = `/audio/tracks/${activeRoom.biome_type || "desert_oasis"}.wav`;
+      const trackUrl = resolveTrackUrl(activeRoom.biome_type);
       audioMgr.fadeToTrack(trackUrl, 0.65, 1.5);
     }
   }, [currentRoomId, activeRoom]);
@@ -306,7 +321,7 @@ export default function Home() {
         const ok = await audioMgr.unlockAudio();
         setAudioActive(ok);
         if (ok && activeRoom) {
-          const trackUrl = `/audio/tracks/${activeRoom.biome_type || "desert_oasis"}.wav`;
+          const trackUrl = resolveTrackUrl(activeRoom.biome_type);
           audioMgr.fadeToTrack(trackUrl, 0.65, 1.0, true);
         }
       }
@@ -329,7 +344,7 @@ export default function Home() {
       const ok = await audioMgr.unlockAudio();
       setAudioActive(ok);
       if (ok && activeRoom) {
-        const trackUrl = `/audio/tracks/${activeRoom.biome_type || "desert_oasis"}.wav`;
+        const trackUrl = resolveTrackUrl(activeRoom.biome_type);
         await audioMgr.fadeToTrack(trackUrl, 0.65, 1.0, true);
       }
     } else {
@@ -497,6 +512,11 @@ export default function Home() {
               </div>
 
                 <div className="space-y-3">
+                  {savedWorlds.length === 0 && (
+                    <div className="py-12 text-center text-xs tracking-wider border border-dashed p-6" style={{ borderColor: `${theme.panelBorder}44`, color: theme.mutedText }}>
+                      No archived chronicles recorded in local memory. Enter the world to explore or use Mira Director to create new sectors.
+                    </div>
+                  )}
                   {savedWorlds.map((entry, idx) => {
                     const isCurrent = entry.title === worldTitle;
                     const roomCount = entry.world_data?.rooms?.length || 0;
