@@ -2,7 +2,11 @@
 
 import { useEffect, useState, useTransition } from "react";
 import dynamic from "next/dynamic";
-import { useWorldStore } from "@/store/useWorldStore";
+import {
+  BUILTIN_ARCHIVES,
+  resolveAdaptiveTheme,
+  useWorldStore,
+} from "@/store/useWorldStore";
 import { AudioManager } from "@/audio/AudioManager";
 import { FallbackStatusBadge } from "@/components/hud/FallbackStatusBadge";
 import { DialogueModal } from "@/components/hud/DialogueModal";
@@ -17,28 +21,80 @@ const WorldCanvas = dynamic(
   { ssr: false }
 );
 
+const STUDIO_PRESETS = [
+  {
+    numeral: "I",
+    title: "The Necropolis of Giza",
+    biome: "desert_oasis",
+    prompt: "The Great Pyramids of Giza at golden hour with the Sphinx causeway and Old Kingdom temples",
+  },
+  {
+    numeral: "II",
+    title: "Imperial Forum of Rome",
+    biome: "medieval_tavern",
+    prompt: "Sunlit Roman Forum, Colosseum travertine arcades, and the Rotunda of the Pantheon",
+  },
+  {
+    numeral: "III",
+    title: "Hanging Gardens of Babylon",
+    biome: "enchanted_forest",
+    prompt: "Sunlit terraced botanical sanctuary with marble aqueducts, waterfalls, and cedar pavilions",
+  },
+  {
+    numeral: "IV",
+    title: "Acropolis of Athens",
+    biome: "medieval_tavern",
+    prompt: "Sunlit Pentelic marble Parthenon colonnade atop the Acropolis overlooking the Aegean Sea",
+  },
+  {
+    numeral: "V",
+    title: "Celestial Orbital Observatory",
+    biome: "space_station",
+    prompt: "Alabaster and brass celestial observatory dome in high planetary orbit",
+  },
+  {
+    numeral: "VI",
+    title: "Grand Metropolis Arcade",
+    biome: "cyberpunk_alley",
+    prompt: "Luminous twilight metropolis boulevard with glass conservatories and brass skybridges",
+  },
+];
+
 export default function Home() {
   const {
     currentRoomId,
+    worldTitle,
     rooms,
     npcs,
-    selectedNpcId,
-    selectNPC,
     lastTelemetry,
+    activeScreen,
+    savedWorlds,
+    isCompilingWorld,
+    diffusionProgress,
+    setActiveScreen,
+    setIsCompilingWorld,
+    saveWorldToArchive,
+    deleteWorldFromArchive,
+    loadArchivedWorld,
     hydrateFromMockWorld,
     initializeSync,
     setCurrentRoom,
     toggleGodMode,
+    setLastTelemetry,
+    setActiveSubtitle,
   } = useWorldStore();
 
-  const [backendHealth, setBackendHealth] = useState<string>("checking...");
+  const [backendHealth, setBackendHealth] = useState<string>("online");
   const [audioActive, setAudioActive] = useState<boolean>(false);
   const [isTicking, setIsTicking] = useState<boolean>(false);
+  const [newWorldPrompt, setNewWorldPrompt] = useState<string>("");
+  const [newWorldBiome, setNewWorldBiome] = useState<string>("");
   const [, startTransition] = useTransition();
 
-  const selectedNpc = selectedNpcId ? npcs[selectedNpcId] : null;
+  const activeRoom = rooms[currentRoomId];
+  const theme = resolveAdaptiveTheme(activeRoom?.biome_type, activeRoom?.name, worldTitle);
 
-  // trigger world tick to advance npcs across graph edges
+  // advance autonomous npc chronicle tick
   const handleTriggerTick = async () => {
     setIsTicking(true);
     try {
@@ -54,7 +110,15 @@ export default function Home() {
         const data = await res.json();
         if (data.moved_npcs && data.moved_npcs.length > 0) {
           const move = data.moved_npcs[0];
-          console.log(`[TICK] NPC ${move.npc_id} migrated: ${move.origin_room_id} -> ${move.destination_room_id}`);
+          const movedAgent = npcs[move.npc_id];
+          setActiveSubtitle({
+            npcId: move.npc_id,
+            speaker: movedAgent?.name || move.npc_id,
+            persona: movedAgent?.persona_description || "Autonomous Chronicler",
+            text: `I have traversed from ${move.origin_room_id} to ${move.destination_room_id} to survey the archives.`,
+            thoughtLog: move.reasoning_trace,
+            timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+          });
         }
       }
     } catch (err) {
@@ -64,99 +128,156 @@ export default function Home() {
     }
   };
 
+  // compile a new world from the storage / creation screen and immediately enter the noisy latent room
+  const handleCreateNewWorld = async (overridePrompt?: string, overrideBiome?: string) => {
+    const promptToUse = (overridePrompt || newWorldPrompt || "The Great Pyramids of Giza").trim();
+    const biomeToUse = overrideBiome !== undefined ? overrideBiome : newWorldBiome || undefined;
+
+    // switch immediately into the 3d room in noisy latent diffusion state
+    setActiveScreen("game");
+    setIsCompilingWorld(true);
+
+    const startTime = performance.now();
+    try {
+      const res = await fetch("/world/compile", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          prompt: promptToUse,
+          biome_hint: biomeToUse,
+        }),
+      });
+
+      const latencyMs = performance.now() - startTime;
+      if (res.ok) {
+        const data = await res.json();
+        if (data.world_graph && Array.isArray(data.world_graph.rooms) && data.world_graph.rooms.length > 0) {
+          hydrateFromMockWorld(data.world_graph);
+          saveWorldToArchive({
+            world_id: data.world_graph.world_id || `world_${Date.now()}`,
+            title: data.world_graph.title || promptToUse,
+            prompt: promptToUse,
+            biome_hint: biomeToUse || "custom",
+            created_at: new Date().toLocaleString(),
+            world_data: data.world_graph,
+          });
+        }
+
+        const source = data.generation_metadata?.source || "live_generative";
+        const isLive = source === "live_generative" || source === "gemini_generative";
+        setLastTelemetry({
+          provider: isLive ? "gemini_flash" : "offline_mock",
+          latency_ms: latencyMs,
+          fallback_occurred: !isLive,
+          fallback_reason: !isLive ? data.generation_metadata?.reason : undefined,
+        });
+      }
+    } catch (err) {
+      console.warn("create world error, synthesizing client-side world:", err);
+      // client-side fallback synthesis so custom prompts work even if backend is offline
+      const lowerP = promptToUse.toLowerCase();
+      const inferredBiome =
+        biomeToUse ||
+        (lowerP.includes("space") || lowerP.includes("orbital") || lowerP.includes("observatory")
+          ? "space_station"
+          : lowerP.includes("garden") || lowerP.includes("babylon") || lowerP.includes("forest")
+          ? "enchanted_forest"
+          : lowerP.includes("rome") || lowerP.includes("roman") || lowerP.includes("athens") || lowerP.includes("tavern")
+          ? "medieval_tavern"
+          : lowerP.includes("giza") || lowerP.includes("pyramid") || lowerP.includes("egypt")
+          ? "desert_oasis"
+          : "cyberpunk_alley");
+
+      const slug = Math.abs(
+        promptToUse.split("").reduce((acc, c) => (acc * 31 + c.charCodeAt(0)) | 0, 7)
+      ).toString(16);
+
+      const fallbackGraph = {
+        world_id: `world_${slug}`,
+        title: promptToUse.slice(0, 48),
+        initial_room_id: `room_${slug}_0`,
+        rooms: [
+          {
+            room_id: `room_${slug}_0`,
+            name: `${promptToUse.slice(0, 28)} Courtyard`,
+            biome_type: inferredBiome,
+            panorama_url: `/cached_worlds/${inferredBiome}/panorama.webp?custom=1&room=${encodeURIComponent(
+              promptToUse.slice(0, 28) + " Courtyard"
+            )}&biome=${encodeURIComponent(inferredBiome)}&prompt=${encodeURIComponent(promptToUse)}&idx=0`,
+            depth_url: `/cached_worlds/${inferredBiome}/depth.png`,
+            adjacent_room_ids: [`room_${slug}_1`, `room_${slug}_2`],
+            mutation_level: 0.0,
+          },
+          {
+            room_id: `room_${slug}_1`,
+            name: `Inner Sanctum of ${promptToUse.slice(0, 22)}`,
+            biome_type: inferredBiome,
+            panorama_url: `/cached_worlds/${inferredBiome}/panorama.webp?custom=1&room=${encodeURIComponent(
+              "Inner Sanctum of " + promptToUse.slice(0, 22)
+            )}&biome=${encodeURIComponent(inferredBiome)}&prompt=${encodeURIComponent(promptToUse)}&idx=1`,
+            depth_url: `/cached_worlds/${inferredBiome}/depth.png`,
+            adjacent_room_ids: [`room_${slug}_0`, `room_${slug}_2`],
+            mutation_level: 0.0,
+          },
+          {
+            room_id: `room_${slug}_2`,
+            name: `High Overlook of ${promptToUse.slice(0, 22)}`,
+            biome_type: inferredBiome,
+            panorama_url: `/cached_worlds/${inferredBiome}/panorama.webp?custom=1&room=${encodeURIComponent(
+              "High Overlook of " + promptToUse.slice(0, 22)
+            )}&biome=${encodeURIComponent(inferredBiome)}&prompt=${encodeURIComponent(promptToUse)}&idx=2`,
+            depth_url: `/cached_worlds/${inferredBiome}/depth.png`,
+            adjacent_room_ids: [`room_${slug}_0`, `room_${slug}_1`],
+            mutation_level: 0.0,
+          },
+        ],
+        quests: [],
+      };
+
+      hydrateFromMockWorld(fallbackGraph);
+      saveWorldToArchive({
+        world_id: fallbackGraph.world_id,
+        title: fallbackGraph.title,
+        prompt: promptToUse,
+        biome_hint: inferredBiome,
+        created_at: new Date().toLocaleString(),
+        world_data: fallbackGraph,
+      });
+    } finally {
+      setTimeout(() => {
+        setIsCompilingWorld(false);
+      }, 400);
+    }
+  };
+
   useEffect(() => {
-    // initialize store sync
     initializeSync();
 
-    // fetch backend health
     fetch("/health")
       .then((res) => res.json())
       .then((data) => {
-        setBackendHealth(data.status);
+        setBackendHealth(data.status || "online");
       })
       .catch(() => {
-        setBackendHealth("offline_fallback");
+        setBackendHealth("archive_mode");
       });
 
-    // load manifest biomes and mock world
-    fetch("/cached_worlds/manifest.json")
-      .then((r) => r.json())
-      .then((m) => {
-        if (m && m.biomes) {
-          const defaultProps: Record<string, any[]> = {
-            cyberpunk_alley: [
-              {
-                prop_id: "prop_cryo_terminal",
-                name: "Cryo Terminal",
-                mesh_url: "/cached_worlds/models/terminal.glb",
-                position: { r: 500.0, theta: -0.5, phi: 2.1 },
-                scale: 1.0,
-                interactive: true,
-              },
-            ],
-          };
-
-          const defaultNpcs: Record<string, any[]> = {
-            cyberpunk_alley: [
-              {
-                npc_id: "npc_cipher",
-                name: "Cipher",
-                room_id: "cyberpunk_alley",
-                persona_description: "Rogue bio-synthetic hacker seeking the neural decryption keys.",
-                thought_log: ["Initialized standby sequence.", "Observed player arrival."],
-                active_plan: "Verify player credentials before granting datapad access.",
-                inventory: ["encrypted_datapad", "cryo_capsule"],
-                hp: 100,
-                position: { r: 500.0, theta: 0.785, phi: 2.356 },
-              },
-            ],
-          };
-
-          const roomsList = Object.entries(m.biomes).map(([id, b]: [string, any]) => ({
-            room_id: id,
-            name: b.name,
-            panorama_url: b.panorama,
-            depth_url: b.depth,
-            adjacent_room_ids: [],
-            mutation_level: 0.0,
-            biome_type: id,
-            props: defaultProps[id] || [],
-            npcs: defaultNpcs[id] || [],
-          }));
-
-          // check query string for specific initial biome
-          const params = new URLSearchParams(window.location.search);
-          const requestedBiome = params.get("biome");
-          const initialId =
-            requestedBiome && m.biomes[requestedBiome]
-              ? requestedBiome
-              : roomsList[0]?.room_id || "cyberpunk_alley";
-
-          hydrateFromMockWorld({
-            world_id: "local_manifest_world",
-            initial_room_id: initialId,
-            rooms: roomsList,
-            quests: [],
-          });
-        }
-      })
-      .catch((err) => {
-        console.warn("could not load manifest, falling back to mock", err);
-      });
+    // initialize with the sunlit necropolis of giza world archive
+    if (BUILTIN_ARCHIVES.length > 0) {
+      hydrateFromMockWorld(BUILTIN_ARCHIVES[0].world_data);
+    }
   }, [hydrateFromMockWorld, initializeSync]);
 
-  const activeRoom = rooms[currentRoomId];
-
-  // dual-track ambient audio cross-fade on room navigation
+  // cross-fade musical score when room changes
   useEffect(() => {
     if (activeRoom) {
       const audioMgr = AudioManager.getInstance();
-      const trackUrl = `/audio/tracks/${activeRoom.biome_type || "ambient"}.mp3`;
-      audioMgr.fadeToTrack(trackUrl, 0.6, 1.5);
+      const trackUrl = `/audio/tracks/${activeRoom.biome_type || "desert_oasis"}.wav`;
+      audioMgr.fadeToTrack(trackUrl, 0.65, 1.5);
     }
   }, [currentRoomId, activeRoom]);
 
-  // unlock audio on first document interaction or button click
+  // unlock musical score on first user gesture
   useEffect(() => {
     const handleFirstGesture = async () => {
       const audioMgr = AudioManager.getInstance();
@@ -164,8 +285,8 @@ export default function Home() {
         const ok = await audioMgr.unlockAudio();
         setAudioActive(ok);
         if (ok && activeRoom) {
-          const trackUrl = `/audio/tracks/${activeRoom.biome_type || "ambient"}.mp3`;
-          audioMgr.fadeToTrack(trackUrl, 0.6, 1.0, true);
+          const trackUrl = `/audio/tracks/${activeRoom.biome_type || "desert_oasis"}.wav`;
+          audioMgr.fadeToTrack(trackUrl, 0.65, 1.0, true);
         }
       }
       window.removeEventListener("pointerdown", handleFirstGesture);
@@ -187,8 +308,8 @@ export default function Home() {
       const ok = await audioMgr.unlockAudio();
       setAudioActive(ok);
       if (ok && activeRoom) {
-        const trackUrl = `/audio/tracks/${activeRoom.biome_type || "ambient"}.mp3`;
-        await audioMgr.fadeToTrack(trackUrl, 0.6, 1.0, true);
+        const trackUrl = `/audio/tracks/${activeRoom.biome_type || "desert_oasis"}.wav`;
+        await audioMgr.fadeToTrack(trackUrl, 0.65, 1.0, true);
       }
     } else {
       const isMuted = audioMgr.toggleMute();
@@ -196,122 +317,526 @@ export default function Home() {
     }
   };
 
+  const diffusionStep = Math.max(1, Math.min(40, Math.ceil((diffusionProgress / 100) * 40)));
+
   return (
-    <main className="relative w-screen h-screen overflow-hidden flex flex-col bg-[#050508]">
-      {/* top telemetry hud */}
-      <header className="absolute top-0 left-0 right-0 z-20 flex items-center justify-between px-6 py-3 bg-black/60 backdrop-blur-md border-b border-white/10 pointer-events-auto">
-        <div className="flex items-center space-x-4">
-          <div className="text-sm font-bold tracking-wider text-cyan-400">
-            MIRA 3D ENGINE
-          </div>
-          <div className="px-2.5 py-0.5 text-xs rounded-full bg-cyan-950/80 text-cyan-300 border border-cyan-500/30 font-mono">
-            Room: {currentRoomId || "initializing..."}
-          </div>
-          <FallbackStatusBadge />
-        </div>
-
-        <div className="flex items-center space-x-3 text-xs">
-          <div className="flex items-center space-x-1.5 px-3 py-1 rounded bg-black/40 border border-white/10">
-            <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-            <span className="text-neutral-300">Backend: {backendHealth}</span>
-          </div>
-
-          <div className="flex items-center space-x-1.5 px-3 py-1 rounded bg-black/40 border border-white/10">
-            <span className="text-neutral-400">Model:</span>
-            <span className="font-mono text-cyan-300">
-              {lastTelemetry?.provider || "offline_mock"}
-            </span>
-          </div>
-
-          {/* audio gesture unlock toggle */}
-          <button
-            onClick={toggleAudioUnlock}
-            className={`px-3 py-1 rounded border transition-colors ${
-              audioActive
-                ? "bg-cyan-950/80 border-cyan-500/50 text-cyan-300"
-                : "bg-black/40 border-white/10 text-neutral-400 hover:text-white"
-            }`}
-          >
-            {audioActive ? "🔊 Audio Active" : "🔇 Unmute Audio"}
-          </button>
-
-          {/* manual world tick button */}
-          <button
-            onClick={handleTriggerTick}
-            disabled={isTicking}
-            className="px-3 py-1 rounded bg-purple-950/80 border border-purple-500/40 text-purple-300 hover:bg-purple-900/80 hover:text-purple-100 transition-colors disabled:opacity-50 font-mono"
-          >
-            {isTicking ? "Ticking..." : "⚡ World Tick"}
-          </button>
-
-          {/* god mode toggle button */}
-          <button
-            onClick={toggleGodMode}
-            className="px-3 py-1 rounded bg-cyan-950/80 border border-cyan-500/50 text-cyan-300 hover:bg-cyan-900/80 hover:text-white transition-colors font-mono"
-            title="Press 'G' or click to open God Mode"
-          >
-            🛠️ God Mode (G)
-          </button>
-        </div>
-      </header>
-
-      {/* interactive npc dialogue modal with 4-phase cognitive thought inspection */}
-      <DialogueModal />
-
-      {/* god mode telemetry and provider simulation palette */}
-      <GodModePalette />
-
-      {/* 3d canvas viewport container */}
+    <main className="relative w-screen h-screen overflow-hidden flex flex-col bg-[#120e0a]">
+      {/* persistent 3d webgl viewport */}
       <div id="mira-canvas-container" className="absolute inset-0 z-0">
         <WorldCanvas />
       </div>
 
-      {/* left floating prompt refinement compiler */}
-      <div className="absolute top-16 left-6 z-20 pointer-events-auto">
-        <PromptRefinementChat />
-      </div>
-
-      {/* bottom-left minimap topology */}
-      <div className="absolute bottom-24 left-6 z-20 pointer-events-auto hidden md:block">
-        <MinimapTopology />
-      </div>
-
-      {/* bottom-right in-situ atmosphere mutation slider */}
-      <div className="absolute bottom-24 right-6 z-20 pointer-events-auto hidden md:block">
-        <MutationControls />
-      </div>
-
-      {/* bottom room switcher floating controls */}
-      <footer className="absolute bottom-6 left-6 right-6 z-10 flex flex-col sm:flex-row items-center justify-between pointer-events-none gap-4">
-        <div className="bg-black/70 backdrop-blur-md p-4 rounded-xl border border-white/10 pointer-events-auto max-w-sm">
-          <h2 className="text-sm font-semibold text-white">
-            {activeRoom?.name || "Loading Panorama..."}
-          </h2>
-          <p className="text-xs text-neutral-400 mt-1">
-            Drag to look 360°. Inverted sphere geometry 128x64.
-          </p>
-        </div>
-
-        <div className="flex flex-wrap gap-2 justify-center bg-black/70 backdrop-blur-md p-2 rounded-xl border border-white/10 pointer-events-auto">
-          {Object.keys(rooms).map((rId) => (
-            <button
-              key={rId}
-              onClick={() => {
-                startTransition(() => {
-                  setCurrentRoom(rId);
-                });
-              }}
-              className={`px-3 py-1.5 text-xs rounded-lg transition-all ${
-                rId === currentRoomId
-                  ? "bg-cyan-500 text-black font-semibold shadow-lg shadow-cyan-500/30 scale-105"
-                  : "bg-white/10 text-neutral-300 hover:bg-white/20 hover:text-white"
-              }`}
+      {/* ===================================================================== */}
+      {/* SCREEN I: START GAME TITLE SCREEN                                     */}
+      {/* ===================================================================== */}
+      {activeScreen === "title" && (
+        <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/60 backdrop-blur-[2px] p-6 select-none">
+          <div
+            className="max-w-2xl w-full p-10 border-2 shadow-2xl text-center flex flex-col items-center"
+            style={{
+              backgroundColor: theme.panelBg,
+              borderColor: theme.panelBorder,
+            }}
+          >
+            <div
+              className="text-xs uppercase tracking-[0.35em] mb-2"
+              style={{ color: theme.accentColor }}
             >
-              {rooms[rId]?.name || rId}
-            </button>
-          ))}
+              Anno Domini MMXXVI • Architectural World Engine
+            </div>
+
+            <h1
+              className="text-5xl sm:text-6xl font-bold uppercase tracking-[0.22em] mb-3"
+              style={{ color: theme.accentText }}
+            >
+              M I R A
+            </h1>
+
+            <div
+              className="w-32 h-[1px] mb-4"
+              style={{ backgroundColor: theme.panelBorder }}
+            />
+
+            <p
+              className="text-base sm:text-lg italic max-w-lg mb-8 leading-relaxed"
+              style={{ color: theme.mutedText }}
+            >
+              An interactive three-dimensional chronicle of historical monuments,
+              latent diffusion spatial synthesis, and autonomous resident scholars.
+            </p>
+
+            <div className="w-full max-w-md flex flex-col gap-3.5">
+              <button
+                onClick={() => {
+                  toggleAudioUnlock();
+                  setActiveScreen("game");
+                }}
+                className="w-full py-3.5 px-6 border-2 text-sm uppercase tracking-[0.24em] font-bold transition-all hover:opacity-90"
+                style={{
+                  backgroundColor: theme.buttonBg,
+                  color: theme.buttonText,
+                  borderColor: theme.panelBorder,
+                }}
+              >
+                I. Enter Active World ({worldTitle})
+              </button>
+
+              <button
+                onClick={() => {
+                  toggleAudioUnlock();
+                  setActiveScreen("create");
+                }}
+                className="w-full py-3 px-6 border text-sm uppercase tracking-[0.22em] font-bold transition-all bg-black/50 hover:bg-black/75"
+                style={{
+                  borderColor: theme.panelBorder,
+                  color: theme.accentText,
+                }}
+              >
+                II. Synthesize New World
+              </button>
+
+              <button
+                onClick={() => {
+                  toggleAudioUnlock();
+                  setActiveScreen("storage");
+                }}
+                className="w-full py-3 px-6 border text-sm uppercase tracking-[0.22em] font-bold transition-all bg-black/50 hover:bg-black/75"
+                style={{
+                  borderColor: `${theme.panelBorder}88`,
+                  color: theme.mutedText,
+                }}
+              >
+                III. World Archives & Storage ({savedWorlds.length} Worlds)
+              </button>
+            </div>
+
+            <div
+              className="mt-8 pt-4 border-t w-full flex items-center justify-between text-xs italic"
+              style={{ borderColor: `${theme.panelBorder}44`, color: theme.mutedText }}
+            >
+              <span>Active Realm: {worldTitle}</span>
+              <span>WASD / Mouse to Explore • Click Scholars to Converse</span>
+            </div>
+          </div>
         </div>
-      </footer>
+      )}
+
+      {/* ===================================================================== */}
+      {/* SCREEN II: WORLD ARCHIVES (STORAGE) & NEW WORLD SYNTHESIS STUDIO      */}
+      {/* ===================================================================== */}
+      {(activeScreen === "storage" || activeScreen === "create") && (
+        <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/75 backdrop-blur-sm p-6 select-none overflow-y-auto">
+          <div
+            className="max-w-5xl w-full border-2 shadow-2xl flex flex-col max-h-[90vh]"
+            style={{
+              backgroundColor: theme.panelBg,
+              borderColor: theme.panelBorder,
+            }}
+          >
+            {/* top archive header */}
+            <div
+              className="flex items-center justify-between px-8 py-5 border-b"
+              style={{ borderColor: `${theme.panelBorder}66` }}
+            >
+              <div>
+                <div
+                  className="text-xs uppercase tracking-[0.28em] mb-1"
+                  style={{ color: theme.accentColor }}
+                >
+                  Cartographic Repository & Latent Synthesis
+                </div>
+                <h2
+                  className="text-2xl font-bold uppercase tracking-[0.18em]"
+                  style={{ color: theme.accentText }}
+                >
+                  World Archives & Creation Studio
+                </h2>
+              </div>
+
+              <div className="flex items-center gap-3">
+                <button
+                  onClick={() => setActiveScreen("title")}
+                  className="px-4 py-1.5 border text-xs uppercase tracking-[0.18em]"
+                  style={{ borderColor: `${theme.panelBorder}77`, color: theme.mutedText }}
+                >
+                  Title Screen
+                </button>
+                <button
+                  onClick={() => setActiveScreen("game")}
+                  className="px-5 py-1.5 border text-xs uppercase tracking-[0.18em] font-bold"
+                  style={{
+                    backgroundColor: theme.buttonBg,
+                    color: theme.buttonText,
+                    borderColor: theme.panelBorder,
+                  }}
+                >
+                  Return to 3D World
+                </button>
+              </div>
+            </div>
+
+            {/* two-column body: left = create new world, right = saved world storage */}
+            <div className="grid grid-cols-1 lg:grid-cols-12 flex-1 overflow-hidden">
+              {/* left column: new world compiler */}
+              <div
+                className="lg:col-span-5 p-6 border-b lg:border-b-0 lg:border-r flex flex-col gap-4 overflow-y-auto"
+                style={{ borderColor: `${theme.panelBorder}55` }}
+              >
+                <h3
+                  className="text-sm font-bold uppercase tracking-[0.2em]"
+                  style={{ color: theme.accentColor }}
+                >
+                  I. Synthesize New World
+                </h3>
+                <p className="text-xs italic leading-relaxed" style={{ color: theme.mutedText }}>
+                  Enter any historical monument, mythical sanctuary, or architectural domain.
+                  You will materialize inside the latent diffusion chamber and watch the noise
+                  converge into three-dimensional geometry.
+                </p>
+
+                <div className="flex flex-col gap-2">
+                  <label
+                    className="text-xs uppercase tracking-widest font-bold"
+                    style={{ color: theme.accentText }}
+                  >
+                    Architectural Prompt
+                  </label>
+                  <textarea
+                    value={newWorldPrompt}
+                    onChange={(e) => setNewWorldPrompt(e.target.value)}
+                    placeholder="e.g., The Great Pyramids of Giza at golden hour, Imperial Forum of Rome, Sunken Library of Alexandria..."
+                    rows={3}
+                    className="w-full p-3 bg-black/60 border text-sm text-[#fdf6e2] placeholder-neutral-500 focus:outline-none resize-none"
+                    style={{ borderColor: theme.panelBorder }}
+                  />
+                </div>
+
+                <button
+                  onClick={() => handleCreateNewWorld()}
+                  disabled={isCompilingWorld}
+                  className="w-full py-3 border-2 text-xs uppercase tracking-[0.22em] font-bold transition-all"
+                  style={{
+                    backgroundColor: theme.buttonBg,
+                    color: theme.buttonText,
+                    borderColor: theme.panelBorder,
+                  }}
+                >
+                  {isCompilingWorld
+                    ? "Initializing Latent Diffusion..."
+                    : "Compile & Enter New World"}
+                </button>
+
+                <div
+                  className="pt-3 border-t"
+                  style={{ borderColor: `${theme.panelBorder}44` }}
+                >
+                  <div
+                    className="text-xs uppercase tracking-[0.18em] font-bold mb-2.5"
+                    style={{ color: theme.accentColor }}
+                  >
+                    Classical Architectural Presets
+                  </div>
+                  <div className="grid grid-cols-1 gap-2">
+                    {STUDIO_PRESETS.map((preset) => (
+                      <button
+                        key={preset.title}
+                        onClick={() => {
+                          setNewWorldPrompt(preset.prompt);
+                          setNewWorldBiome(preset.biome);
+                          handleCreateNewWorld(preset.prompt, preset.biome);
+                        }}
+                        className="p-2.5 border text-left bg-black/45 hover:bg-black/75 transition-all flex items-center justify-between"
+                        style={{ borderColor: `${theme.panelBorder}55` }}
+                      >
+                        <div>
+                          <div className="text-xs font-bold" style={{ color: theme.accentText }}>
+                            {preset.numeral}. {preset.title}
+                          </div>
+                          <div className="text-[11px] italic truncate max-w-xs" style={{ color: theme.mutedText }}>
+                            {preset.prompt}
+                          </div>
+                        </div>
+                        <span
+                          className="text-[10px] uppercase tracking-widest px-2 py-0.5 border"
+                          style={{ borderColor: theme.panelBorder, color: theme.accentColor }}
+                        >
+                          Compile
+                        </span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              {/* right column: world storage archive ledger */}
+              <div className="lg:col-span-7 p-6 flex flex-col gap-4 overflow-y-auto">
+                <div className="flex items-center justify-between">
+                  <h3
+                    className="text-sm font-bold uppercase tracking-[0.2em]"
+                    style={{ color: theme.accentColor }}
+                  >
+                    II. Stored World Archives ({savedWorlds.length})
+                  </h3>
+                  <span className="text-xs italic" style={{ color: theme.mutedText }}>
+                    Select any stored chronicle to materialize immediately
+                  </span>
+                </div>
+
+                <div className="space-y-3">
+                  {savedWorlds.map((entry, idx) => {
+                    const isCurrent = entry.title === worldTitle;
+                    const roomCount = entry.world_data?.rooms?.length || 0;
+                    const roomNames = (entry.world_data?.rooms || [])
+                      .map((r: any) => r.name)
+                      .join(" • ");
+
+                    return (
+                      <div
+                        key={entry.world_id}
+                        className="p-4 border transition-all flex flex-col gap-2"
+                        style={{
+                          backgroundColor: isCurrent ? `${theme.accentColor}18` : "rgba(0,0,0,0.45)",
+                          borderColor: isCurrent ? theme.accentColor : `${theme.panelBorder}55`,
+                        }}
+                      >
+                        <div className="flex items-start justify-between gap-4">
+                          <div>
+                            <div className="flex items-center gap-2">
+                              <span
+                                className="text-sm font-bold uppercase tracking-wider"
+                                style={{ color: theme.accentText }}
+                              >
+                                Archive {idx + 1}: {entry.title}
+                              </span>
+                              {isCurrent && (
+                                <span
+                                  className="text-[10px] uppercase tracking-widest px-2 py-0.5 border font-bold"
+                                  style={{
+                                    borderColor: theme.accentColor,
+                                    color: theme.accentColor,
+                                  }}
+                                >
+                                  Active
+                                </span>
+                              )}
+                            </div>
+                            <div className="text-xs italic mt-0.5" style={{ color: theme.mutedText }}>
+                              &ldquo;{entry.prompt}&rdquo;
+                            </div>
+                          </div>
+
+                          <div className="flex items-center gap-2 shrink-0">
+                            <button
+                              onClick={() => loadArchivedWorld(entry)}
+                              className="px-3.5 py-1.5 border text-xs uppercase tracking-widest font-bold"
+                              style={{
+                                backgroundColor: theme.buttonBg,
+                                color: theme.buttonText,
+                                borderColor: theme.panelBorder,
+                              }}
+                            >
+                              Enter World
+                            </button>
+                            {!entry.world_id.startsWith("archive_") && (
+                              <button
+                                onClick={() => deleteWorldFromArchive(entry.world_id)}
+                                className="px-2.5 py-1.5 border text-xs uppercase tracking-wider bg-black/50"
+                                style={{
+                                  borderColor: `${theme.panelBorder}55`,
+                                  color: theme.mutedText,
+                                }}
+                              >
+                                Remove
+                              </button>
+                            )}
+                          </div>
+                        </div>
+
+                        <div
+                          className="pt-2 border-t flex flex-wrap items-center justify-between text-[11px]"
+                          style={{ borderColor: `${theme.panelBorder}33`, color: theme.mutedText }}
+                        >
+                          <span>
+                            Chambers ({roomCount}): <em className="text-[#fdf6e2]">{roomNames}</em>
+                          </span>
+                          <span>Recorded: {entry.created_at}</span>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ===================================================================== */}
+      {/* SCREEN III: ACTIVE 3D EXPLORATION HUD (ADAPTIVE THEME & SUBTITLES)    */}
+      {/* ===================================================================== */}
+      {activeScreen === "game" && (
+        <>
+          {/* adaptive classical top navigation bar */}
+          <header
+            className="absolute top-0 left-0 right-0 z-20 flex flex-wrap items-center justify-between px-6 py-3 border-b pointer-events-auto gap-3"
+            style={{
+              backgroundColor: theme.panelBg,
+              borderColor: theme.panelBorder,
+            }}
+          >
+            <div className="flex items-center space-x-4">
+              <button
+                onClick={() => setActiveScreen("title")}
+                className="text-base font-bold uppercase tracking-[0.25em] hover:underline"
+                style={{ color: theme.accentColor }}
+              >
+                M I R A
+              </button>
+
+              <div
+                className="px-3 py-0.5 text-xs border uppercase tracking-widest"
+                style={{
+                  borderColor: `${theme.panelBorder}88`,
+                  color: theme.accentText,
+                }}
+              >
+                {worldTitle} — {activeRoom?.name || currentRoomId}
+              </div>
+            </div>
+
+            <div className="flex items-center flex-wrap gap-2.5 text-xs">
+              <button
+                onClick={() => setActiveScreen("storage")}
+                className="px-3 py-1 border uppercase tracking-widest font-bold transition-colors"
+                style={{
+                  backgroundColor: "rgba(0,0,0,0.45)",
+                  borderColor: theme.panelBorder,
+                  color: theme.accentText,
+                }}
+              >
+                World Archives ({savedWorlds.length})
+              </button>
+
+              <button
+                onClick={() => setActiveScreen("create")}
+                className="px-3 py-1 border uppercase tracking-widest font-bold transition-colors"
+                style={{
+                  backgroundColor: theme.buttonBg,
+                  color: theme.buttonText,
+                  borderColor: theme.panelBorder,
+                }}
+              >
+                New World
+              </button>
+
+              <button
+                onClick={toggleAudioUnlock}
+                className="px-3 py-1 border uppercase tracking-widest transition-colors"
+                style={{
+                  backgroundColor: audioActive ? `${theme.accentColor}28` : "rgba(0,0,0,0.45)",
+                  borderColor: theme.panelBorder,
+                  color: theme.accentText,
+                }}
+              >
+                {audioActive ? "Musical Score: On" : "Musical Score: Muted"}
+              </button>
+            </div>
+          </header>
+
+          {/* imaginative world manifestation banner */}
+          {(isCompilingWorld || diffusionProgress < 98) && (
+            <div className="fixed top-16 left-1/2 -translate-x-1/2 z-30 pointer-events-none select-none w-full max-w-md px-4">
+              <div
+                className="p-3 border-2 shadow-2xl text-center"
+                style={{
+                  backgroundColor: theme.panelBg,
+                  borderColor: theme.panelBorder,
+                }}
+              >
+                <div
+                  className="text-xs font-bold uppercase tracking-[0.22em] mb-1.5"
+                  style={{ color: theme.accentColor }}
+                >
+                  Materializing Architectural Vision — {diffusionProgress}%
+                </div>
+                <div className="w-full h-2 bg-black/70 border overflow-hidden" style={{ borderColor: theme.panelBorder }}>
+                  <div
+                    className="h-full transition-all duration-150"
+                    style={{
+                      width: `${diffusionProgress}%`,
+                      backgroundColor: theme.accentColor,
+                    }}
+                  />
+                </div>
+                <div className="text-[11px] italic mt-1" style={{ color: theme.mutedText }}>
+                  Weaving light, stone, and memory into three-dimensional form...
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* left floating quick world compiler */}
+          <div className="absolute top-16 left-6 z-20 pointer-events-auto">
+            <PromptRefinementChat />
+          </div>
+
+          {/* top-right minimap topology */}
+          <div className="absolute top-16 right-6 z-20 pointer-events-auto hidden md:block">
+            <MinimapTopology />
+          </div>
+
+          {/* bottom-right solar & relief slider */}
+          <div className="absolute bottom-20 right-6 z-20 pointer-events-auto hidden lg:block">
+            <MutationControls />
+          </div>
+
+          {/* cinematic bottom movie subtitles and dialogue bar */}
+          <DialogueModal />
+
+          {/* bottom-most chamber navigation strip */}
+          <footer
+            className="absolute bottom-0 left-0 right-0 z-20 flex items-center justify-between px-6 py-2 border-t pointer-events-auto"
+            style={{
+              backgroundColor: theme.panelBg,
+              borderColor: theme.panelBorder,
+            }}
+          >
+            <div className="text-xs italic hidden sm:block" style={{ color: theme.mutedText }}>
+              Walk: <strong style={{ color: theme.accentColor }}>WASD / Arrows</strong> (Shift to Sprint) • Drag to Look 360°
+            </div>
+
+            <div className="flex flex-wrap gap-2 items-center mx-auto sm:mx-0">
+              <span
+                className="text-xs uppercase tracking-widest mr-1 font-bold"
+                style={{ color: theme.accentColor }}
+              >
+                Chambers:
+              </span>
+              {Object.keys(rooms).map((rId, idx) => (
+                <button
+                  key={rId}
+                  onClick={() => {
+                    startTransition(() => {
+                      setCurrentRoom(rId);
+                    });
+                  }}
+                  className="px-3 py-1 text-xs border uppercase tracking-wider transition-all"
+                  style={{
+                    backgroundColor:
+                      rId === currentRoomId ? theme.buttonBg : "rgba(0,0,0,0.45)",
+                    color: rId === currentRoomId ? theme.buttonText : theme.accentText,
+                    borderColor:
+                      rId === currentRoomId ? theme.accentColor : `${theme.panelBorder}66`,
+                    fontWeight: rId === currentRoomId ? "bold" : "normal",
+                  }}
+                >
+                  {idx + 1}. {rooms[rId]?.name || rId}
+                </button>
+              ))}
+            </div>
+          </footer>
+        </>
+      )}
     </main>
   );
 }

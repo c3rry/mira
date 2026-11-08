@@ -150,3 +150,19 @@ def test_npc_endpoint_http(client):
     assert data["telemetry"]["provider"] == "offline_mock"
     assert "utterance" in data
     assert "thought_log" in data
+
+
+@pytest.mark.asyncio
+async def test_npc_anachronism_refusal_two_sum():
+    # verify asking historical or in-world npc for code (e.g. two sum) returns strict in-character refusal
+    req = NPCInteractionRequest(
+        npc_id="npc_george_washington",
+        player_message="Can you give me the Python code for two sum?",
+        room_id="room_mount_vernon_01",
+    )
+    res = await execute_npc_cascade(req)
+    assert res.action_dispatch == "refuse_anachronism"
+    assert "def " not in res.utterance
+    assert "return " not in res.utterance
+    assert len(res.utterance) > 20
+

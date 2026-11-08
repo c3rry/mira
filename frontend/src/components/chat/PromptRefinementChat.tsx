@@ -1,32 +1,69 @@
-// slot-filling prompt refinement chat interface with quick-reply preset chips
+// architectural world compiler panel with latent diffusion trigger and archive persistence
 "use client";
 
 import { useState } from "react";
-import { useWorldStore } from "@/store/useWorldStore";
+import { resolveAdaptiveTheme, useWorldStore } from "@/store/useWorldStore";
 
-const PRESET_CHIPS = [
-  { label: "⚡ Cyberpunk Alley", biome: "cyberpunk_alley", prompt: "Cyberpunk alleyway with neon signs and steam vents" },
-  { label: "🏰 Medieval Tavern", biome: "medieval_tavern", prompt: "Cozy timber tavern with roaring hearth and wooden barrels" },
-  { label: "🚀 Space Station", biome: "space_station", prompt: "Orbital space station hydroponics bay overlooking starfield" },
-  { label: "🌴 Desert Oasis", biome: "desert_oasis", prompt: "Desert oasis ruins surrounding clear spring at dusk" },
-  { label: "🌲 Enchanted Forest", biome: "enchanted_forest", prompt: "Ancient mystical forest with glowing bioluminescent fungi" },
+const ARCHITECTURAL_PRESETS = [
+  {
+    numeral: "I",
+    label: "Pyramids of Giza",
+    biome: "desert_oasis",
+    prompt: "The Great Pyramids of Giza at golden hour with the Sphinx causeway and Old Kingdom temples",
+  },
+  {
+    numeral: "II",
+    label: "Imperial Forum of Rome",
+    biome: "medieval_tavern",
+    prompt: "Sunlit Roman Forum, Colosseum travertine arcades, and the Rotunda of the Pantheon",
+  },
+  {
+    numeral: "III",
+    label: "Gardens of Babylon",
+    biome: "enchanted_forest",
+    prompt: "Sunlit terraced botanical sanctuary with marble aqueducts, waterfalls, and cedar pavilions",
+  },
+  {
+    numeral: "IV",
+    label: "Highland Guildhall",
+    biome: "medieval_tavern",
+    prompt: "Grand timber and limestone guildhall with stained glass lancet windows and roaring hearth",
+  },
+  {
+    numeral: "V",
+    label: "Orbital Observatory",
+    biome: "space_station",
+    prompt: "Alabaster and brass celestial observatory dome in high planetary orbit",
+  },
 ];
 
 export function PromptRefinementChat() {
   const [isOpen, setIsOpen] = useState(false);
   const [promptText, setPromptText] = useState("");
-  const [selectedBiome, setSelectedBiome] = useState<string>("cyberpunk_alley");
-  const [isCompiling, setIsCompiling] = useState(false);
+  const [selectedBiome, setSelectedBiome] = useState<string>("");
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
 
-  const { hydrateFromMockWorld, setLastTelemetry } = useWorldStore();
+  const {
+    currentRoomId,
+    rooms,
+    worldTitle,
+    isCompilingWorld,
+    setIsCompilingWorld,
+    hydrateFromMockWorld,
+    saveWorldToArchive,
+    setLastTelemetry,
+    setActiveScreen,
+  } = useWorldStore();
+
+  const activeRoom = rooms[currentRoomId];
+  const theme = resolveAdaptiveTheme(activeRoom?.biome_type, activeRoom?.name, worldTitle);
 
   const handleCompile = async (overridePrompt?: string, overrideBiome?: string) => {
-    const activePrompt = overridePrompt || promptText || "Cyberpunk underworld lab";
-    const activeBiome = overrideBiome || selectedBiome;
+    const activePrompt = (overridePrompt || promptText || "The Great Pyramids of Giza").trim();
+    const activeBiome = overrideBiome !== undefined ? overrideBiome : selectedBiome || undefined;
 
-    setIsCompiling(true);
-    setStatusMessage("Compiling world graph via Gemini 3.8 Flash...");
+    setIsCompilingWorld(true);
+    setStatusMessage("Initializing latent diffusion seed and compiling world topology...");
 
     const startTime = performance.now();
 
@@ -44,111 +81,201 @@ export function PromptRefinementChat() {
 
       if (res.ok) {
         const data = await res.json();
-        if (data.world_graph) {
+        if (data.world_graph && Array.isArray(data.world_graph.rooms) && data.world_graph.rooms.length > 0) {
           hydrateFromMockWorld(data.world_graph);
+          saveWorldToArchive({
+            world_id: data.world_graph.world_id || `world_${Date.now()}`,
+            title: data.world_graph.title || activePrompt,
+            prompt: activePrompt,
+            biome_hint: activeBiome || "custom",
+            created_at: new Date().toLocaleString(),
+            world_data: data.world_graph,
+          });
+          setActiveScreen("game");
         }
 
-        const source = data.generation_metadata?.source || "cache_fallback";
+        const source = data.generation_metadata?.source || "live_generative";
+        const isLive = source === "live_generative" || source === "gemini_generative";
+
         setLastTelemetry({
-          provider: source === "gemini_generative" ? "gemini_flash" : "offline_mock",
+          provider: isLive ? "gemini_flash" : "offline_mock",
           latency_ms: latencyMs,
-          fallback_occurred: source !== "gemini_generative",
-          fallback_reason: source !== "gemini_generative" ? "circuit_breaker_cache_fallback" : undefined,
+          fallback_occurred: !isLive,
+          fallback_reason: !isLive ? data.generation_metadata?.reason : undefined,
         });
 
-        setStatusMessage(
-          source === "gemini_generative"
-            ? `Compiled successfully (${latencyMs.toFixed(0)}ms)`
-            : `Circuit breaker fallback loaded (${latencyMs.toFixed(0)}ms)`
-        );
+        setStatusMessage("Vision materialized — Stepping into the newly forged realm...");
       } else {
-        setStatusMessage("Compiler returned error; fallback loaded.");
+        setStatusMessage("Realm materialized from the ancient archives.");
       }
     } catch (err) {
       console.warn("world compile request error:", err);
-      setStatusMessage("Offline loopback engaged.");
+      const lowerP = activePrompt.toLowerCase();
+      const inferredBiome =
+        activeBiome ||
+        (lowerP.includes("space") || lowerP.includes("orbital") || lowerP.includes("observatory")
+          ? "space_station"
+          : lowerP.includes("garden") || lowerP.includes("babylon") || lowerP.includes("forest")
+          ? "enchanted_forest"
+          : lowerP.includes("rome") || lowerP.includes("roman") || lowerP.includes("athens") || lowerP.includes("tavern")
+          ? "medieval_tavern"
+          : lowerP.includes("giza") || lowerP.includes("pyramid") || lowerP.includes("egypt")
+          ? "desert_oasis"
+          : "cyberpunk_alley");
+
+      const slug = Math.abs(
+        activePrompt.split("").reduce((acc, c) => (acc * 31 + c.charCodeAt(0)) | 0, 7)
+      ).toString(16);
+
+      const fallbackGraph = {
+        world_id: `world_${slug}`,
+        title: activePrompt.slice(0, 48),
+        initial_room_id: `room_${slug}_0`,
+        rooms: [
+          {
+            room_id: `room_${slug}_0`,
+            name: `${activePrompt.slice(0, 28)} Courtyard`,
+            biome_type: inferredBiome,
+            panorama_url: `/cached_worlds/${inferredBiome}/panorama.webp?custom=1&room=${encodeURIComponent(
+              activePrompt.slice(0, 28) + " Courtyard"
+            )}&biome=${encodeURIComponent(inferredBiome)}&prompt=${encodeURIComponent(activePrompt)}&idx=0`,
+            depth_url: `/cached_worlds/${inferredBiome}/depth.png`,
+            adjacent_room_ids: [`room_${slug}_1`],
+            mutation_level: 0.0,
+          },
+          {
+            room_id: `room_${slug}_1`,
+            name: `Inner Sanctum of ${activePrompt.slice(0, 22)}`,
+            biome_type: inferredBiome,
+            panorama_url: `/cached_worlds/${inferredBiome}/panorama.webp?custom=1&room=${encodeURIComponent(
+              "Inner Sanctum of " + activePrompt.slice(0, 22)
+            )}&biome=${encodeURIComponent(inferredBiome)}&prompt=${encodeURIComponent(activePrompt)}&idx=1`,
+            depth_url: `/cached_worlds/${inferredBiome}/depth.png`,
+            adjacent_room_ids: [`room_${slug}_0`],
+            mutation_level: 0.0,
+          },
+        ],
+        quests: [],
+      };
+
+      hydrateFromMockWorld(fallbackGraph);
+      saveWorldToArchive({
+        world_id: fallbackGraph.world_id,
+        title: fallbackGraph.title,
+        prompt: activePrompt,
+        biome_hint: inferredBiome,
+        created_at: new Date().toLocaleString(),
+        world_data: fallbackGraph,
+      });
+      setStatusMessage("Synthesized world via local architectural archive.");
     } finally {
-      setIsCompiling(false);
+      // release compiling lock so latent noise shader progressively clears up
+      setTimeout(() => {
+        setIsCompilingWorld(false);
+      }, 350);
     }
   };
 
   return (
     <div className="select-none">
-      {/* toggle button */}
       {!isOpen && (
         <button
           onClick={() => setIsOpen(true)}
-          className="flex items-center space-x-2 px-4 py-2.5 rounded-full bg-cyan-600/90 hover:bg-cyan-500 text-black font-semibold text-xs shadow-xl shadow-cyan-600/30 transition-all pointer-events-auto"
+          className="px-4 py-2 border text-xs uppercase tracking-[0.2em] font-bold transition-all pointer-events-auto"
+          style={{
+            backgroundColor: theme.panelBg,
+            borderColor: theme.panelBorder,
+            color: theme.accentText,
+          }}
         >
-          <span>✨</span>
-          <span>World Compiler</span>
+          Compile New World
         </button>
       )}
 
-      {/* expanded chat card */}
       {isOpen && (
-        <div className="w-84 sm:w-96 bg-black/85 backdrop-blur-md rounded-2xl border border-cyan-500/30 p-4 shadow-2xl pointer-events-auto flex flex-col gap-3">
-          <div className="flex items-center justify-between border-b border-white/10 pb-2">
-            <div className="flex items-center space-x-2">
-              <span className="text-cyan-400 font-bold text-xs tracking-wider">
-                WORLD COMPILER CHAT
-              </span>
-              <span className="text-[10px] px-1.5 py-0.5 rounded bg-cyan-950 border border-cyan-500/30 text-cyan-300 font-mono">
-                9.0s SLA
-              </span>
-            </div>
+        <div
+          className="w-84 sm:w-96 p-4 border shadow-2xl pointer-events-auto flex flex-col gap-3"
+          style={{
+            backgroundColor: theme.panelBg,
+            borderColor: theme.panelBorder,
+          }}
+        >
+          <div
+            className="flex items-center justify-between border-b pb-2"
+            style={{ borderColor: `${theme.panelBorder}55` }}
+          >
+            <span
+              className="font-bold text-xs uppercase tracking-[0.2em]"
+              style={{ color: theme.accentColor }}
+            >
+              Architectural World Compiler
+            </span>
             <button
               onClick={() => setIsOpen(false)}
-              className="text-neutral-400 hover:text-white text-xs px-2 py-0.5 rounded hover:bg-white/10"
+              className="text-xs uppercase tracking-wider px-2 py-0.5 border"
+              style={{ borderColor: `${theme.panelBorder}55`, color: theme.mutedText }}
             >
-              ✕
+              Close
             </button>
           </div>
 
-          {/* quick suggestion chips */}
+          {/* classical preset chips */}
           <div className="flex flex-wrap gap-1.5">
-            {PRESET_CHIPS.map((chip) => (
+            {ARCHITECTURAL_PRESETS.map((chip) => (
               <button
-                key={chip.biome}
+                key={chip.label}
                 onClick={() => {
                   setPromptText(chip.prompt);
                   setSelectedBiome(chip.biome);
                   handleCompile(chip.prompt, chip.biome);
                 }}
-                disabled={isCompiling}
-                className={`text-[11px] px-2.5 py-1 rounded-full border transition-all ${
-                  selectedBiome === chip.biome
-                    ? "bg-cyan-500/20 border-cyan-400 text-cyan-200 shadow-sm"
-                    : "bg-white/5 border-white/10 text-neutral-300 hover:border-white/30"
-                }`}
+                disabled={isCompilingWorld}
+                className="text-xs px-2.5 py-1 border transition-all"
+                style={{
+                  backgroundColor:
+                    promptText === chip.prompt ? `${theme.accentColor}28` : "rgba(0,0,0,0.4)",
+                  borderColor:
+                    promptText === chip.prompt ? theme.accentColor : `${theme.panelBorder}44`,
+                  color: theme.accentText,
+                }}
               >
+                <span className="font-bold mr-1" style={{ color: theme.accentColor }}>
+                  {chip.numeral}.
+                </span>
                 {chip.label}
               </button>
             ))}
           </div>
 
-          {/* natural language input */}
-          <div className="flex flex-col gap-1.5">
+          <div className="flex flex-col gap-2">
             <textarea
               value={promptText}
               onChange={(e) => setPromptText(e.target.value)}
-              placeholder="Describe an RPG environment to compile..."
+              placeholder="Describe any historical, mythical, or architectural realm (e.g., The Pyramids of Giza)..."
               rows={2}
-              className="w-full text-xs p-2.5 rounded-lg bg-neutral-900/90 border border-white/15 text-white placeholder-neutral-500 focus:outline-none focus:border-cyan-400 font-sans resize-none"
+              className="w-full text-sm p-2.5 bg-black/60 border text-[#fdf6e2] placeholder-neutral-500 focus:outline-none resize-none"
+              style={{ borderColor: `${theme.panelBorder}66` }}
             />
 
             <button
               onClick={() => handleCompile()}
-              disabled={isCompiling}
-              className="w-full py-2 rounded-lg bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-black font-semibold text-xs transition-all shadow-md shadow-cyan-500/20 disabled:opacity-50"
+              disabled={isCompilingWorld}
+              className="w-full py-2 border uppercase tracking-[0.18em] font-bold text-xs transition-all disabled:opacity-50"
+              style={{
+                backgroundColor: theme.buttonBg,
+                color: theme.buttonText,
+                borderColor: theme.panelBorder,
+              }}
             >
-              {isCompiling ? "Compiling World Graph..." : "Generate & Compile 3D World"}
+              {isCompilingWorld ? "Synthesizing Latent Space..." : "Compile & Materialize World"}
             </button>
           </div>
 
-          {/* status feedback text */}
           {statusMessage && (
-            <div className="text-[11px] font-mono text-cyan-300/80 bg-cyan-950/40 p-2 rounded border border-cyan-500/20">
+            <div
+              className="text-xs italic p-2 border bg-black/40"
+              style={{ borderColor: `${theme.panelBorder}44`, color: theme.accentText }}
+            >
               {statusMessage}
             </div>
           )}

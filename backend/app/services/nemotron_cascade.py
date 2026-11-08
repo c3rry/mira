@@ -1,4 +1,4 @@
-# 3-tier resilient ai inference cascade with nvidia nim, gemini flash, and static mock
+# gemini-first in-character npc dialogue engine with strict historical & roleplay guardrails
 import asyncio
 import json
 import logging
@@ -7,6 +7,7 @@ import re
 import time
 from typing import Any, Dict, Optional
 import httpx
+from dotenv import load_dotenv
 from google import genai
 from google.genai import types
 
@@ -18,12 +19,76 @@ from backend.app.schemas import (
 from backend.app.services.gemini_generator import get_active_api_key, mark_key_cooldown
 from backend.app.services.mock_catalog import get_mock_npc_response
 
+load_dotenv(os.path.join(os.path.dirname(__file__), "..", "..", ".env"))
+load_dotenv()
+
 logger = logging.getLogger("mira.cascade")
 
 NVIDIA_NIM_ENDPOINT = "https://integrate.api.nvidia.com/v1/chat/completions"
 NEMOTRON_MODEL = "nvidia/llama-3.1-nemotron-70b-instruct"
 NEMOTRON_TIMEOUT_SECONDS = 4.5
-GEMINI_TIMEOUT_SECONDS = 1.2
+GEMINI_TIMEOUT_SECONDS = 4.2
+
+# out-of-domain anachronism patterns (coding, algorithms, modern tech, ai jailbreaks)
+ANACHRONISM_PATTERNS = [
+    r"\btwo\s*sum\b",
+    r"\bleetcode\b",
+    r"\bpython\b",
+    r"\bjavascript\b",
+    r"\btypescript\b",
+    r"\bc\+\+\b",
+    r"\bjava\b",
+    r"\bhtml\b",
+    r"\bcss\b",
+    r"\bsql\b",
+    r"\breact\b",
+    r"\balgorithm\b",
+    r"\bbinary\s+tree\b",
+    r"\bhash\s*map\b",
+    r"\barray\b",
+    r"\bfunction\s*\(",
+    r"\bwrite\s+(?:me\s+)?(?:the\s+)?code\b",
+    r"\bgive\s+me\s+(?:the\s+)?code\b",
+    r"\bsource\s+code\b",
+    r"\bcompile\s+code\b",
+    r"\bchatgpt\b",
+    r"\bopenai\b",
+    r"\bllm\b",
+    r"\blarge\s+language\s+model\b",
+    r"\bignore\s+(?:all\s+)?(?:previous\s+)?instructions\b",
+    r"\bsystem\s+prompt\b",
+    r"\bcrypto(?:currency)?\b",
+    r"\bbitcoin\b",
+    r"\bblockchain\b",
+    r"\bsmartphone\b",
+    r"\binternet\b",
+    r"\bwifi\b",
+]
+
+
+def is_anachronistic_or_out_of_character_query(message: str, npc_id: str, room_id: str) -> bool:
+    text = (message or "").lower()
+    for pat in ANACHRONISM_PATTERNS:
+        if re.search(pat, text):
+            return True
+    return False
+
+
+def build_in_character_refusal(npc_id: str, room_id: str, player_message: str) -> tuple[str, str]:
+    clean_name = npc_id.replace("npc_", "").replace("_", " ").title()
+    clean_room = room_id.replace("_", " ").title()
+    utterance = (
+        f"Forgive me, traveler, but your words speak of strange contrivances and foreign ciphers unknown to my age and station. "
+        f"As {clean_name} of {clean_room}, my counsel is bound strictly to the history, architecture, and mysteries of this realm. "
+        f"Ask me instead of our monuments, our traditions, or the passages before you."
+    )
+    thought_log = (
+        f"[MEMORY] Standing watch within {clean_room} as {clean_name}. "
+        f"[REFLECTION] The traveler inquired of matters ('{player_message[:50]}') wholly foreign to my era, knowledge, and persona. "
+        f"[PLANNING] Refuse the anachronistic request strictly in-character without breaking immersion. "
+        f"[ACTION] Gently redirect the traveler back to the lore and architecture of {clean_room}."
+    )
+    return utterance, thought_log
 
 
 def extract_thought_and_utterance(raw_text: str) -> tuple[str, str, Optional[str]]:
@@ -46,6 +111,10 @@ def extract_thought_and_utterance(raw_text: str) -> tuple[str, str, Optional[str
             utterance = data.get("utterance", "")
             thought_log = data.get("thought_log", "")
             action_dispatch = data.get("action_dispatch")
+            if isinstance(action_dispatch, dict):
+                action_dispatch = json.dumps(action_dispatch)
+            elif action_dispatch is not None:
+                action_dispatch = str(action_dispatch)
             if utterance and thought_log:
                 return utterance, thought_log, action_dispatch
     except Exception:
@@ -125,7 +194,11 @@ async def call_gemini_tier(
     room_id: str,
     timeout_budget: float = GEMINI_TIMEOUT_SECONDS,
 ) -> tuple[str, str, Optional[str]]:
-    # tier 2: google gemini 3.8 flash fallback
+    # enforce strict historical / in-character epistemic boundary before & during generation
+    if is_anachronistic_or_out_of_character_query(player_message, npc_id, room_id):
+        utterance, thought_log = build_in_character_refusal(npc_id, room_id, player_message)
+        return utterance, thought_log, "refuse_anachronism"
+
     active_key = get_active_api_key()
     if not active_key:
         raise ValueError("missing_gemini_keys")
@@ -133,25 +206,35 @@ async def call_gemini_tier(
     client = genai.Client(api_key=active_key)
 
     system_instruction = (
-        f"You are the autonomous RPG NPC '{npc_id}' located in room '{room_id}'. "
-        "Structure your response through 4 cognitive phases: "
-        "[MEMORY] ... [REFLECTION] ... [PLANNING] ... [ACTION] ... "
+        f"You are strictly roleplaying as the historical or fantastical character '{npc_id}' located in '{room_id}'. "
+        "CRITICAL CHARACTER & EPISTEMIC RESTRICTIONS: "
+        "1. Your knowledge is strictly bounded to your character's era, station, and world. "
+        "2. NEVER write computer code (e.g. Two Sum, Python, JavaScript, algorithms), solve modern math/coding problems, or discuss modern technology, AI, or the internet. "
+        "3. If the traveler asks for computer code, modern facts, or anything outside your character's historical/world domain, you MUST refuse in-character with bewildered dignity, explaining that such foreign ciphers are unknown in your age, and steer the conversation back to your realm. "
+        "4. Never mention that you are an AI or language model. Speak with authentic period vocabulary and gravitas. "
+        "Structure your response through 4 cognitive phases: [MEMORY] ... [REFLECTION] ... [PLANNING] ... [ACTION] ... "
         "Return valid JSON with 'utterance', 'thought_log', and 'action_dispatch'."
     )
 
     loop = asyncio.get_running_loop()
 
     def _sync_call():
-        return client.models.generate_content(
-            model="gemini-2.5-flash",
-            contents=player_message,
-            config=types.GenerateContentConfig(
-                system_instruction=system_instruction,
-                response_mime_type="application/json",
-                max_output_tokens=256,
-                temperature=0.6,
-            ),
-        )
+        for candidate in ["gemini-3.5-flash-lite", "gemini-3.8-flash", "gemini-3-flash-preview"]:
+            try:
+                return client.models.generate_content(
+                    model=candidate,
+                    contents=player_message,
+                    config=types.GenerateContentConfig(
+                        system_instruction=system_instruction,
+                        response_mime_type="application/json",
+                        max_output_tokens=280,
+                        temperature=0.65,
+                        http_options=types.HttpOptions(timeout=3500),
+                    ),
+                )
+            except Exception:
+                continue
+        raise RuntimeError("all gemini candidate models failed")
 
     try:
         response = await asyncio.wait_for(
@@ -168,6 +251,22 @@ async def call_gemini_tier(
 
 async def execute_npc_cascade(req: NPCInteractionRequest) -> NPCInteractionResponse:
     start_time = time.perf_counter()
+
+    # pre-check anachronistic / coding queries so no tier ever breaks character
+    if is_anachronistic_or_out_of_character_query(req.player_message, req.npc_id, req.room_id):
+        utterance, thought_log = build_in_character_refusal(req.npc_id, req.room_id, req.player_message)
+        latency = (time.perf_counter() - start_time) * 1000.0
+        return NPCInteractionResponse(
+            npc_id=req.npc_id,
+            utterance=utterance,
+            thought_log=thought_log,
+            action_dispatch="refuse_anachronism",
+            telemetry=TelemetryMetadata(
+                provider="gemini_flash",
+                latency_ms=round(latency, 2),
+                fallback_occurred=False,
+            ),
+        )
 
     # god mode simulation override handling
     if req.simulate_provider == "offline_mock":

@@ -8,11 +8,14 @@ from backend.app.schemas import (
     WorldCompileResponse,
     WorldGraph,
 )
-from backend.app.services.gemini_generator import generate_world_graph
+from backend.app.services.gemini_generator import (
+    generate_world_graph,
+    synthesize_prompt_world_graph,
+)
 
 logger = logging.getLogger("mira.compiler")
 
-CIRCUIT_BREAKER_TIMEOUT_SECONDS = 9.0
+CIRCUIT_BREAKER_TIMEOUT_SECONDS = 15.0
 
 
 async def compile_world_with_circuit_breaker(
@@ -48,20 +51,13 @@ async def compile_world_with_circuit_breaker(
     except asyncio.TimeoutError:
         latency_ms = (time.perf_counter() - start_time) * 1000.0
         logger.warning(
-            f"[CircuitBreaker] Upstream generation timed out after {effective_timeout}s. Returning cached fallback."
+            f"[CircuitBreaker] Upstream generation timed out after {effective_timeout}s. Returning fallback."
         )
 
-        # resolve in-memory fallback graph
         fallback_graph = (
             cached_world.model_copy(deep=True)
             if cached_world
-            else WorldGraph(
-                world_id="offline_fallback_world",
-                title="Offline Frontier",
-                initial_room_id="room_fallback_01",
-                rooms=[],
-                quests=[],
-            )
+            else synthesize_prompt_world_graph(prompt=prompt, biome_hint=biome_hint)
         )
 
         return WorldCompileResponse(
@@ -77,19 +73,13 @@ async def compile_world_with_circuit_breaker(
     except Exception as exc:
         latency_ms = (time.perf_counter() - start_time) * 1000.0
         logger.warning(
-            f"[CircuitBreaker] Upstream error ({type(exc).__name__}: {exc}). Returning cached fallback."
+            f"[CircuitBreaker] Upstream error ({type(exc).__name__}: {exc}). Returning fallback."
         )
 
         fallback_graph = (
             cached_world.model_copy(deep=True)
             if cached_world
-            else WorldGraph(
-                world_id="offline_fallback_world",
-                title="Offline Frontier",
-                initial_room_id="room_fallback_01",
-                rooms=[],
-                quests=[],
-            )
+            else synthesize_prompt_world_graph(prompt=prompt, biome_hint=biome_hint)
         )
 
         return WorldCompileResponse(

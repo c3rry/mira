@@ -8,8 +8,12 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional, Union
 from PIL import Image
 
+from dotenv import load_dotenv
 from backend.app.schemas import SphericalCoord, VisionBoundingBox
 from backend.app.services.gemini_generator import get_active_api_key, mark_key_cooldown
+
+load_dotenv(os.path.join(os.path.dirname(__file__), "..", ".env"))
+load_dotenv()
 
 logger = logging.getLogger("mira.vision")
 
@@ -137,14 +141,21 @@ def detect_and_ground_image(
             "Return a JSON list of objects, each with 'label' (string) and 'box_2d' ([ymin, xmin, ymax, xmax] normalized 0-1000)."
         )
 
-        response = client.models.generate_content(
-            model="gemini-2.0-flash",
-            contents=[pil_img, prompt],
-            config=types.GenerateContentConfig(
-                response_mime_type="application/json",
-                temperature=0.2,
-            ),
-        )
+        response = None
+        for vision_model in ["gemini-3.8-flash", "gemini-3.5-flash-lite", "gemini-2.5-flash"]:
+            try:
+                response = client.models.generate_content(
+                    model=vision_model,
+                    contents=[pil_img, prompt],
+                    config=types.GenerateContentConfig(
+                        response_mime_type="application/json",
+                        temperature=0.2,
+                    ),
+                )
+                if response and response.text:
+                    break
+            except Exception:
+                continue
 
         if not response.text:
             return get_heuristic_fallback_zones(r=r)

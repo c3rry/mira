@@ -1,259 +1,379 @@
-# generator for vibrant 360 equirectangular panoramas and depth maps
+# generator for bright, architecturally rich 360 equirectangular panoramas and depth maps
 import math
 from pathlib import Path
+import random
 import numpy as np
-from PIL import Image, ImageDraw, ImageFilter
+from PIL import Image, ImageDraw
 
 
-def create_cyberpunk_panorama(w=2048, h=1024):
+def create_desert_oasis(w=2048, h=1024):
+    # bright sunlit giza necropolis and desert oasis sanctuary
     img = Image.new("RGB", (w, h))
     draw = ImageDraw.Draw(img)
-
-    # 1. sky gradient (dark violet to neon navy)
-    for y in range(h // 2):
-        ratio = y / (h / 2)
-        r = int(15 + 25 * ratio)
-        g = int(5 + 15 * ratio)
-        b = int(35 + 45 * ratio)
-        draw.line([(0, y), (w, y)], fill=(r, g, b))
-
-    # 2. floor gradient (wet reflective dark asphalt)
-    for y in range(h // 2, h):
-        ratio = (y - h / 2) / (h / 2)
-        r = int(25 - 15 * ratio)
-        g = int(30 - 15 * ratio)
-        b = int(45 - 20 * ratio)
-        draw.line([(0, y), (w, y)], fill=(r, g, b))
-
-    # 3. skyscraper skyline silhouettes and window lights
-    np.random.seed(42)
-    building_count = 32
-    bw = w // building_count
-    for i in range(building_count):
-        bx = i * bw
-        bh = np.random.randint(250, 480)
-        draw.rectangle([bx, h // 2 - bh, bx + bw - 4, h // 2], fill=(12, 14, 24))
-        # glowing windows
-        for wy in range(h // 2 - bh + 20, h // 2 - 20, 18):
-            for wx in range(bx + 4, bx + bw - 8, 12):
-                if np.random.rand() > 0.45:
-                    win_color = (0, 240, 255) if np.random.rand() > 0.4 else (255, 0, 128)
-                    draw.rectangle([wx, wy, wx + 6, wy + 10], fill=win_color)
-
-    # 4. giant holographic signs
-    neon_signs = [
-        ("MIRA-NET 3D", 150, 280, (0, 255, 255)),
-        ("CYBER-LAB 01", 600, 320, (255, 0, 180)),
-        ("SYNAPSE CO.", 1100, 260, (0, 255, 128)),
-        ("NEO-SECTOR 7", 1600, 310, (255, 200, 0)),
-    ]
-    for text, sx, sy, col in neon_signs:
-        draw.rectangle([sx - 15, sy - 15, sx + 220, sy + 55], outline=col, width=3)
-        draw.text((sx, sy), text, fill=col)
-
-    # 5. perspective neon road grid on floor
+    random.seed(77)
     horizon_y = h // 2
+
+    # 1. bright cerulean to golden horizon daytime sky
+    for y in range(horizon_y):
+        ratio = y / horizon_y
+        r = int(75 + 175 * (ratio ** 1.1))
+        g = int(165 + 75 * ratio)
+        b = int(235 - 55 * ratio)
+        draw.line([(0, y), (w, y)], fill=(r, g, b))
+
+    # blazing golden sun with concentric solar halo
+    sx, sy = w // 2, horizon_y - 190
+    for rad, col in [(170, (255, 235, 165)), (120, (255, 245, 195)), (75, (255, 255, 235))]:
+        draw.ellipse([sx - rad, sy - rad, sx + rad, sy + rad], fill=col)
+
+    # high cirrus clouds
+    for cx in range(120, w, 340):
+        cy = random.randint(70, 190)
+        draw.ellipse([cx - 110, cy - 18, cx + 110, cy + 18], fill=(255, 250, 240))
+
+    # 2. three monumental pyramids of giza along the horizon
+    pyramids = [
+        (w // 2 - 420, 270, 320),
+        (w // 2, 340, 410),
+        (w // 2 + 440, 240, 290),
+    ]
+    for px, ph, pw in pyramids:
+        apex = (px, horizon_y - ph)
+        left_base = (px - pw, horizon_y)
+        center_base = (px + 30, horizon_y)
+        right_base = (px + pw, horizon_y)
+        # sunlit limestone face
+        draw.polygon([apex, left_base, center_base], fill=(242, 206, 138), outline=(195, 155, 88))
+        # warm shadowed face
+        draw.polygon([apex, center_base, right_base], fill=(198, 154, 86), outline=(165, 125, 65))
+        # golden capstone (pyramidion)
+        cap_h = ph // 7
+        cap_w = pw // 7
+        draw.polygon(
+            [apex, (px - cap_w, horizon_y - ph + cap_h), (px + cap_w, horizon_y - ph + cap_h)],
+            fill=(255, 225, 95),
+            outline=(212, 175, 55),
+        )
+        # horizontal limestone masonry courses
+        for cy in range(horizon_y - ph + cap_h, horizon_y, 16):
+            prog = (cy - (horizon_y - ph)) / ph
+            lw = int(pw * prog)
+            draw.line([(px - lw, cy), (px + lw, cy)], fill=(180, 140, 75), width=1)
+
+    # 3. monumental sandstone colonnades and obelisks on left and right wings
+    for ox in [180, 360, w - 360, w - 180]:
+        oh = 280
+        draw.polygon(
+            [(ox - 18, horizon_y), (ox - 10, horizon_y - oh), (ox, horizon_y - oh - 28), (ox + 10, horizon_y - oh), (ox + 18, horizon_y)],
+            fill=(235, 195, 125),
+            outline=(165, 125, 65),
+            width=2,
+        )
+        # hieroglyphic band markings
+        for hy in range(horizon_y - oh + 25, horizon_y - 20, 28):
+            draw.rectangle([ox - 7, hy, ox + 7, hy + 12], fill=(175, 125, 55))
+
+    # 4. sunlit golden desert dunes & carved limestone processional courtyard floor
+    for y in range(horizon_y, h):
+        ratio = (y - horizon_y) / (h - horizon_y)
+        r = int(238 - 28 * ratio)
+        g = int(196 - 32 * ratio)
+        b = int(122 - 30 * ratio)
+        draw.line([(0, y), (w, y)], fill=(r, g, b))
+
+    # perspective limestone courtyard paving slabs
     for x in range(0, w, 128):
-        draw.line([(x, horizon_y), (x + (x - w // 2) * 2, h)], fill=(0, 180, 255), width=2)
-    for y in range(horizon_y + 10, h, 35):
-        alpha = int(40 + (y - horizon_y) / (h - horizon_y) * 200)
-        draw.line([(0, y), (w, y)], fill=(255, 0, 150), width=1)
+        spread = (x - w // 2) * 2.5
+        draw.line([(x, horizon_y), (int(w // 2 + spread), h)], fill=(185, 145, 85), width=2)
+
+    for y in range(horizon_y + 16, h, 34):
+        draw.line([(0, y), (w, y)], fill=(195, 155, 92), width=2)
+
+    # central royal processional causeway bordered with gold and lapis lazuli trim
+    for y in range(horizon_y, h):
+        prog = (y - horizon_y) / (h - horizon_y)
+        cw = int(90 + prog * 480)
+        draw.line([(w // 2 - cw // 2, y), (w // 2 + cw // 2, y)], fill=(246, 222, 168))
+        draw.line([(w // 2 - cw // 2, y), (w // 2 - cw // 2 + 8, y)], fill=(212, 175, 55))
+        draw.line([(w // 2 + cw // 2 - 8, y), (w // 2 + cw // 2, y)], fill=(212, 175, 55))
+
+    # sacred turquoise reflection pool in foreground
+    draw.ellipse(
+        [w // 2 - 260, horizon_y + 150, w // 2 + 260, horizon_y + 310],
+        fill=(45, 185, 205),
+        outline=(212, 175, 55),
+        width=6,
+    )
 
     return img
 
 
 def create_medieval_tavern(w=2048, h=1024):
+    # brightly illuminated classical guildhall and royal library tavern
     img = Image.new("RGB", (w, h))
     draw = ImageDraw.Draw(img)
+    random.seed(101)
+    horizon_y = h // 2
 
-    # 1. warm stone wall background
-    for y in range(h // 2):
-        ratio = y / (h / 2)
-        draw.line([(0, y), (w, y)], fill=(int(40 + 20 * ratio), int(25 + 15 * ratio), int(15 + 10 * ratio)))
+    # 1. warm sunlit limestone & timber upper walls
+    for y in range(horizon_y):
+        ratio = y / horizon_y
+        r = int(165 + 45 * ratio)
+        g = int(130 + 38 * ratio)
+        b = int(92 + 28 * ratio)
+        draw.line([(0, y), (w, y)], fill=(r, g, b))
 
-    # 2. wooden floorboards
-    for y in range(h // 2, h):
-        ratio = (y - h / 2) / (h / 2)
-        draw.line([(0, y), (w, y)], fill=(int(65 - 25 * ratio), int(40 - 15 * ratio), int(22 - 10 * ratio)))
+    # vaulted oak ceiling beams and golden coffers
+    for x in range(0, w, 128):
+        draw.rectangle([x, 0, x + 22, horizon_y], fill=(95, 58, 32), outline=(65, 38, 18), width=2)
+    draw.rectangle([0, 85, w, 118], fill=(85, 50, 26), outline=(212, 175, 55), width=2)
 
-    # 3. ceiling timber beams
-    for x in range(0, w, 160):
-        draw.rectangle([x, 0, x + 30, h // 2 - 80], fill=(30, 18, 10))
-    draw.rectangle([0, 120, w, 150], fill=(25, 15, 8))
+    # tall arched stained-glass clerestory windows streaming golden daylight
+    for wx in range(190, w - 120, 256):
+        if abs(wx - w // 2) < 180:
+            continue
+        draw.rectangle([wx - 48, 145, wx + 48, horizon_y - 30], fill=(255, 232, 165), outline=(95, 58, 32), width=6)
+        draw.chord([wx - 48, 98, wx + 48, 195], start=180, end=360, fill=(255, 240, 185), outline=(95, 58, 32), width=6)
+        # window mullions
+        draw.line([(wx, 105), (wx, horizon_y - 30)], fill=(95, 58, 32), width=3)
+        draw.line([(wx - 48, 240), (wx + 48, 240)], fill=(95, 58, 32), width=3)
 
-    # 4. roaring stone fireplace at center
-    fx = w // 2 - 150
-    draw.rectangle([fx, h // 2 - 200, fx + 300, h // 2 + 50], fill=(50, 48, 45), outline=(90, 85, 80), width=8)
-    draw.ellipse([fx + 40, h // 2 - 130, fx + 260, h // 2 + 30], fill=(20, 10, 5))
-    # burning fire
-    for r in range(80, 10, -10):
-        draw.ellipse([fx + 150 - r, h // 2 - 50 - r // 2, fx + 150 + r, h // 2 + 20], fill=(255, int(120 + r * 1.5), 20))
+    # 2. grand carved stone hearth at center with blazing golden fire
+    fx = w // 2 - 170
+    draw.rectangle([fx, horizon_y - 240, fx + 340, horizon_y + 20], fill=(185, 168, 145), outline=(120, 102, 82), width=6)
+    draw.ellipse([fx + 45, horizon_y - 165, fx + 295, horizon_y + 20], fill=(55, 32, 18))
+    for rad in range(95, 12, -12):
+        draw.ellipse(
+            [fx + 170 - rad, horizon_y - 70 - rad // 2, fx + 170 + rad, horizon_y + 15],
+            fill=(255, min(255, int(140 + rad * 1.2)), 45),
+        )
 
-    # 5. hanging chandeliers
+    # wrought-brass chandeliers with warm glowing candles
     for cx in [w // 4, 3 * w // 4]:
-        draw.line([(cx, 150), (cx, 260)], fill=(80, 80, 80), width=3)
-        draw.ellipse([cx - 50, 260, cx + 50, 280], fill=(40, 40, 40))
-        for cdx in [-40, -15, 15, 40]:
-            draw.ellipse([cx + cdx - 6, 240, cx + cdx + 6, 260], fill=(255, 200, 80))
+        draw.line([(cx, 90), (cx, 220)], fill=(185, 145, 65), width=4)
+        draw.ellipse([cx - 65, 215, cx + 65, 242], fill=(212, 175, 55), outline=(140, 105, 35), width=3)
+        for cdx in [-50, -25, 0, 25, 50]:
+            draw.ellipse([cx + cdx - 10, 192, cx + cdx + 10, 218], fill=(255, 240, 150))
 
-    # 6. wooden tavern tables
-    for tx in [w // 8, 3 * w // 8, 5 * w // 8, 7 * w // 8]:
-        draw.rectangle([tx - 60, h // 2 + 40, tx + 60, h // 2 + 70], fill=(85, 52, 28), outline=(50, 30, 15), width=3)
-        draw.rectangle([tx - 40, h // 2 + 70, tx - 30, h // 2 + 150], fill=(60, 35, 18))
-        draw.rectangle([tx + 30, h // 2 + 70, tx + 40, h // 2 + 150], fill=(60, 35, 18))
+    # 3. warm honey-oak parquet & crimson runner floor
+    for y in range(horizon_y, h):
+        ratio = (y - horizon_y) / (h - horizon_y)
+        r = int(172 - 32 * ratio)
+        g = int(118 - 24 * ratio)
+        b = int(68 - 16 * ratio)
+        draw.line([(0, y), (w, y)], fill=(r, g, b))
+
+    # perspective oak plank lines
+    for x in range(0, w, 96):
+        spread = (x - w // 2) * 2.3
+        draw.line([(x, horizon_y), (int(w // 2 + spread), h)], fill=(115, 72, 38), width=2)
+
+    for y in range(horizon_y + 22, h, 36):
+        draw.line([(0, y), (w, y)], fill=(125, 80, 42), width=2)
+
+    # ornate crimson and gold woven hall carpet
+    for y in range(horizon_y + 30, h):
+        prog = (y - horizon_y) / (h - horizon_y)
+        rw = int(110 + prog * 460)
+        draw.line([(w // 2 - rw // 2, y), (w // 2 + rw // 2, y)], fill=(155, 38, 42))
+        draw.line([(w // 2 - rw // 2, y), (w // 2 - rw // 2 + 10, y)], fill=(218, 178, 72))
+        draw.line([(w // 2 + rw // 2 - 10, y), (w // 2 + rw // 2, y)], fill=(218, 178, 72))
 
     return img
 
 
 def create_space_station(w=2048, h=1024):
-    img = Image.new("RGB", (w, h), color=(5, 5, 12))
-    draw = ImageDraw.Draw(img)
-
-    # 1. stars in cosmic viewport
-    np.random.seed(1337)
-    for _ in range(600):
-        sx = np.random.randint(0, w)
-        sy = np.random.randint(40, h // 2 - 20)
-        draw.point((sx, sy), fill=(np.random.randint(180, 255), np.random.randint(200, 255), 255))
-
-    # 2. magnificent earth planet visible through viewport
-    ex, ey, er = w // 2, h // 4 + 40, 160
-    draw.ellipse([ex - er, ey - er, ex + er, ey + er], fill=(15, 65, 180), outline=(100, 200, 255), width=3)
-    # continents
-    draw.ellipse([ex - 90, ey - 70, ex + 30, ey + 40], fill=(40, 150, 80))
-    draw.ellipse([ex - 20, ey - 20, ex + 100, ey + 80], fill=(35, 130, 70))
-    # clouds
-    draw.ellipse([ex - 120, ey - 40, ex + 40, ey - 10], fill=(220, 235, 255))
-    draw.ellipse([ex - 60, ey + 30, ex + 110, ey + 60], fill=(220, 235, 255))
-
-    # 3. station curved bay window frame
-    draw.arc([100, 50, w - 100, h // 2 + 80], start=0, end=360, fill=(180, 190, 210), width=14)
-    for vx in range(200, w, 250):
-        draw.line([(vx, 60), (vx, h // 2)], fill=(120, 130, 150), width=8)
-
-    # 4. high-tech metallic floor with cyan conduits
-    for y in range(h // 2, h):
-        ratio = (y - h // 2) / (h // 2)
-        c = int(35 + 40 * ratio)
-        draw.line([(0, y), (w, y)], fill=(c, c + 5, c + 15))
-
-    # glowing conduit floor rails
-    for x in range(100, w, 200):
-        draw.line([(x, h // 2), (x + (x - w // 2), h)], fill=(0, 220, 255), width=3)
-
-    return img
-
-
-def create_desert_oasis(w=2048, h=1024):
+    # bright celestial observatory dome in high orbit
     img = Image.new("RGB", (w, h))
     draw = ImageDraw.Draw(img)
+    random.seed(2026)
+    horizon_y = h // 2
 
-    # 1. dramatic sunset sky gradient
-    for y in range(h // 2):
-        ratio = y / (h / 2)
-        r = int(120 + 135 * ratio)
-        g = int(40 + 110 * ratio)
-        b = int(130 - 90 * ratio)
+    # 1. luminous sapphire-and-gold orbital sky dome
+    for y in range(horizon_y):
+        ratio = y / horizon_y
+        r = int(32 + 95 * ratio)
+        g = int(58 + 125 * ratio)
+        b = int(125 + 115 * ratio)
         draw.line([(0, y), (w, y)], fill=(r, g, b))
 
-    # 2. huge golden sun
-    sx, sy, sr = w // 2 - 200, h // 2 - 60, 100
-    draw.ellipse([sx - sr, sy - sr, sx + sr, sy + sr], fill=(255, 240, 160))
+    # starfield & golden nebula ribbon
+    for _ in range(500):
+        sx = random.randint(0, w)
+        sy = random.randint(15, horizon_y - 30)
+        draw.ellipse([sx - 1, sy - 1, sx + 1, sy + 1], fill=(255, 250, 235))
 
-    # 3. distant mountains
-    pts = [(0, h // 2 - 30)]
-    for x in range(0, w + 100, 80):
-        pts.append((x, h // 2 - 40 - int(30 * math.sin(x * 0.015))))
-    pts.append((w, h // 2))
-    pts.append((0, h // 2))
-    draw.polygon(pts, fill=(140, 70, 50))
+    # giant illuminated planet & rings in central viewport
+    ex, ey, er = w // 2, horizon_y // 2 + 10, 165
+    draw.arc([ex - 290, ey - 55, ex + 290, ey + 65], start=0, end=360, fill=(235, 210, 155), width=8)
+    draw.ellipse([ex - er, ey - er, ex + er, ey + er], fill=(65, 155, 235), outline=(215, 242, 255), width=5)
+    draw.ellipse([ex - 95, ey - 75, ex + 45, ey + 45], fill=(95, 195, 135))
+    draw.ellipse([ex - 35, ey - 15, ex + 110, ey + 85], fill=(245, 230, 185))
 
-    # 4. golden sand dunes
-    for y in range(h // 2, h):
-        ratio = (y - h // 2) / (h // 2)
-        r = int(220 - 40 * ratio)
-        g = int(160 - 45 * ratio)
-        b = int(75 - 30 * ratio)
-        draw.line([(0, y), (w, y)], fill=(r, g, b))
+    # white-and-brass architectural observation ribs
+    for vx in range(128, w, 256):
+        draw.rectangle([vx - 8, 0, vx + 8, horizon_y], fill=(225, 232, 242), outline=(185, 155, 85), width=2)
+    draw.rectangle([0, horizon_y - 18, w, horizon_y + 6], fill=(215, 222, 235), outline=(185, 155, 85), width=3)
 
-    # 5. turquoise spring water oasis pool
-    draw.ellipse([w // 2 - 300, h // 2 + 100, w // 2 + 300, h // 2 + 320], fill=(30, 160, 180), outline=(80, 210, 225), width=4)
+    # 2. bright alabaster & brushed-silver promenade floor
+    for y in range(horizon_y, h):
+        ratio = (y - horizon_y) / (h - horizon_y)
+        c = int(218 - 35 * ratio)
+        draw.line([(0, y), (w, y)], fill=(c, c + 4, min(255, c + 12)))
 
-    # 6. date palm tree silhouettes
-    for px in [w // 2 - 350, w // 2 + 330, w // 2 - 180]:
-        # trunk
-        draw.line([(px, h // 2 + 120), (px + 15, h // 2 - 60)], fill=(80, 45, 20), width=9)
-        # fronds
-        for angle in range(0, 360, 45):
-            rad = math.radians(angle)
-            fx = px + 15 + int(60 * math.cos(rad))
-            fy = h // 2 - 60 + int(40 * math.sin(rad))
-            draw.line([(px + 15, h // 2 - 60), (fx, fy)], fill=(40, 80, 30), width=4)
+    # perspective brass and cyan architectural floor inlays
+    for x in range(64, w, 128):
+        spread = (x - w // 2) * 2.3
+        col = (195, 155, 65) if (x // 128) % 2 == 0 else (75, 165, 225)
+        draw.line([(x, horizon_y), (int(w // 2 + spread), h)], fill=col, width=3)
+
+    for y in range(horizon_y + 20, h, 36):
+        draw.line([(0, y), (w, y)], fill=(175, 188, 205), width=2)
 
     return img
 
 
 def create_enchanted_forest(w=2048, h=1024):
+    # sunlit classical botanical sanctuary and marble grove
     img = Image.new("RGB", (w, h))
     draw = ImageDraw.Draw(img)
+    random.seed(999)
+    horizon_y = h // 2
 
-    # 1. mystical twilight canopy
-    for y in range(h // 2):
-        ratio = y / (h / 2)
-        r = int(10 + 20 * ratio)
-        g = int(25 + 40 * ratio)
-        b = int(40 + 50 * ratio)
+    # 1. bright golden-emerald sunlit sky through forest canopy
+    for y in range(horizon_y):
+        ratio = y / horizon_y
+        r = int(115 + 110 * ratio)
+        g = int(195 + 48 * ratio)
+        b = int(165 + 45 * ratio)
         draw.line([(0, y), (w, y)], fill=(r, g, b))
 
-    # 2. mossy forest floor
-    for y in range(h // 2, h):
-        ratio = (y - h // 2) / (h / 2)
-        r = int(15 + 10 * ratio)
-        g = int(50 - 20 * ratio)
-        b = int(30 - 15 * ratio)
+    # golden sunbeams radiating down from canopy
+    for bx in range(200, w, 280):
+        draw.polygon(
+            [(bx - 25, 0), (bx + 25, 0), (bx + 110, horizon_y), (bx - 110, horizon_y)],
+            fill=(235, 250, 195),
+        )
+
+    # ancient colonnade arches and grand trees
+    for tx in range(90, w, 220):
+        # tree trunk & classical marble column
+        draw.rectangle([tx - 22, horizon_y - 240, tx + 22, horizon_y + 40], fill=(125, 95, 68), outline=(85, 62, 42), width=2)
+        # lush emerald-and-gold foliage crown
+        draw.ellipse([tx - 135, horizon_y - 380, tx + 135, horizon_y - 160], fill=(55, 145, 85), outline=(95, 185, 115), width=3)
+        draw.ellipse([tx - 95, horizon_y - 340, tx + 95, horizon_y - 190], fill=(85, 175, 105))
+
+    # 2. sunlit emerald meadow and white travertine stone walkway
+    for y in range(horizon_y, h):
+        ratio = (y - horizon_y) / (h - horizon_y)
+        r = int(115 - 25 * ratio)
+        g = int(175 - 35 * ratio)
+        b = int(95 - 25 * ratio)
         draw.line([(0, y), (w, y)], fill=(r, g, b))
 
-    # 3. twisting ancient trees
-    for tx in range(80, w, 220):
-        draw.polygon([(tx - 25, h // 2 + 180), (tx - 12, h // 2 - 180), (tx + 12, h // 2 - 180), (tx + 25, h // 2 + 180)], fill=(35, 28, 22))
-        # canopy branches
-        draw.ellipse([tx - 120, h // 2 - 320, tx + 120, h // 2 - 140], fill=(15, 60, 45))
+    # perspective garden grid lines
+    for x in range(0, w, 128):
+        spread = (x - w // 2) * 2.3
+        draw.line([(x, horizon_y), (int(w // 2 + spread), h)], fill=(85, 140, 72), width=2)
 
-    # 4. glowing bioluminescent mushrooms
-    np.random.seed(999)
-    for _ in range(40):
-        mx = np.random.randint(60, w - 60)
-        my = np.random.randint(h // 2 + 60, h - 80)
-        col = (0, 240, 220) if np.random.rand() > 0.5 else (200, 80, 255)
-        draw.ellipse([mx - 14, my - 12, mx + 14, my + 4], fill=col)
-        draw.line([(mx, my), (mx, my + 18)], fill=(240, 240, 240), width=3)
+    # wide white-marble and gold garden promenade
+    for y in range(horizon_y, h):
+        prog = (y - horizon_y) / (h - horizon_y)
+        pw = int(95 + prog * 460)
+        draw.line([(w // 2 - pw // 2, y), (w // 2 + pw // 2, y)], fill=(232, 226, 208))
+
+    for y in range(horizon_y + 18, h, 32):
+        prog = (y - horizon_y) / (h - horizon_y)
+        pw = int(95 + prog * 460)
+        draw.line([(w // 2 - pw // 2, y), (w // 2 + pw // 2, y)], fill=(185, 175, 152), width=2)
+
+    return img
+
+
+def create_cyberpunk_panorama(w=2048, h=1024):
+    # luminous neo-metropolis sunset boulevard with grand architecture
+    img = Image.new("RGB", (w, h))
+    draw = ImageDraw.Draw(img)
+    random.seed(42)
+    horizon_y = h // 2
+
+    # 1. vibrant twilight-amber-violet sky (bright and atmospheric, never pitch black)
+    for y in range(horizon_y):
+        ratio = y / horizon_y
+        r = int(65 + 175 * ratio)
+        g = int(75 + 85 * ratio)
+        b = int(155 + 45 * ratio)
+        draw.line([(0, y), (w, y)], fill=(r, g, b))
+
+    # illuminated skyline towers in warm bronze, slate, and glass
+    building_count = 32
+    bw = w // building_count
+    for i in range(building_count):
+        bx = i * bw
+        bh = random.randint(220, 430)
+        b_col = (52, 64, 92) if i % 2 == 0 else (68, 58, 88)
+        draw.rectangle([bx, horizon_y - bh, bx + bw - 4, horizon_y], fill=b_col, outline=(145, 165, 205), width=2)
+
+        for wy in range(horizon_y - bh + 16, horizon_y - 14, 16):
+            for wx in range(bx + 6, bx + bw - 10, 12):
+                if random.random() > 0.25:
+                    win_col = (255, 235, 165) if random.random() > 0.4 else (135, 235, 255)
+                    draw.rectangle([wx, wy, wx + 7, wy + 10], fill=win_col)
+
+    # architectural signage plaques
+    signs = [
+        ("GRAND METROPOLIS ARCADE", 140, 250, (255, 225, 130), (45, 52, 78)),
+        ("AETHERIUM CONSERVATORY", 640, 275, (145, 240, 255), (38, 58, 78)),
+        ("CHRONICLE ARCHIVES", 1140, 245, (255, 215, 145), (58, 45, 68)),
+        ("CENTRAL PLAZA", 1620, 270, (165, 245, 215), (38, 62, 58)),
+    ]
+    for text, sx, sy, col, bg_col in signs:
+        draw.rectangle([sx - 12, sy - 10, sx + 260, sy + 42], fill=bg_col, outline=col, width=3)
+        draw.text((sx + 8, sy + 10), text, fill=col)
+
+    # 2. well-lit stone & brass boulevard floor
+    for y in range(horizon_y, h):
+        ratio = (y - horizon_y) / (h - horizon_y)
+        r = int(118 - 22 * ratio)
+        g = int(124 - 22 * ratio)
+        b = int(148 - 24 * ratio)
+        draw.line([(0, y), (w, y)], fill=(r, g, b))
+
+    # perspective avenue lines
+    for x in range(0, w, 128):
+        spread = (x - w // 2) * 2.5
+        draw.line([(x, horizon_y), (int(w // 2 + spread), h)], fill=(215, 190, 125), width=2)
+
+    for y in range(horizon_y + 18, h, 30):
+        draw.line([(0, y), (w, y)], fill=(155, 165, 190), width=1)
+
+    # central grand promenade
+    for y in range(horizon_y, h):
+        prog = (y - horizon_y) / (h - horizon_y)
+        pw = int(90 + prog * 460)
+        draw.line([(w // 2 - pw // 2, y), (w // 2 + pw // 2, y)], fill=(175, 178, 195))
 
     return img
 
 
 def create_depth_map(w=2048, h=1024):
-    # generate a valid 8-bit grayscale depth displacement texture (compatible with all browsers)
-    # top pole (sky) = 30 (far away)
-    # horizon = 120 (mid distance)
-    # floor level = 220 (near walkable floor)
+    # smooth 8-bit radial depth displacement map
     depth = Image.new("L", (w, h))
+    horizon_y = h // 2
     for y in range(h):
-        if y < h // 2:
-            # sky gradient: 30 at zenith to 120 at horizon
-            val = int(30 + (y / (h / 2)) * 90)
+        if y < horizon_y:
+            val = int(30 + (y / horizon_y) * 70)
         else:
-            # floor gradient: 120 at horizon to 240 at bottom nadir
-            val = int(120 + ((y - h / 2) / (h / 2)) * 120)
+            ratio = (y - horizon_y) / (h - horizon_y)
+            val = int(110 + ratio * 120)
         depth.paste(val, [0, y, w, y + 1])
     return depth
 
 
 def main():
     base_dir = Path("frontend/public/cached_worlds")
-    
-    # mapping of room ids and biome folders to procedural generators
+
     room_mappings = {
-        # mock world 15 rooms
         "cyber_lab_01": create_cyberpunk_panorama,
         "cyber_lab_02": create_cyberpunk_panorama,
         "cyber_lab_03": create_cyberpunk_panorama,
@@ -269,7 +389,6 @@ def main():
         "spire_01": create_space_station,
         "spire_02": create_space_station,
         "spire_03": create_space_station,
-        # fallback biomes
         "cyberpunk_alley": create_cyberpunk_panorama,
         "medieval_tavern": create_medieval_tavern,
         "space_station": create_space_station,
@@ -277,21 +396,17 @@ def main():
         "enchanted_forest": create_enchanted_forest,
     }
 
-    print("Generating rich 360 equirectangular panoramas and depth maps for all rooms...")
     depth_img = create_depth_map(2048, 1024)
 
     for room_id, gen_fn in room_mappings.items():
         room_dir = base_dir / room_id
         room_dir.mkdir(parents=True, exist_ok=True)
-
         pano = gen_fn(2048, 1024)
         pano_path = room_dir / "panorama.webp"
-        pano.save(pano_path, "WEBP", quality=90)
-        print(f"Saved rich panorama: {pano_path} ({pano_path.stat().st_size} bytes)")
-
+        pano.save(pano_path, "WEBP", quality=92)
         depth_path = room_dir / "depth.png"
         depth_img.save(depth_path, "PNG")
-        print(f"Saved depth map: {depth_path} ({depth_path.stat().st_size} bytes)")
+        print(f"Generated luminous panorama: {pano_path} ({pano_path.stat().st_size} bytes)")
 
 
 if __name__ == "__main__":

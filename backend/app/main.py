@@ -2,10 +2,15 @@
 from contextlib import asynccontextmanager
 import json
 import os
+from dotenv import load_dotenv
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from backend.app.routes import health, npc, tick, vision, world
 from backend.app.schemas import WorldGraph
+
+# load environment variables from backend/.env or root .env
+load_dotenv(os.path.join(os.path.dirname(__file__), "..", ".env"))
+load_dotenv()
 
 
 @asynccontextmanager

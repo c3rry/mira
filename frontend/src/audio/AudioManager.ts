@@ -1,4 +1,4 @@
-// audio manager providing dual-track ambient cross-fades and procedural web audio synth fallback
+// audio manager with polyphonic musical score sequencer and dual-track cross-fading
 export class AudioManager {
   private static instance: AudioManager | null = null;
 
@@ -15,12 +15,11 @@ export class AudioManager {
   private gainA: GainNode | null = null;
   private gainB: GainNode | null = null;
 
-  // procedural web audio drone synth for guaranteed offline/fallback sound
-  private synthGain: GainNode | null = null;
-  private synthOsc1: OscillatorNode | null = null;
-  private synthOsc2: OscillatorNode | null = null;
-  private synthFilter: BiquadFilterNode | null = null;
-  private isSynthRunning: boolean = false;
+  // polyphonic web audio music sequencer state
+  private sequencerTimer: ReturnType<typeof setInterval> | null = null;
+  private stepIndex: number = 0;
+  private activeScoreBiome: string = "desert_oasis";
+  private isSequencerRunning: boolean = false;
 
   private isMuted: boolean = false;
   private currentTrack: string | null = null;
@@ -53,7 +52,7 @@ export class AudioManager {
     this.audioB.preload = "auto";
   }
 
-  // initialize or resume the shared web audio context on user gesture
+  // initialize or resume shared web audio context on user gesture
   public async unlockAudio(): Promise<boolean> {
     if (typeof window === "undefined") return false;
 
@@ -62,32 +61,26 @@ export class AudioManager {
         const AudioCtxClass = window.AudioContext || (window as any).webkitAudioContext;
         this.audioCtx = new AudioCtxClass();
 
-        // master gain node
         this.masterGain = this.audioCtx.createGain();
         this.masterGain.gain.setValueAtTime(1.0, this.audioCtx.currentTime);
         this.masterGain.connect(this.audioCtx.destination);
 
-        // ambient bus gain node
         this.ambientGain = this.audioCtx.createGain();
-        this.ambientGain.gain.setValueAtTime(0.7, this.audioCtx.currentTime);
+        this.ambientGain.gain.setValueAtTime(0.75, this.audioCtx.currentTime);
         this.ambientGain.connect(this.masterGain);
 
-        // spatial submix node for 3d positional emitters
         this.spatialSubmix = this.audioCtx.createGain();
         this.spatialSubmix.gain.setValueAtTime(1.0, this.audioCtx.currentTime);
         this.spatialSubmix.connect(this.masterGain);
 
-        // connect dual html5 audio elements into ambient bus
         if (this.audioA && !this.sourceA) {
           try {
             this.sourceA = this.audioCtx.createMediaElementSource(this.audioA);
             this.gainA = this.audioCtx.createGain();
-            this.gainA.gain.setValueAtTime(0.6, this.audioCtx.currentTime);
+            this.gainA.gain.setValueAtTime(0.65, this.audioCtx.currentTime);
             this.sourceA.connect(this.gainA);
             this.gainA.connect(this.ambientGain);
-          } catch (e) {
-            console.warn("media element source a skipped:", e);
-          }
+          } catch {}
         }
 
         if (this.audioB && !this.sourceB) {
@@ -97,9 +90,7 @@ export class AudioManager {
             this.gainB.gain.setValueAtTime(0.0, this.audioCtx.currentTime);
             this.sourceB.connect(this.gainB);
             this.gainB.connect(this.ambientGain);
-          } catch (e) {
-            console.warn("media element source b skipped:", e);
-          }
+          } catch {}
         }
       }
 
@@ -109,132 +100,234 @@ export class AudioManager {
 
       this.isUnlocked = true;
 
-      // if track was previously requested, resume playback
       if (this.currentTrack) {
-        await this.fadeToTrack(this.currentTrack, 0.6, 1.0, true);
+        await this.fadeToTrack(this.currentTrack, 0.65, 1.0, true);
       } else {
-        // start immediate ambient drone so sound is instantly audible
-        this.startProceduralSynth("cyberpunk");
+        this.startMusicalSequencer(this.activeScoreBiome);
       }
 
       return true;
-    } catch (err) {
-      console.warn("web audio initialization fallback:", err);
-      // html5 direct unlock fallback
-      if (this.audioA) {
-        this.audioA.play().catch(() => {});
-      }
+    } catch {
       this.isUnlocked = true;
       return true;
     }
   }
 
-  // start procedural ambient soundscape using native oscillators and low-pass filter
-  public startProceduralSynth(biome: string = "cyberpunk"): void {
-    if (!this.audioCtx || this.isSynthRunning) return;
+  // play a single plucked or melodic instrument note with adsr envelope
+  private triggerNote(
+    freq: number,
+    duration: number,
+    volume: number,
+    waveType: OscillatorType = "triangle",
+    detuneCents: number = 0
+  ): void {
+    if (!this.audioCtx || this.isMuted) return;
 
     try {
       const now = this.audioCtx.currentTime;
+      const osc = this.audioCtx.createOscillator();
+      const filter = this.audioCtx.createBiquadFilter();
+      const gain = this.audioCtx.createGain();
 
-      // configure frequencies based on biome atmosphere
-      let freq1 = 55.0; // sub-bass a1
-      let freq2 = 110.0; // harmonic a2
-      if (biome.includes("space") || biome.includes("station")) {
-        freq1 = 40.0;
-        freq2 = 80.0;
-      } else if (biome.includes("tavern") || biome.includes("medieval")) {
-        freq1 = 146.8;
-        freq2 = 220.0;
-      } else if (biome.includes("forest") || biome.includes("cavern")) {
-        freq1 = 216.0;
-        freq2 = 432.0;
-      } else if (biome.includes("desert") || biome.includes("ruins")) {
-        freq1 = 92.5;
-        freq2 = 185.0;
+      osc.type = waveType;
+      osc.frequency.setValueAtTime(freq, now);
+      if (detuneCents !== 0) {
+        osc.detune.setValueAtTime(detuneCents, now);
       }
 
-      this.synthOsc1 = this.audioCtx.createOscillator();
-      this.synthOsc2 = this.audioCtx.createOscillator();
-      this.synthFilter = this.audioCtx.createBiquadFilter();
-      this.synthGain = this.audioCtx.createGain();
+      filter.type = "lowpass";
+      filter.frequency.setValueAtTime(freq * 4.5, now);
+      filter.frequency.exponentialRampToValueAtTime(Math.max(280, freq * 1.4), now + duration);
 
-      this.synthOsc1.type = "sine";
-      this.synthOsc1.frequency.setValueAtTime(freq1, now);
+      // crisp musical pluck attack and smooth exponential decay
+      gain.gain.setValueAtTime(0.0001, now);
+      gain.gain.linearRampToValueAtTime(volume, now + 0.018);
+      gain.gain.exponentialRampToValueAtTime(0.0005, now + duration);
 
-      this.synthOsc2.type = "triangle";
-      this.synthOsc2.frequency.setValueAtTime(freq2, now);
+      osc.connect(filter);
+      filter.connect(gain);
+      gain.connect(this.ambientGain || this.masterGain || this.audioCtx.destination);
 
-      // warm low-pass filter
-      this.synthFilter.type = "lowpass";
-      this.synthFilter.frequency.setValueAtTime(320, now);
-      this.synthFilter.Q.setValueAtTime(2.0, now);
-
-      // soft ambient gain level
-      this.synthGain.gain.setValueAtTime(0.0, now);
-      this.synthGain.gain.linearRampToValueAtTime(0.18, now + 1.5);
-
-      this.synthOsc1.connect(this.synthFilter);
-      this.synthOsc2.connect(this.synthFilter);
-      this.synthFilter.connect(this.synthGain);
-      if (this.ambientGain) {
-        this.synthGain.connect(this.ambientGain);
-      } else if (this.masterGain) {
-        this.synthGain.connect(this.masterGain);
-      } else {
-        this.synthGain.connect(this.audioCtx.destination);
-      }
-
-      this.synthOsc1.start();
-      this.synthOsc2.start();
-      this.isSynthRunning = true;
-    } catch (err) {
-      console.warn("procedural synth startup error:", err);
-    }
+      osc.start(now);
+      osc.stop(now + duration + 0.04);
+    } catch {}
   }
 
-  // stop or fade out procedural synth when audio track takes over
-  public stopProceduralSynth(fadeDuration: number = 1.0): void {
-    if (!this.isSynthRunning || !this.synthGain || !this.audioCtx) return;
+  // play soft acoustic frame-drum percussive beat
+  private triggerPercussion(isDownbeat: boolean): void {
+    if (!this.audioCtx || this.isMuted) return;
 
     try {
       const now = this.audioCtx.currentTime;
-      this.synthGain.gain.cancelScheduledValues(now);
-      this.synthGain.gain.setValueAtTime(this.synthGain.gain.value, now);
-      this.synthGain.gain.linearRampToValueAtTime(0.0, now + fadeDuration);
+      const osc = this.audioCtx.createOscillator();
+      const gain = this.audioCtx.createGain();
 
-      setTimeout(() => {
-        try {
-          this.synthOsc1?.stop();
-          this.synthOsc2?.stop();
-          this.synthOsc1?.disconnect();
-          this.synthOsc2?.disconnect();
-          this.synthFilter?.disconnect();
-          this.synthGain?.disconnect();
-        } catch {}
-        this.isSynthRunning = false;
-        this.synthOsc1 = null;
-        this.synthOsc2 = null;
-        this.synthFilter = null;
-        this.synthGain = null;
-      }, fadeDuration * 1000);
-    } catch (err) {
-      console.warn("procedural synth teardown error:", err);
-    }
+      osc.type = "sine";
+      const startFreq = isDownbeat ? 115 : 175;
+      const endFreq = isDownbeat ? 46 : 75;
+      osc.frequency.setValueAtTime(startFreq, now);
+      osc.frequency.exponentialRampToValueAtTime(endFreq, now + 0.14);
+
+      gain.gain.setValueAtTime(isDownbeat ? 0.16 : 0.07, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.15);
+
+      osc.connect(gain);
+      gain.connect(this.ambientGain || this.masterGain || this.audioCtx.destination);
+
+      osc.start(now);
+      osc.stop(now + 0.16);
+    } catch {}
   }
 
-  // cross-fade between tracks over specified duration
+  // start polyphonic musical score sequencer adapted to biome
+  public startMusicalSequencer(biome: string = "desert_oasis"): void {
+    this.activeScoreBiome = biome.toLowerCase();
+    if (!this.audioCtx || this.isSequencerRunning) return;
+
+    const getScoreData = (b: string) => {
+      if (b.includes("desert") || b.includes("giza") || b.includes("pyramid") || b.includes("ruin")) {
+        return {
+          scale: [293.66, 311.13, 369.99, 392.00, 440.00, 466.16, 523.25, 587.33],
+          chords: [
+            [146.83, 220.00, 293.66, 369.99],
+            [155.56, 233.08, 311.13, 392.00],
+            [130.81, 196.00, 261.63, 311.13],
+            [146.83, 220.00, 293.66, 369.99],
+          ],
+          melody: [0, 2, 3, 4, 5, 4, 3, 2, 1, 0, -1, 2, 4, 3, 2, 0],
+          wave: "triangle" as OscillatorType,
+        };
+      }
+      if (b.includes("tavern") || b.includes("medieval") || b.includes("roman") || b.includes("castle")) {
+        return {
+          scale: [293.66, 329.63, 349.23, 392.00, 440.00, 493.88, 523.25, 587.33],
+          chords: [
+            [146.83, 220.00, 293.66, 349.23],
+            [130.81, 196.00, 261.63, 329.63],
+            [196.00, 246.94, 293.66, 392.00],
+            [146.83, 220.00, 293.66, 349.23],
+          ],
+          melody: [0, 2, 4, 7, 6, 4, 2, 3, 4, 2, 0, -1, 1, 2, 4, 0],
+          wave: "triangle" as OscillatorType,
+        };
+      }
+      if (b.includes("forest") || b.includes("cavern") || b.includes("garden")) {
+        return {
+          scale: [392.00, 440.00, 493.88, 554.37, 587.33, 659.25, 739.99, 783.99],
+          chords: [
+            [196.00, 293.66, 392.00, 493.88],
+            [220.00, 277.18, 329.63, 440.00],
+            [164.81, 246.94, 329.63, 392.00],
+            [196.00, 293.66, 392.00, 493.88],
+          ],
+          melody: [0, 2, 4, 5, 7, 5, 4, 2, 3, 4, 2, 0, -1, 4, 2, 0],
+          wave: "sine" as OscillatorType,
+        };
+      }
+      if (b.includes("space") || b.includes("station") || b.includes("spire")) {
+        return {
+          scale: [261.63, 293.66, 329.63, 369.99, 392.00, 440.00, 493.88, 523.25],
+          chords: [
+            [130.81, 196.00, 261.63, 329.63],
+            [146.83, 220.00, 293.66, 369.99],
+            [164.81, 246.94, 329.63, 392.00],
+            [130.81, 196.00, 246.94, 329.63],
+          ],
+          melody: [4, -1, 7, 6, 4, -1, 2, 3, 4, -1, 6, 4, 2, -1, 0, -1],
+          wave: "sine" as OscillatorType,
+        };
+      }
+      return {
+        scale: [220.00, 246.94, 261.63, 293.66, 329.63, 349.23, 392.00, 440.00],
+        chords: [
+          [110.00, 164.81, 220.00, 261.63],
+          [174.61, 220.00, 261.63, 349.23],
+          [130.81, 196.00, 261.63, 329.63],
+          [164.81, 246.94, 329.63, 392.00],
+        ],
+        melody: [0, 2, 4, 7, 5, 4, 2, 0, 3, 2, 0, -1, 4, 3, 2, 0],
+        wave: "sawtooth" as OscillatorType,
+      };
+    };
+
+    this.isSequencerRunning = true;
+    this.sequencerTimer = setInterval(() => {
+      if (!this.audioCtx || this.isMuted || this.audioCtx.state !== "running") return;
+
+      const score = getScoreData(this.activeScoreBiome);
+      const step = this.stepIndex++;
+      const chord = score.chords[(step >> 3) % score.chords.length];
+
+      // 1. lush sustained string / choir pad on bar boundaries
+      if (step % 8 === 0) {
+        chord.forEach((cFreq, idx) => {
+          this.triggerNote(cFreq, 2.2, 0.032, "sine", idx % 2 === 0 ? 5 : -5);
+        });
+      }
+
+      // 2. plucked harp / lute / oud arpeggio
+      const arpPattern = [0, 1, 2, 3, 2, 1, 3, 2];
+      const arpFreq = chord[arpPattern[step % arpPattern.length] % chord.length];
+      this.triggerNote(arpFreq, 0.48, 0.085, "triangle", 4);
+
+      // 3. warm cello / bass root on beats 0, 3, 4, 6
+      if (step % 8 === 0 || step % 8 === 3 || step % 8 === 4 || step % 8 === 6) {
+        const bassMult = step % 4 === 0 ? 0.5 : 0.75;
+        this.triggerNote(chord[0] * bassMult, 0.85, 0.12, "sine");
+      }
+
+      // 4. expressive lead melody line + high harmonic shimmer
+      const melIdx = score.melody[step % score.melody.length];
+      if (melIdx >= 0) {
+        const melFreq = score.scale[melIdx % score.scale.length];
+        this.triggerNote(melFreq, 0.56, 0.095, score.wave, -4);
+        if (step % 3 === 0) {
+          this.triggerNote(melFreq * 2.0, 0.35, 0.03, "sine", 6);
+        }
+      }
+
+      // 5. rhythmic world percussion pulse
+      if (step % 2 === 0 || step % 8 === 3) {
+        this.triggerPercussion(step % 4 === 0);
+      }
+    }, 280);
+  }
+
+  public stopMusicalSequencer(): void {
+    if (this.sequencerTimer) {
+      clearInterval(this.sequencerTimer);
+      this.sequencerTimer = null;
+    }
+    this.isSequencerRunning = false;
+  }
+
+  // cross-fade between tracks or update active biome score
   public async fadeToTrack(
     trackUrl: string,
-    targetVolume: number = 0.6,
+    targetVolume: number = 0.65,
     durationSeconds: number = 1.5,
     force: boolean = false
   ): Promise<void> {
-    const isSameTrack = this.currentTrack === trackUrl;
+    // prefer wav extension for guaranteed pcm decoding across browsers
+    const normalizedUrl = trackUrl.replace(/\.mp3$/i, ".wav");
+    const isSameTrack = this.currentTrack === normalizedUrl;
     if (isSameTrack && !force) return;
-    this.currentTrack = trackUrl;
+    this.currentTrack = normalizedUrl;
+
+    const biomeHint = normalizedUrl.includes("desert") || normalizedUrl.includes("ruin")
+      ? "desert_oasis"
+      : normalizedUrl.includes("tavern") || normalizedUrl.includes("medieval")
+      ? "medieval_tavern"
+      : normalizedUrl.includes("forest") || normalizedUrl.includes("cavern")
+      ? "enchanted_forest"
+      : normalizedUrl.includes("space") || normalizedUrl.includes("spire")
+      ? "space_station"
+      : "cyberpunk_alley";
+
+    this.activeScoreBiome = biomeHint;
 
     if (!this.isUnlocked) {
-      await this.unlockAudio();
+      return;
     }
 
     const nextSlot = this.activeSlot === "A" ? "B" : "A";
@@ -243,16 +336,17 @@ export class AudioManager {
     const outgoingGain = this.activeSlot === "A" ? this.gainA : this.gainB;
     const incomingGain = nextSlot === "A" ? this.gainA : this.gainB;
 
-    if (!incomingAudio || !outgoingAudio) return;
+    if (!incomingAudio || !outgoingAudio) {
+      this.startMusicalSequencer(biomeHint);
+      return;
+    }
 
     try {
-      // update source
-      if (incomingAudio.src !== trackUrl && !incomingAudio.src.endsWith(trackUrl)) {
-        incomingAudio.src = trackUrl;
+      if (!incomingAudio.src.endsWith(normalizedUrl)) {
+        incomingAudio.src = normalizedUrl;
         incomingAudio.load();
       }
 
-      // attempt audio playback
       const playPromise = incomingAudio.play();
       let playSucceeded = false;
 
@@ -260,80 +354,68 @@ export class AudioManager {
         try {
           await playPromise;
           playSucceeded = true;
-          // track successfully playing, fade out procedural synth
-          this.stopProceduralSynth(1.5);
+          this.stopMusicalSequencer();
         } catch {
-          // autoplay blocked or file decoding error: activate procedural synth fallback
-          const biomeHint = trackUrl.includes("tavern")
-            ? "tavern"
-            : trackUrl.includes("space")
-            ? "space"
-            : trackUrl.includes("forest")
-            ? "forest"
-            : trackUrl.includes("desert")
-            ? "desert"
-            : "cyberpunk";
-          this.startProceduralSynth(biomeHint);
+          this.startMusicalSequencer(biomeHint);
         }
       }
 
       const now = this.audioCtx?.currentTime || 0;
-
       if (this.audioCtx && incomingGain && outgoingGain && playSucceeded) {
-        // ramp down outgoing track
         outgoingGain.gain.cancelScheduledValues(now);
         outgoingGain.gain.setValueAtTime(outgoingGain.gain.value, now);
         outgoingGain.gain.linearRampToValueAtTime(0.0, now + durationSeconds);
 
-        // ramp up incoming track
         incomingGain.gain.cancelScheduledValues(now);
         incomingGain.gain.setValueAtTime(0.0, now);
         incomingGain.gain.linearRampToValueAtTime(targetVolume, now + durationSeconds);
 
-        // pause outgoing track after cross-fade completes
         setTimeout(() => {
           outgoingAudio.pause();
           outgoingAudio.currentTime = 0;
         }, durationSeconds * 1000);
       } else if (playSucceeded) {
-        // direct html5 volume fade fallback
         incomingAudio.volume = targetVolume;
         outgoingAudio.pause();
       }
 
-      this.activeSlot = nextSlot;
-    } catch (err) {
-      console.warn("ambient cross-fade error:", err);
-      this.startProceduralSynth("cyberpunk");
-    }
-  }
-
-  public setMasterVolume(volume: number): void {
-    const clamped = Math.max(0, Math.min(1, volume));
-    if (this.masterGain && this.audioCtx) {
-      this.masterGain.gain.setValueAtTime(clamped, this.audioCtx.currentTime);
+      if (playSucceeded) {
+        this.activeSlot = nextSlot;
+      }
+    } catch {
+      this.startMusicalSequencer(biomeHint);
     }
   }
 
   public toggleMute(): boolean {
     this.isMuted = !this.isMuted;
-    if (this.masterGain && this.audioCtx) {
-      this.masterGain.gain.setValueAtTime(this.isMuted ? 0.0 : 1.0, this.audioCtx.currentTime);
+
+    if (this.audioCtx && this.masterGain) {
+      this.masterGain.gain.setValueAtTime(
+        this.isMuted ? 0.0 : 1.0,
+        this.audioCtx.currentTime
+      );
     }
+
     if (this.audioA) this.audioA.muted = this.isMuted;
     if (this.audioB) this.audioB.muted = this.isMuted;
-    return this.isMuted;
-  }
 
-  public getSpatialSubmix(): GainNode | null {
-    return this.spatialSubmix;
+    return this.isMuted;
   }
 
   public getAudioContext(): AudioContext | null {
     return this.audioCtx;
   }
 
+  public getSpatialSubmix(): GainNode | null {
+    return this.spatialSubmix;
+  }
+
   public isAudioUnlocked(): boolean {
-    return this.isUnlocked && this.audioCtx?.state === "running";
+    return this.isUnlocked;
+  }
+
+  public isAudioMuted(): boolean {
+    return this.isMuted;
   }
 }
