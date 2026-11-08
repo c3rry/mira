@@ -16,6 +16,7 @@ export function MinimapTopology() {
     playerPosition,
     topologyType,
     isExpanding,
+    renderedRoomIds,
     setCurrentRoom,
     selectNPC,
     expandWorld,
@@ -579,6 +580,7 @@ export function MinimapTopology() {
               .join(" ");
 
             const isHovered = rId === hoveredRoomId;
+            const isRendered = Boolean(renderedRoomIds?.[rId]);
 
             // linear subway/train carriage dimensions
             const carW = Math.max(10, Math.min(36, interRoomDistanceSvg * 0.45));
@@ -603,6 +605,19 @@ export function MinimapTopology() {
                 {rTopo === "linear" ? (
                   /* 1. Linear Subway Car / Airplane Cabin Carriage */
                   <>
+                    {/* subtle status color halo: green if rendered, red if queued */}
+                    <rect
+                      x={cx - carW / 2 - 2}
+                      y={cy - carH / 2 - 2}
+                      width={carW + 4}
+                      height={carH + 4}
+                      rx="8"
+                      fill="none"
+                      stroke={isRendered ? "#22c55e" : "#ef4444"}
+                      strokeWidth={isCurrent ? "1.6" : "1.0"}
+                      strokeDasharray={isRendered ? "none" : "3 2"}
+                      opacity={isRendered ? (isCurrent ? "0.9" : "0.55") : "0.75"}
+                    />
                     <rect
                       x={cx - carW / 2}
                       y={cy - carH / 2}
@@ -648,6 +663,19 @@ export function MinimapTopology() {
                 ) : rTopo === "city_grid" ? (
                   /* 2. 2D City Grid Street Block & Sidewalk Parcel */
                   <>
+                    {/* subtle status color halo: green if rendered, red if queued */}
+                    <rect
+                      x={cx - blockW / 2 - 2}
+                      y={cy - blockH / 2 - 2}
+                      width={blockW + 4}
+                      height={blockH + 4}
+                      rx="5"
+                      fill="none"
+                      stroke={isRendered ? "#22c55e" : "#ef4444"}
+                      strokeWidth={isCurrent ? "1.6" : "1.0"}
+                      strokeDasharray={isRendered ? "none" : "3 2"}
+                      opacity={isRendered ? (isCurrent ? "0.9" : "0.55") : "0.75"}
+                    />
                     <rect
                       x={cx - blockW / 2}
                       y={cy - blockH / 2}
@@ -691,6 +719,17 @@ export function MinimapTopology() {
                 ) : rTopo === "nature_open" || isNature ? (
                   /* 3. Open Nature Environment: No Limits - 4-Way Compass Terrain */
                   <>
+                    {/* subtle status color halo: green if rendered, red if queued */}
+                    <circle
+                      cx={cx}
+                      cy={cy}
+                      r={roomRadiusSvg + (isCurrent ? 3.0 : 1.8)}
+                      fill="none"
+                      stroke={isRendered ? "#22c55e" : "#ef4444"}
+                      strokeWidth={isCurrent ? "1.6" : "1.0"}
+                      strokeDasharray={isRendered ? "none" : "3 2"}
+                      opacity={isRendered ? (isCurrent ? "0.9" : "0.55") : "0.75"}
+                    />
                     <circle
                       cx={cx}
                       cy={cy}
@@ -742,6 +781,15 @@ export function MinimapTopology() {
                 ) : (
                   /* 4. Colonnaded Octagonal Rotunda Sanctuary */
                   <>
+                    {/* subtle status color halo: green if rendered, red if queued */}
+                    <polygon
+                      points={octPoints}
+                      fill="none"
+                      stroke={isRendered ? "#22c55e" : "#ef4444"}
+                      strokeWidth={isCurrent ? "2.6" : "1.6"}
+                      strokeDasharray={isRendered ? "none" : "3 2"}
+                      opacity={isRendered ? (isCurrent ? "0.9" : "0.55") : "0.75"}
+                    />
                     <polygon
                       points={octPoints}
                       fill={`url(#roomGrad_${rId})`}
@@ -786,6 +834,43 @@ export function MinimapTopology() {
                   fill={isCurrent ? pal.accent_color : pal.dominant_color}
                   opacity="0.9"
                 />
+
+                {/* discrete status indicator pip: Green (#22c55e) if rendered, Red (#ef4444) if not rendered */}
+                <g>
+                  <circle
+                    cx={cx + (rTopo === "linear" ? carW / 2 - 2.5 : rTopo === "city_grid" ? blockW / 2 - 2.5 : roomRadiusSvg * 0.72)}
+                    cy={cy - (rTopo === "linear" ? carH / 2 - 2.5 : rTopo === "city_grid" ? blockH / 2 - 2.5 : roomRadiusSvg * 0.72)}
+                    r={expanded ? 3.0 : 2.2}
+                    fill={isRendered ? "#22c55e" : "#ef4444"}
+                    stroke="#0b0f19"
+                    strokeWidth="0.8"
+                    opacity="0.95"
+                  />
+                  {!isRendered && (
+                    <circle
+                      cx={cx + (rTopo === "linear" ? carW / 2 - 2.5 : rTopo === "city_grid" ? blockW / 2 - 2.5 : roomRadiusSvg * 0.72)}
+                      cy={cy - (rTopo === "linear" ? carH / 2 - 2.5 : rTopo === "city_grid" ? blockH / 2 - 2.5 : roomRadiusSvg * 0.72)}
+                      r={expanded ? 4.8 : 3.6}
+                      fill="none"
+                      stroke="#ef4444"
+                      strokeWidth="0.8"
+                      opacity="0.65"
+                    >
+                      <animate
+                        attributeName="r"
+                        values={expanded ? "3.0;5.4;3.0" : "2.2;4.0;2.2"}
+                        dur="1.8s"
+                        repeatCount="indefinite"
+                      />
+                      <animate
+                        attributeName="opacity"
+                        values="0.8;0.1;0.8"
+                        dur="1.8s"
+                        repeatCount="indefinite"
+                      />
+                    </circle>
+                  )}
+                </g>
 
                 {/* exact 3D prop positions inside room */}
                 {roomProps.map((p, pIdx) => {
@@ -981,10 +1066,22 @@ export function MinimapTopology() {
         className="z-10 flex items-center justify-between text-[9px] bg-black/80 px-2 py-0.5 border pointer-events-none"
         style={{ borderColor: `${theme.panelBorder}55`, color: theme.accentText }}
       >
-        <span className="font-bold truncate max-w-[65%]">
-          {hoveredRoom ? `◈ ${hoveredRoom.name}` : activeRoom?.name || currentRoomId}
-        </span>
-        <span className="opacity-75">{hoveredRoom ? "Click to Jump" : "Click Zone to Jump"}</span>
+        <div className="flex items-center gap-2 truncate max-w-[62%]">
+          <span className="font-bold truncate">
+            {hoveredRoom ? `◈ ${hoveredRoom.name}` : activeRoom?.name || currentRoomId}
+          </span>
+          <div className="flex items-center gap-1.5 text-[8px] opacity-80 shrink-0">
+            <span className="flex items-center gap-1">
+              <span className="w-1.5 h-1.5 rounded-full bg-[#22c55e] inline-block shadow-[0_0_3px_#22c55e]"></span>
+              Rendered
+            </span>
+            <span className="flex items-center gap-1">
+              <span className="w-1.5 h-1.5 rounded-full bg-[#ef4444] inline-block shadow-[0_0_3px_#ef4444]"></span>
+              Queued
+            </span>
+          </div>
+        </div>
+        <span className="opacity-75 shrink-0">{hoveredRoom ? "Click to Jump" : "Click Zone to Jump"}</span>
       </div>
     </div>
   );

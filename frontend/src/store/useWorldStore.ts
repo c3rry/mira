@@ -1078,6 +1078,8 @@ export interface WorldState {
   playerPosition: { x: number; z: number; yaw: number };
   teleportTrigger: number;
   transitionDirection: [number, number, number];
+  renderedRoomIds: Record<string, boolean>;
+  isPriorityWorkerActive: boolean;
 
   // actions
   setActiveScreen: (screen: "title" | "storage" | "create" | "game") => void;
@@ -1098,6 +1100,8 @@ export interface WorldState {
   toggleGodMode: () => void;
   hydrateFromMockWorld: (worldData: any) => void;
   ensureNeighborZones: (roomId: string) => void;
+  markRoomRendered: (roomId: string, rendered?: boolean) => void;
+  scheduleBoundedPriorityRendering: () => void;
   expandWorld: (fromRoomId?: string, direction?: string, targetX?: number, targetZ?: number) => Promise<WorldRoom | null>;
   initializeSync: () => void;
 }
@@ -1137,6 +1141,8 @@ export const useWorldStore = create<WorldState>((set, get) => ({
   playerPosition: { x: 0, z: 0, yaw: 0 },
   teleportTrigger: 0,
   transitionDirection: [0, 0, -1],
+  renderedRoomIds: { noise_origin: true },
+  isPriorityWorkerActive: false,
 
   setActiveScreen: (screen) => {
     set({ activeScreen: screen });
@@ -1221,6 +1227,10 @@ export const useWorldStore = create<WorldState>((set, get) => ({
         transitionDirection: tDir,
         selectedNpcId: null,
         activeSubtitle: null,
+        renderedRoomIds: {
+          ...state.renderedRoomIds,
+          [roomId]: true,
+        },
         playerPosition: walkedInto
           ? state.playerPosition
           : {
@@ -1233,6 +1243,7 @@ export const useWorldStore = create<WorldState>((set, get) => ({
 
       // immediately generate neighboring zones as soon as the user enters this environment!
       get().ensureNeighborZones(roomId);
+      get().scheduleBoundedPriorityRendering();
     }
   },
 
@@ -1456,8 +1467,12 @@ export const useWorldStore = create<WorldState>((set, get) => ({
         : orderedIds[0] || "";
 
     const initialRoom = roomsMap[initialId];
-
     const rawPrompt = worldData.prompt || worldData.title || rawTitle;
+
+    const initialRendered: Record<string, boolean> = {};
+    if (initialId) {
+      initialRendered[initialId] = true;
+    }
 
     set((state) => ({
       worldTitle: rawTitle,
@@ -1469,6 +1484,7 @@ export const useWorldStore = create<WorldState>((set, get) => ({
       quests: worldData.quests || [],
       selectedNpcId: null,
       activeSubtitle: null,
+      renderedRoomIds: initialRendered,
       playerPosition: {
         x: initialRoom?.worldX || 0,
         z: initialRoom?.worldZ || 0,
@@ -1479,6 +1495,7 @@ export const useWorldStore = create<WorldState>((set, get) => ({
 
     // immediately ensure all adjacent neighboring zones exist upon entering the world
     get().ensureNeighborZones(initialId);
+    get().scheduleBoundedPriorityRendering();
   },
 
   ensureNeighborZones: (roomId: string) => {
@@ -1590,11 +1607,6 @@ export const useWorldStore = create<WorldState>((set, get) => ({
         currentRooms[safeId] = newRoom;
         newAdjacent.add(safeId);
         modified = true;
-
-        // Asynchronously trigger backend synthesis to generate on-disk panorama with reciprocal portal
-        setTimeout(() => {
-          get().expandWorld(sourceRoom.room_id, offset.dir, targetX, targetZ);
-        }, 80);
       }
     }
 
@@ -1605,6 +1617,121 @@ export const useWorldStore = create<WorldState>((set, get) => ({
       };
       set({ rooms: currentRooms, npcs: currentNpcs });
     }
+
+    // Slowly begin rendering neighbor rooms with priority along current exploration path
+    get().scheduleBoundedPriorityRendering();
+  },
+
+  markRoomRendered: (roomId: string, rendered: boolean = true) => {
+    set((state) => ({
+      renderedRoomIds: {
+        ...state.renderedRoomIds,
+        [roomId]: rendered,
+      },
+    }));
+  },
+
+  scheduleBoundedPriorityRendering: () => {
+    const state = get();
+    if (state.isExpanding || state.isPriorityWorkerActive) {
+      return;
+    }
+
+    const currentRoom = state.rooms[state.currentRoomId];
+    if (!currentRoom) return;
+
+    const currX = currentRoom.worldX || 0;
+    const currZ = currentRoom.worldZ || 0;
+    const tDir = state.transitionDirection || [0, 0, -1];
+    const tDirLen = Math.hypot(tDir[0], tDir[2]) || 1;
+    const headingX = tDir[0] / tDirLen;
+    const headingZ = tDir[2] / tDirLen;
+
+    const MAX_BOUNDED_RANGE = 450.0; // Strictly bounded range: <= 2 hops (never infinite)
+
+    // Find all unrendered candidate rooms within bounded range
+    const candidates: Array<{
+      roomId: string;
+      room: WorldRoom;
+      dist: number;
+      score: number;
+    }> = [];
+
+    for (const [rId, room] of Object.entries(state.rooms)) {
+      if (rId === state.currentRoomId) continue;
+      if (state.renderedRoomIds[rId]) continue; // already fully rendered
+
+      const rx = room.worldX || 0;
+      const rz = room.worldZ || 0;
+      const dx = rx - currX;
+      const dz = rz - currZ;
+      const dist = Math.hypot(dx, dz);
+
+      if (dist > MAX_BOUNDED_RANGE) {
+        continue; // Outside bounded range - strictly do not render!
+      }
+
+      // Directional alignment with player exploration path heading
+      const nx = dist > 0.001 ? dx / dist : 0;
+      const nz = dist > 0.001 ? dz / dist : 0;
+      const dot = nx * headingX + nz * headingZ; // -1 (behind) to +1 (in front)
+
+      // Direct adjacent neighbors get highest immediate priority
+      const isDirectNeighbor = (currentRoom.adjacent_room_ids || []).includes(rId);
+
+      // Score: lowest value is highest priority
+      const score = dist - (isDirectNeighbor ? 1000 : 0) - (dot * 300);
+
+      candidates.push({ roomId: rId, room, dist, score });
+    }
+
+    if (candidates.length === 0) {
+      return;
+    }
+
+    // Sort candidates by priority score ascending
+    candidates.sort((a, b) => a.score - b.score);
+    const targetCandidate = candidates[0];
+
+    // Determine direction relative to current room
+    const tdx = (targetCandidate.room.worldX || 0) - currX;
+    const tdz = (targetCandidate.room.worldZ || 0) - currZ;
+    let dir = "north";
+    if (Math.abs(tdx) > Math.abs(tdz)) {
+      dir = tdx > 0 ? "east" : "west";
+    } else {
+      dir = tdz > 0 ? "south" : "north";
+    }
+
+    set({ isPriorityWorkerActive: true });
+
+    // Slowly and deliberately render with paced delay
+    setTimeout(async () => {
+      try {
+        await get().expandWorld(
+          state.currentRoomId,
+          dir,
+          targetCandidate.room.worldX,
+          targetCandidate.room.worldZ
+        );
+        // Mark candidate as rendered in state
+        set((s) => ({
+          renderedRoomIds: {
+            ...s.renderedRoomIds,
+            [targetCandidate.roomId]: true,
+          },
+          isPriorityWorkerActive: false,
+        }));
+      } catch (e) {
+        console.warn("Priority render error:", e);
+        set({ isPriorityWorkerActive: false });
+      }
+
+      // Pace next room rendering with a deliberate delay
+      setTimeout(() => {
+        get().scheduleBoundedPriorityRendering();
+      }, 1600);
+    }, 350);
   },
 
   expandWorld: async (fromRoomId?: string, direction?: string, targetX?: number, targetZ?: number) => {
@@ -1713,11 +1840,15 @@ export const useWorldStore = create<WorldState>((set, get) => ({
 
           const firstNpc = Array.isArray(nr.npcs) && nr.npcs.length > 0 ? nr.npcs[0] : null;
 
-          set({
+          set((s) => ({
             rooms: updatedRooms,
             npcs: newNpcs,
             isExpanding: false,
             diffusionProgress: 100,
+            renderedRoomIds: {
+              ...s.renderedRoomIds,
+              [nr.room_id]: true,
+            },
             activeSubtitle: firstNpc
               ? {
                   npcId: firstNpc.npc_id,
@@ -1727,8 +1858,8 @@ export const useWorldStore = create<WorldState>((set, get) => ({
                   thoughtLog: firstNpc.thought_log?.[0],
                   timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
                 }
-              : state.activeSubtitle,
-          });
+              : s.activeSubtitle,
+          }));
 
           drainQueue();
           return newRoom;
@@ -1792,15 +1923,19 @@ export const useWorldStore = create<WorldState>((set, get) => ({
         }
       : null;
 
-    set({
+    set((s) => ({
       rooms: {
-        ...state.rooms,
+        ...s.rooms,
         ...(updatedSource ? { [sourceRoomId]: updatedSource } : {}),
         [fallbackId]: fallbackRoom,
       },
       isExpanding: false,
       diffusionProgress: 100,
-    });
+      renderedRoomIds: {
+        ...s.renderedRoomIds,
+        [fallbackId]: true,
+      },
+    }));
 
     drainQueue();
     return fallbackRoom;

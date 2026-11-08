@@ -114,6 +114,7 @@ export function WorldCanvas(_props: WorldCanvasProps) {
             mutationFactor={mutationLevel}
             transitionDirection={transitionDirection}
             radius={180}
+            visualPalette={currentRoom?.visual_palette}
           />
         </group>
 

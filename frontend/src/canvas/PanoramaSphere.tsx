@@ -5,7 +5,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useFrame } from "@react-three/fiber";
 import * as THREE from "three";
 import { loadPanoramaTexture } from "./loaders/TextureLoader";
-import { useWorldStore } from "@/store/useWorldStore";
+import { RoomVisualPalette, useWorldStore } from "@/store/useWorldStore";
 
 interface PanoramaSphereProps {
   panoramaUrl: string;
@@ -14,6 +14,7 @@ interface PanoramaSphereProps {
   mutationFactor?: number;
   radius?: number;
   transitionDirection?: [number, number, number];
+  visualPalette?: RoomVisualPalette;
 }
 
 const skyVertexShader = `
@@ -34,6 +35,10 @@ const skyFragmentShader = `
   uniform float uTime;
   uniform float uRainbowFog;
   uniform vec3 uTransitionDir;
+  uniform vec3 uEnvSky;
+  uniform vec3 uEnvDominant;
+  uniform vec3 uEnvAccent;
+  uniform vec3 uEnvFloor;
   varying vec2 vUv;
 
   const float PI = 3.141592653589793;
@@ -144,36 +149,43 @@ const skyFragmentShader = `
 
     vec3 col = max(mix(a, b, blend), vec3(0.04, 0.05, 0.08));
 
-    // Volumetric shimmering iridescent rainbow fog transition
+    // Volumetric dynamic atmospheric fog reflecting the environmental palette
     if (uRainbowFog > 0.001) {
-      float fogSpeed = uTime * 0.28;
+      float fogSpeed = uTime * 0.32;
       vec3 p1 = dir * 2.8 + vec3(fogSpeed * 0.35, sin(fogSpeed * 0.6) * 0.25, fogSpeed * 0.45);
       vec3 p2 = dir * 5.6 - vec3(fogSpeed * 0.25, cos(fogSpeed * 0.5) * 0.3, fogSpeed * 0.15);
+      vec3 p3 = dir * 11.0 + vec3(0.0, fogSpeed * 0.75, 0.0);
       float n1 = snoise(p1);
       float n2 = snoise(p2);
-      float n3 = snoise(dir * 11.0 + vec3(0.0, fogSpeed * 0.75, 0.0));
+      float n3 = snoise(p3);
 
       float combinedNoise = (n1 * 0.5 + 0.5) * 0.52 + (n2 * 0.5 + 0.5) * 0.32 + (n3 * 0.5 + 0.5) * 0.16;
-      float chromaticPhase = combinedNoise * 1.6 + dir.y * 0.45 + sin(dir.x * 2.4 + uTime * 0.32) * 0.28;
-      vec3 rainbowCol = spectralRainbow(chromaticPhase);
 
-      // Iridescent glints & luminous sheen
-      float glint = pow(clamp(n3 * 0.5 + 0.5, 0.0, 1.0), 3.0) * 0.55;
-      rainbowCol = rainbowCol * (0.85 + glint) + vec3(glint * 0.65);
+      // Dynamic atmospheric vertical elevation gradient with subtle fluid undulation
+      float yNorm = clamp(dir.y * 0.5 + 0.5 + sin(dir.x * 2.5 + fogSpeed * 0.75) * 0.07, 0.0, 1.0);
+      vec3 envGradient = yNorm < 0.5
+        ? mix(uEnvFloor, uEnvDominant, yNorm * 2.0)
+        : mix(uEnvDominant, uEnvSky, (yNorm - 0.5) * 2.0);
 
-      vec3 deepMist = mix(vec3(0.05, 0.04, 0.12), vec3(0.02, 0.07, 0.14), dir.y * 0.5 + 0.5);
-      vec3 fullRainbowFog = mix(deepMist, rainbowCol, clamp(combinedNoise * 1.35, 0.28, 1.0));
+      // Dynamic luminous veins and glints reflecting environment accent
+      float glint = pow(clamp(n3 * 0.5 + 0.5, 0.0, 1.0), 3.0) * 0.65;
+      vec3 dynamicEnvMist = mix(envGradient, uEnvAccent, clamp(combinedNoise * 0.6 + glint * 0.4, 0.0, 1.0));
+      dynamicEnvMist = dynamicEnvMist * (0.82 + glint * 0.45) + uEnvAccent * (glint * 0.5);
+
+      // Deep atmospheric grounding mist at horizon/nadir
+      vec3 deepMist = mix(uEnvFloor * 0.65, uEnvDominant * 0.65, dir.y * 0.5 + 0.5);
+      vec3 fullEnvFog = mix(deepMist, dynamicEnvMist, clamp(combinedNoise * 1.35, 0.25, 1.0));
 
       float fogWeight = smoothstep(0.0, 1.0, uRainbowFog);
-      col = mix(col, fullRainbowFog, fogWeight);
+      col = mix(col, fullEnvFog, fogWeight);
     }
 
-    // Continuous procedural 3D noise modulation
+    // Dynamic continuous procedural 3D noise modulation reflecting environmental tones
     if (uNoise > 0.005) {
       float n = fbm(dir * 3.2 + vec3(0.0, uTime * 0.12, uTime * 0.08));
       float n2 = fbm(dir * 6.5 - vec3(uTime * 0.07, 0.0, uTime * 0.05));
-      vec3 noiseCol = mix(vec3(0.06, 0.73, 0.83), vec3(0.66, 0.33, 0.97), n * 0.5 + 0.5);
-      noiseCol = mix(noiseCol, vec3(0.98, 0.8, 0.1), clamp(n2 * 0.6 + 0.2, 0.0, 1.0));
+      vec3 noiseCol = mix(uEnvDominant, uEnvSky, n * 0.5 + 0.5);
+      noiseCol = mix(noiseCol, uEnvAccent, clamp(n2 * 0.6 + 0.2, 0.0, 1.0));
       col = mix(col, noiseCol, clamp(uNoise * 0.92, 0.0, 0.96));
     }
 
@@ -188,6 +200,7 @@ export function PanoramaSphere({
   mutationFactor = 0.0,
   radius = 900,
   transitionDirection = [0, 0, -1],
+  visualPalette,
 }: PanoramaSphereProps) {
   const [targetTex, setTargetTex] = useState<THREE.Texture | null>(null);
   const noiseRef = useRef<number>(0.65);
@@ -223,6 +236,10 @@ export function PanoramaSphere({
           uMutation: { value: 0.0 },
           uTime: { value: 0.0 },
           uTransitionDir: { value: new THREE.Vector3(0, 0, -1) },
+          uEnvSky: { value: new THREE.Color("#0284c7") },
+          uEnvDominant: { value: new THREE.Color("#d97706") },
+          uEnvAccent: { value: new THREE.Color("#fbbf24") },
+          uEnvFloor: { value: new THREE.Color("#1e293b") },
         },
         vertexShader: skyVertexShader,
         fragmentShader: skyFragmentShader,
@@ -232,6 +249,25 @@ export function PanoramaSphere({
     },
     []
   );
+
+  // Synchronize environmental atmospheric uniforms with active room visual palette
+  useEffect(() => {
+    const u = material.uniforms;
+    if (visualPalette) {
+      if (visualPalette.sky_tone) {
+        try { u.uEnvSky.value.set(visualPalette.sky_tone); } catch {}
+      }
+      if (visualPalette.dominant_color) {
+        try { u.uEnvDominant.value.set(visualPalette.dominant_color); } catch {}
+      }
+      if (visualPalette.accent_color) {
+        try { u.uEnvAccent.value.set(visualPalette.accent_color); } catch {}
+      }
+      if (visualPalette.floor_tone) {
+        try { u.uEnvFloor.value.set(visualPalette.floor_tone); } catch {}
+      }
+    }
+  }, [visualPalette, material]);
 
   // load target texture, polling while a background sub-room is still being synthesized
   useEffect(() => {
