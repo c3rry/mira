@@ -1,6 +1,96 @@
 # Mira 3D RPG Engine — Lab Machine Handoff & Local Diffusion Integration Plan
 
-> **Purpose of this Document**: Complete architectural handoff from the personal laptop session to the **GPU Lab Computer**. It covers everything implemented so far, the exact technical pitfalls currently blocking photorealistic panorama synthesis and first-person `WASD` locomotion, and the step-by-step execution plan to integrate **local diffusion models** + **true 3D room-scale locomotion** on the lab workstation.
+> **Purpose of this Document**: Complete architectural handoff and zero-to-running environment rebuild guide for an **Antigravity Agent** running on the **GPU Lab Computer**. It covers:
+> 1. **Exact instructions for an Antigravity Agent to rebuild the entire project environment from a fresh `git clone`** (including regenerating all gitignored binary assets: `.env`, `.wav`/`.mp3` audio stems, `.webp`/`.png` cached panoramas, Python/Conda + CUDA packages, and Node.js packages).
+> 2. **Everything built and pushed so far**.
+> 3. **Current pitfalls** blocking photorealistic panorama synthesis and first-person `WASD` locomotion.
+> 4. **The execution plan** to integrate **local GPU diffusion models** + **true 3D room-scale locomotion** on the lab workstation.
+
+---
+
+## 0. Antigravity Agent Instructions: Rebuild Project Environment from Scratch
+
+> **AGENT DIRECTIVE**: When starting on the lab computer after a fresh `git clone https://github.com/c3rry/mira.git`, note that `.gitignore` excludes `*.env`, `*.wav`, `*.mp3`, `*.webp`, `*.png`, `*.glb`, `node_modules/`, and `.next/`. You **MUST** execute the steps below in order to rebuild the full runtime environment and regenerate all required static assets before launching the servers or adding local diffusion.
+
+### Step 0.1: Inspect Lab Hardware & Existing Toolchains
+Run a single hardware/toolchain check first so you know which GPU, CUDA version, Conda/Python, and Node versions are present:
+```powershell
+nvidia-smi
+conda --version
+python --version
+node --version
+npm --version
+```
+
+### Step 0.2: Create the Python / Conda Environment (`mira`)
+1. Create the base environment from `conda.yml` (or Python 3.11 `venv` if Conda is unavailable):
+   ```powershell
+   # If Conda is installed:
+   conda env create -f conda.yml
+   conda activate mira
+
+   # OR if using standard Python 3.11 venv:
+   python -m venv .venv
+   .\.venv\Scripts\Activate.ps1
+   pip install --upgrade pip
+   pip install numpy pillow "google-genai>=0.7.0" "fastapi==0.110.0" "uvicorn[standard]==0.28.0" "pydantic==2.6.4" "httpx==0.27.0" "opencv-python-headless==4.9.0.80" trimesh python-dotenv pytest pytest-asyncio pytest-mock
+   ```
+2. **Install Local GPU Diffusion Dependencies** (on the Lab GPU machine only — do NOT modify `conda.yml` directly unless approved per `AGENTS.md`):
+   ```powershell
+   # Install PyTorch with CUDA support (adjust cu121 / cu124 based on nvidia-smi CUDA version)
+   pip install torch torchvision --index-url https://download.pytorch.org/whl/cu121
+   pip install diffusers transformers accelerate safetensors
+   ```
+
+### Step 0.3: Create `backend/.env` from `backend/.env.example`
+Copy `backend/.env.example` to `backend/.env` and populate the API keys (ask the user for their Gemini keys if not already set in system environment variables):
+```powershell
+Copy-Item backend\.env.example backend\.env
+```
+Ensure `backend/.env` contains:
+```env
+PORT=8000
+HOST=0.0.0.0
+SHARED_PATH=/shared/mock_world.json
+NEXT_PUBLIC_USE_CACHE=false
+NEXT_PUBLIC_SPACETIMEDB_HOST=localhost:3001
+NVIDIA_API_KEY=nvapi-...
+NVIDIA_NIM_ENDPOINT=https://integrate.api.nvidia.com/v1
+GEMINI_API_KEY_PRIMARY=<USER_GEMINI_KEY_1>
+GEMINI_API_KEY_SECONDARY=<USER_GEMINI_KEY_2>
+GEMINI_API_KEY_TERTIARY=<USER_GEMINI_KEY_3>
+```
+
+### Step 0.4: Regenerate All Gitignored Audio & Visual Fallback Assets
+Because `.gitignore` ignores `*.wav`, `*.mp3`, `*.webp`, and `*.png`, a fresh clone will have an empty `frontend/public/audio/` and `frontend/public/cached_worlds/`. Run the two included generator scripts from the repo root (`C:\code\mira` or lab repo root) to deterministically rebuild every asset on disk:
+```powershell
+# 1. Regenerate all 24-second multi-instrument .wav and .mp3 music stems in frontend/public/audio/tracks/
+python backend/scripts/generate_real_music.py
+
+# 2. Regenerate all base fallback 2048x1024 .webp panoramas and .png depth maps in frontend/public/cached_worlds/
+python backend/scripts/generate_rich_panoramas.py
+```
+
+### Step 0.5: Install Frontend Dependencies (`frontend/`)
+```powershell
+cd frontend
+npm install
+npx tsc --noEmit
+cd ..
+```
+
+### Step 0.6: Verify Full Backend Test Suite & Start Both Dev Servers
+```powershell
+# Run the 30 backend unit & integration tests (should pass in ~2.5s)
+pytest backend/tests -v
+
+# Start FastAPI Backend on Port 8000 (Background Daemon Task 1)
+python -m uvicorn backend.app.main:app --host 0.0.0.0 --port 8000 --reload
+
+# Start Next.js Frontend on Port 3000 (Background Daemon Task 2)
+cd frontend
+npm run dev
+```
 
 ---
 
@@ -35,13 +125,13 @@
 
 ---
 
-## 2. Current Pitfalls & Root Causes (Why We Are Moving to the Lab Machine)
+## 2. Current Pitfalls & Root Causes (Why We Moved to the Lab Machine)
 
 ### Pitfall 1: Cloud Image Generation Quota Is Hard-Locked to `0` on Free Tier
 * **What happened**: While `GEMINI_API_KEY_*` keys have active quota for text (`gemini-3.5-flash-lite`) and vision (`gemini-3.8-flash`), Google's Free Tier sets image generation quota (`gemini-3.1-flash-image` / `imagen-3.0`) to `limit: 0` (`429 RESOURCE_EXHAUSTED`).
 * **Why Gemini Vision couldn't replace it**: Vision models are *image-to-text* encoders (they inspect existing images and output JSON coordinates); they cannot output new image pixels.
 * **Consequence**: Because no cloud diffusion model returned pixel buffers, the frontend fell back to HTML5 2D procedural canvas drawing (`TextureLoader.ts`). While `TextureLoader.ts` draws custom colors and shapes per room, 2D canvas primitives (`ctx.fillRect`, gradients, polygons) will never look like a photorealistic 360° environment.
-* **Solution on Lab Machine**: Run a **local diffusion pipeline** on the lab GPU (SDXL / Flux.1-dev / SD-Turbo with 360° circular padding + Depth-Anything-V2 or ZoeDepth) to synthesize real, high-resolution equirectangular `.webp`/`.png` panoramas and 16-bit `.png` depth maps on the fly.
+* **Solution on Lab Machine**: Run a **local diffusion pipeline** on the lab GPU (SDXL / Flux.1-schnell / SDXL-Turbo with 360° circular padding + Depth-Anything-V2) to synthesize real, high-resolution equirectangular `.webp`/`.png` panoramas and `.png` depth maps on the fly.
 
 ### Pitfall 2: Why `WASD` Movement Still Feels Non-Responsive / Broken
 There are three stacked mechanical and geometric reasons why `WASD` does not currently work as expected:
@@ -56,62 +146,41 @@ There are three stacked mechanical and geometric reasons why `WASD` does not cur
 
 ---
 
-## 3. Lab Computer Setup & Execution Plan
+## 3. Lab Computer Execution Plan (Next Tasks for Antigravity Agent)
 
-### Step 1: Clone & Bootstrap on the Lab Machine
- Note: Because `backend/.env` and generated `.wav`/`.mp3`/`.webp` assets are gitignored in `.gitignore`, run the music generator script once after pulling on the lab machine:
+### Task A: Integrate Local GPU Panorama + Depth Diffusion (`backend/app/services/local_diffusion.py`)
 
-```powershell
-git pull origin main
+Depending on what is installed on the lab computer, wire `POST /world/compile` (`backend/app/services/gemini_generator.py`) to one of two local GPU backends:
 
-# 1. Recreate or copy backend/.env with your GEMINI_API_KEY_PRIMARY / SECONDARY / TERTIARY
-# 2. Generate the multi-instrument audio stems (since *.wav and *.mp3 are in .gitignore)
-python backend/scripts/generate_real_music.py
-
-# 3. Start Backend (Terminal 1)
-uvicorn backend.app.main:app --host 0.0.0.0 --port 8000 --reload
-
-# 4. Start Frontend (Terminal 2)
-cd frontend
-npm install
-npm run dev
-```
-
----
-
-### Step 2: Integrate Local GPU Panorama + Depth Diffusion (`backend/app/services/local_diffusion.py`)
-
-Depending on what is installed on the lab computer, we will wire `POST /world/compile` to one of two local GPU backends:
-
-#### Option A: Direct PyTorch `diffusers` In-Process Service (Recommended if Lab GPU has >= 12GB VRAM)
+#### Option 1: Direct PyTorch `diffusers` In-Process Service (Recommended if Lab GPU has >= 12GB VRAM)
 1. **Model Stack**:
    * **RGB Panorama**: `stabilityai/sdxl-turbo` or `black-forest-labs/FLUX.1-schnell` (4-step inference, ~1.2s–2.5s per `1024x512` or `2048x1024` panorama on an RTX 3090/4090/A6000).
-   * **Seamless 360° Tiling**: Enable circular padding (`conv_layer.padding_mode = 'circular'` on the horizontal `X` axis of all UNet and VAE `Conv2d` layers) so the left (`u=0`) and right (`u=1`) edges of the equirectangular panorama stitch with zero seam.
-   * **Metric Depth Map**: Run `depth-anything/Depth-Anything-V2-Small-hf` (or `Intel/dpt-hybrid-midas`) on the generated RGB panorama (~80ms on GPU) to produce a true 16-bit depth map for `PanoramaSphere.tsx` vertex displacement and floor collision.
+   * **Seamless 360° Tiling**: Patch all `nn.Conv2d` layers in the UNet and VAE to use circular padding along the horizontal width axis (`padding_mode='circular'`) so the left (`u=0`) and right (`u=1`) edges of the equirectangular panorama stitch with zero visible seam.
+   * **Metric Depth Map**: Run `depth-anything/Depth-Anything-V2-Small-hf` on the generated RGB panorama (~80ms on GPU) to produce a true depth map for `PanoramaSphere.tsx` vertex displacement.
 2. **Output Path**:
    * Save each generated room's panorama to `frontend/public/generated_worlds/<world_id>/<room_id>_panorama.webp` and `<room_id>_depth.png`.
    * Return those exact local URLs (`/generated_worlds/<world_id>/<room_id>_panorama.webp`) in `NodeState.panorama_url` and `NodeState.depth_url` so `TextureLoader.ts` loads the real GPU-rendered image directly via `THREE.TextureLoader` instead of falling back to the 2D procedural canvas.
 
-#### Option B: Local ComfyUI / Automatic1111 API Bridge (If Lab Machine Already Runs a Local Image Server)
+#### Option 2: Local ComfyUI / Automatic1111 API Bridge (If Lab Machine Already Runs a Local Image Server)
 1. Point `LOCAL_DIFFUSION_URL=http://127.0.0.1:8188` (ComfyUI) or `http://127.0.0.1:7860` (A1111/Forge) in `backend/.env`.
-2. In `gemini_generator.py`, replace `try_generate_gemini_panorama_image` with an async call to the local diffusion endpoint for each of the 4 rooms in parallel/batch, using Gemini's room description + architectural style prompt so all 4 sub-rooms share a cohesive visual style while depicting distinct spaces.
+2. In `gemini_generator.py`, replace `try_generate_gemini_panorama_image` with an async call to the local diffusion endpoint for each of the 4 rooms, using Gemini's room description + shared world architectural style prompt so all 4 sub-rooms share a cohesive visual style while depicting distinct spaces.
 
 ---
 
-### Step 3: Fix `WASD` Locomotion & Grounded 3D Room Scale (`frontend/src/canvas/`)
+### Task B: Fix `WASD` Locomotion & Grounded 3D Room Scale (`frontend/src/canvas/`)
 
 To make `WASD` walking immediately responsive, physical, and unmistakable:
 
 1. **Decouple the Skybox Sphere from the Walkable 3D Room Floor**:
-   * Keep `PanoramaSphere` centered around the camera (or moving at `0.15x` parallax) as the distant 360° architectural enclosure, while placing a **true textured 3D architectural floor plane** at human eye level (`y = -6.0` instead of `y = -48.0`) with tiled stone/marble/sandstone shaders, columns, props, and patrolling NPCs right in the foreground.
-2. **Replace Origin-Locked `OrbitControls` with True First-Person / Walkable Camera Rig (`CameraController.tsx`)**:
-   * Move the `camera.position` and `OrbitControls.target` **together by the exact same `moveDelta` vector** inside `useFrame` *before* calling `controlsRef.current.update()`, with `enableDamping` handled cleanly so `OrbitControls` never snaps the camera back to `(0, 0, 0.1)`.
-   * Add a subtle on-screen **compass / coordinates & WASD movement indicator** in the HUD so you can immediately verify key capture and position change, and auto-blur clicked HUD buttons (`e.currentTarget.blur()`) so keyboard focus always stays on the 3D viewport.
+   * Keep `PanoramaSphere` centered around the camera (or moving at subtle `0.12x` parallax) as the distant 360° architectural enclosure, while placing a **true textured 3D architectural floor plane** at human eye height (`y = -6.0` instead of `y = -48.0`) with tiled stone/marble/sandstone shaders, columns, props, and patrolling NPCs right in the foreground.
+2. **Replace Origin-Locked `OrbitControls` with True Walkable Camera Rig (`CameraController.tsx`)**:
+   * Move `camera.position` and `controlsRef.current.target` **together by the exact same `moveDelta` vector** inside `useFrame` *before* calling `controlsRef.current.update()`, while keeping `camera` and `target` separated by a small radius (`0.5` units) so `OrbitControls` mouse-look and `WASD` translation work together seamlessly without snapping back to `(0, 0, 0.1)`.
+   * Auto-blur clicked HUD buttons (`e.currentTarget.blur()`) so keyboard focus always stays on the 3D viewport.
 
 ---
 
-## 4. Verification Checklist for Next Session on Lab Machine
-- [ ] Run `nvidia-smi` on the lab computer to check GPU model, VRAM, and CUDA version.
-- [ ] Choose Option A (`diffusers` in-process with `sdxl-turbo` / `FLUX.1-schnell` + circular 360° conv padding) or Option B (local ComfyUI/A1111 endpoint).
-- [ ] Verify that compiling any prompt generates 4 real photorealistic `.webp` panoramas + `.png` depth maps on disk under `frontend/public/generated_worlds/`.
-- [ ] Verify grounded `WASD` walking across the 3D floor with immediate foreground parallax alongside roaming NPCs.
+## 4. Verification Checklist for the Lab Session
+- [ ] Run Step 0 (`conda`/`venv`, `backend/.env`, `generate_real_music.py`, `generate_rich_panoramas.py`, `npm install`, `pytest`).
+- [ ] Verify GPU model and VRAM via `nvidia-smi`.
+- [ ] Implement `backend/app/services/local_diffusion.py` and verify that compiling any prompt writes 4 photorealistic `.webp` panoramas + `.png` depth maps under `frontend/public/generated_worlds/`.
+- [ ] Verify grounded `WASD` walking across the eye-level 3D floor with immediate foreground parallax alongside roaming NPCs.
