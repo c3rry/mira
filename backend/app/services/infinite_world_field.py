@@ -47,7 +47,7 @@ class InfiniteWorldField:
             return "noise"
         if any(w in prompt for w in ["space", "station", "orbital", "cosmos", "spire"]):
             return "space"
-        if any(w in prompt for w in ["cyber", "metropolis", "tokyo", "arcade", "city", "neon"]):
+        if any(w in prompt for w in ["cyber", "metropolis", "tokyo", "arcade", "city", "neon", "street", "avenue", "broadway", "square", "urban", "district", "quarter", "manhattan", "york"]):
             return "metropolis"
         if any(w in prompt for w in ["forest", "garden", "babylon", "jungle", "sylvan", "woods"]):
             return "gardens"
@@ -57,7 +57,9 @@ class InfiniteWorldField:
             return "rome"
         if any(w in prompt for w in ["everest", "mountain", "himalaya", "glacier", "snow", "alps"]):
             return "mountain"
-        return "desert"  # Default rich ancient Egyptian Giza plateau
+        if any(w in prompt for w in ["giza", "pyramid", "egypt", "sphinx", "pharaoh", "desert", "oasis", "sand", "dune"]):
+            return "desert"
+        return "general"
 
     def sample_field(self, x: float, z: float) -> Dict[str, Any]:
         """
@@ -76,6 +78,8 @@ class InfiniteWorldField:
 
         if self.archetype == "noise":
             return self._sample_noise_field(x, z, dist, deg, ring, noise_moisture, noise_elevation)
+        elif self.archetype == "metropolis":
+            return self._sample_metropolis_field(x, z, dist, deg, ring, noise_moisture, noise_elevation)
         elif self.archetype == "desert":
             return self._sample_desert_field(x, z, dist, deg, ring, noise_moisture, noise_elevation)
         elif self.archetype == "gardens":
@@ -364,13 +368,102 @@ class InfiniteWorldField:
             "npc_role": "Station operations officer monitoring orbital station telemetry.",
         }
 
+    def _sample_metropolis_field(
+        self, x: float, z: float, dist: float, deg: float, ring: int, moisture: float, elevation: float
+    ) -> Dict[str, Any]:
+        ring_s = f" — Sector {ring}" if ring > 1 else ""
+        if dist < 90:
+            sector_type = "metropolis_core"
+            name = "Meridian Junction Plaza"
+            desc = "Central illuminated metropolitan plaza flanked by towering digital billboards and street avenues."
+            dominant_feature = "neon_tower"
+            sky_hex = "#0f172a"
+            floor_hex = "#1e293b"
+            accent_hex = "#38bdf8"
+            npc_title = "Chief City Architect Morgan"
+            npc_role = "Master urban planner coordinating downtown avenues and transit arteries."
+        elif 45 <= deg < 135:
+            # East
+            sector_type = "avenue"
+            name = f"Avenue of the Americas Crossing{ring_s}"
+            desc = "Multi-lane metropolitan avenue lined with glass high-rises and pedestrian promenades."
+            dominant_feature = "avenue_corridor"
+            sky_hex = "#0f172a"
+            floor_hex = "#18181b"
+            accent_hex = "#06b6d4"
+            npc_title = f"Transit Dispatcher Devon of Sector {ring}"
+            npc_role = "Overseeing traffic flow along the eastern arterial boulevard."
+        elif 135 <= deg < 225:
+            # South
+            sector_type = "theater"
+            name = f"Broadway Stage Promenade{ring_s}"
+            desc = "Historic theater district avenue gleaming with marquee lights and illuminated street canopies."
+            dominant_feature = "theater_marquee"
+            sky_hex = "#180d2b"
+            floor_hex = "#1f2937"
+            accent_hex = "#f59e0b"
+            npc_title = f"District Curator Silas of Sector {ring}"
+            npc_role = "Steward of the theater district archives and municipal landmarks."
+        elif 225 <= deg < 315:
+            # West
+            sector_type = "arcade"
+            name = f"Shubert Commercial Arcade{ring_s}"
+            desc = "Pedestrian shopping arcade with glowing storefronts, street cafes, and transit waypoints."
+            dominant_feature = "arcade_canopy"
+            sky_hex = "#0c1829"
+            floor_hex = "#111827"
+            accent_hex = "#10b981"
+            npc_title = f"Arcade Warden Elena of Sector {ring}"
+            npc_role = "Managing commerce and visitor guidance along the western arcade."
+        else:
+            # North
+            sector_type = "skyway"
+            name = f"Upper Skyline Terrace Overlook{ring_s}"
+            desc = "Elevated pedestrian skybridge and terrace surveying the endless metropolis under twilight."
+            dominant_feature = "skybridge"
+            sky_hex = "#0b1329"
+            floor_hex = "#1e293b"
+            accent_hex = "#a855f7"
+            npc_title = f"Skyline Observer Jesse of Sector {ring}"
+            npc_role = "Monitoring meteorological and transit conditions across the northern skyway."
+
+        palette = RoomVisualPalette(
+            sky_tone=sky_hex,
+            floor_tone=floor_hex,
+            dominant_color=accent_hex,
+            accent_color=accent_hex,
+        )
+        lighting = LightingConfig(
+            ambient_color=accent_hex,
+            ambient_intensity=1.15,
+            fog_color=sky_hex,
+            fog_density=0.003,
+        )
+        return {
+            "x": x,
+            "z": z,
+            "sector_type": sector_type,
+            "name": name,
+            "description": desc,
+            "dominant_feature": dominant_feature,
+            "palette": palette,
+            "lighting": lighting,
+            "npc_title": npc_title,
+            "npc_role": npc_role,
+        }
+
     def _sample_general_field(self, x, z, dist, deg, ring, moisture, elevation) -> Dict[str, Any]:
-        cardinal = ["North Sector", "East Sector", "South Sector", "West Sector"][int(deg // 90) % 4]
-        name = f"{self.world_prompt.title()} - {cardinal} Tier {ring}"
+        cardinal = ["North", "East", "South", "West"][int(deg // 90) % 4]
+        words = [w.capitalize() for w in re.findall(r"[a-zA-Z0-9]+", self.world_prompt) if len(w) > 2]
+        title_stem = " ".join(words[:3]) if words else "Uncharted Frontier"
+        ring_s = f" — Sector {ring}" if ring > 1 else ""
+        name = f"{title_stem} - {cardinal} Vista{ring_s}"
+
+        h_val = int(hashlib.md5(f"{title_stem}:{ring}".encode("utf-8")).hexdigest()[:6], 16)
         palette = RoomVisualPalette(
             sky_tone="#1e293b",
-            floor_tone="#475569",
-            dominant_color="#334155",
+            floor_tone="#0f172a",
+            dominant_color=f"#{h_val:06x}",
             accent_color="#f59e0b",
         )
         return {
@@ -378,12 +471,12 @@ class InfiniteWorldField:
             "z": z,
             "sector_type": "general",
             "name": name,
-            "description": f"Expansive architectural quadrant extending across the horizon.",
+            "description": f"Expansive architectural quadrant extending across {title_stem}.",
             "dominant_feature": "citadel",
             "palette": palette,
             "lighting": LightingConfig(ambient_color="#f8fafc"),
-            "npc_title": f"Guardian of Sector {ring}",
-            "npc_role": "Keeper of the quadrant threshold.",
+            "npc_title": f"Pathfinder of {title_stem} - Sector {ring}",
+            "npc_role": f"Expedition scout charting the {cardinal.lower()} frontiers.",
         }
 
     def synthesize_infinite_room_assets(

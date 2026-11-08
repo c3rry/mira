@@ -150,7 +150,12 @@ def detect_theme_category(text: str, biome_hint: Optional[str] = None) -> str:
         return "enchanted_forest"
     if any(k in lower_text for k in ["tavern", "medieval", "castle", "roman", "rome", "colosseum", "temple", "cathedral", "knight", "citadel", "palace", "victorian", "gothic", "athens", "acropolis", "parthenon", "greek", "forum", "pantheon", "monastery", "guild", "library"]):
         return "medieval_tavern"
-    if any(k in lower_text for k in ["cyber", "neon", "metropolis", "city", "arcade", "tokio", "tokyo", "alley", "skybridge", "boulevard", "industrial", "steampunk", "factory", "lab"]):
+    if any(k in lower_text for k in [
+        "cyber", "neon", "metropolis", "city", "arcade", "tokio", "tokyo", "alley", "skybridge",
+        "boulevard", "industrial", "steampunk", "factory", "lab", "street", "avenue", "broadway",
+        "square", "urban", "district", "quarter", "manhattan", "york", "crosswalk", "downtown",
+        "traffic", "transit", "subway", "promenade"
+    ]):
         return "cyberpunk_alley"
     if any(k in lower_text for k in ["giza", "pyramid", "egypt", "sphinx", "pharaoh", "nile", "desert", "oasis", "sand", "dune", "sahara", "canyon", "mesa", "petra"]):
         return "desert_oasis"
@@ -158,7 +163,11 @@ def detect_theme_category(text: str, biome_hint: Optional[str] = None) -> str:
     hint = (biome_hint or "").lower()
     if hint in ["medieval_tavern", "enchanted_forest", "space_station", "cyberpunk_alley", "desert_oasis"]:
         return hint
-    return "space_station" if any(w in lower_text for w in ["alien", "star", "sky", "flight"]) else "desert_oasis"
+    if any(w in lower_text for w in ["alien", "star", "sky", "flight"]):
+        return "space_station"
+    if any(w in lower_text for w in ["modern", "road", "vehicle", "tech", "glass", "store", "shop"]):
+        return "cyberpunk_alley"
+    return "medieval_tavern"
 
 
 def detect_topology_type(text: str, biome_hint: Optional[str] = None) -> str:
@@ -375,46 +384,40 @@ def enrich_and_normalize_graph(
         amb_col = urllib.parse.quote(getattr(room.lighting, "ambient_color", "") or "")
         fog_col = urllib.parse.quote(getattr(room.lighting, "fog_color", "") or "")
 
-        # Synchronously synthesize the initial room (idx == 0) via JoPano 6-Face Cubemap + Poisson CFB (~2.8s)
-        # and synthesize rooms 1..N asynchronously in a background thread so /world/compile never hits proxy timeout!
-        if idx == 0:
-            local_assets = generate_room_panorama_and_depth(
-                world_id=graph.world_id,
-                room_id=room.room_id,
-                room_name=room.name,
-                world_prompt=prompt,
-                biome_type=b_type,
-                room_idx=idx,
-                ambient_color=getattr(room.lighting, "ambient_color", "") or "",
-                fog_color=getattr(room.lighting, "fog_color", "") or "",
-            )
-            if local_assets is not None:
-                room.panorama_url, room.depth_url = local_assets
+        safe_world = re.sub(r"[^a-zA-Z0-9_-]", "", graph.world_id or "world_default")
+        safe_room = re.sub(r"[^a-zA-Z0-9_-]", "", room.room_id or f"room_{idx}")
+
+        # Derive direction relative to root room
+        dir_label = "north"
+        if room.worldX is not None and room.worldZ is not None:
+            if abs(room.worldX) > abs(room.worldZ):
+                dir_label = "east" if room.worldX > 0 else "west"
             else:
-                room.panorama_url = base_pano
-                room.depth_url = base_depth
+                dir_label = "south" if room.worldZ > 0 else "north"
+
+        # Synchronously synthesize ALL rooms via JoPano 6-Face Cubemap + Poisson CFB
+        # so EVERY room in the world is 100% fusion-generated and exists on disk before compile returns!
+        local_assets = generate_room_panorama_and_depth(
+            world_id=graph.world_id,
+            room_id=room.room_id,
+            room_name=room.name,
+            world_prompt=prompt,
+            biome_type=b_type,
+            room_idx=idx,
+            ambient_color=getattr(room.lighting, "ambient_color", "") or "",
+            fog_color=getattr(room.lighting, "fog_color", "") or "",
+            from_room_name=graph.rooms[0].name if idx > 0 else None,
+            direction=dir_label if idx > 0 else None,
+            target_x=room.worldX,
+            target_z=room.worldZ,
+            from_x=graph.rooms[0].worldX if idx > 0 else 0.0,
+            from_z=graph.rooms[0].worldZ if idx > 0 else 0.0,
+        )
+        if local_assets is not None:
+            room.panorama_url, room.depth_url = local_assets
         else:
-            safe_world = re.sub(r"[^a-zA-Z0-9_-]", "", graph.world_id or "world_default")
-            safe_room = re.sub(r"[^a-zA-Z0-9_-]", "", room.room_id or f"room_{idx}")
             room.panorama_url = f"/generated_worlds/{safe_world}/{safe_room}_panorama.webp"
             room.depth_url = f"/generated_worlds/{safe_world}/{safe_room}_depth.png"
-
-            import threading
-
-            threading.Thread(
-                target=generate_room_panorama_and_depth,
-                kwargs={
-                    "world_id": graph.world_id,
-                    "room_id": room.room_id,
-                    "room_name": room.name,
-                    "world_prompt": prompt,
-                    "biome_type": b_type,
-                    "room_idx": idx,
-                    "ambient_color": getattr(room.lighting, "ambient_color", "") or "",
-                    "fog_color": getattr(room.lighting, "fog_color", "") or "",
-                },
-                daemon=True,
-            ).start()
 
         # ensure connected adjacency graph
         if not room.adjacent_room_ids:
@@ -583,17 +586,47 @@ def generate_expanded_room(
     from_x_val = from_room.worldX if (from_room and from_room.worldX is not None) else from_x
     from_z_val = from_room.worldZ if (from_room and from_room.worldZ is not None) else from_z
 
-    # Synthesize dedicated connected panorama and 16-bit depth map:
+    dir_label = dir_lower
+    if new_x is not None and new_z is not None and from_x_val is not None and from_z_val is not None:
+        dx_val = new_x - from_x_val
+        dz_val = new_z - from_z_val
+        if abs(dx_val) > abs(dz_val):
+            dir_label = "east" if dx_val > 0 else "west"
+        else:
+            dir_label = "south" if dz_val > 0 else "north"
+
+    # Synthesize dedicated connected panorama and 16-bit depth map via fusion pipeline:
     # Portal facing parent room blends seamlessly; outward headings morph into the new sector's landscape!
-    pano_url, depth_url, _ = field.synthesize_infinite_room_assets(
+    local_assets = generate_room_panorama_and_depth(
+        world_id=world_id,
+        room_id=new_room_id,
+        room_name=name,
+        world_prompt=clean_prompt,
+        biome_type=theme,
+        room_idx=next_idx,
+        ambient_color=palette.dominant_color,
+        fog_color=palette.sky_tone,
+        from_room_name=from_name,
+        direction=dir_label,
         target_x=new_x,
         target_z=new_z,
         from_x=from_x_val,
         from_z=from_z_val,
-        from_room_name=from_name,
-        world_id=world_id,
-        room_idx=next_idx,
     )
+    if local_assets is not None:
+        pano_url, depth_url = local_assets
+    else:
+        pano_url, depth_url = synthesize_connected_room_assets(
+            world_id=world_id,
+            new_room_id=new_room_id,
+            new_room_name=name,
+            from_room=from_room,
+            direction=dir_label,
+            target_x=new_x,
+            target_z=new_z,
+            biome_type=theme,
+            world_prompt=clean_prompt,
+        )
 
     new_node = NodeState(
         room_id=new_room_id,

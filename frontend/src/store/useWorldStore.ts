@@ -883,11 +883,38 @@ export function generateThematicRoomName(
   }
 
   if (
-    t.includes("giza") ||
-    t.includes("pyramid") ||
-    t.includes("sphinx") ||
-    t.includes("desert") ||
-    t.includes("egypt")
+    t.includes("times square") ||
+    t.includes("manhattan") ||
+    t.includes("city") ||
+    t.includes("metropolis") ||
+    t.includes("broadway") ||
+    t.includes("street") ||
+    t.includes("avenue") ||
+    t.includes("square") ||
+    t.includes("urban") ||
+    t.includes("downtown") ||
+    t.includes("york")
+  ) {
+    const ring = Math.max(1, Math.round(Math.hypot(x, z) / 220));
+    const ringSuffix = ring > 1 ? ` — Sector ${ring}` : "";
+    const names: Record<string, string[]> = {
+      north: ["Broadway Apex Plaza", "Duffy Square Red Steps", "47th Street Neon Crossing", "Marquis Center Esplanade"],
+      south: ["Seventh Avenue South Hub", "42nd Street Theater Way", "Times Square Subway Mezzanine", "One Times Square Forecourt"],
+      east: ["Sixth Avenue Promenade", "Rockefeller Plaza Corridor", "Midtown Neon Arcade", "Avenue of the Americas Crossing"],
+      west: ["Eighth Avenue Theater District", "Hell's Kitchen Broadway Way", "Shubert Alley Promenade", "Broadway Stage Threshold"],
+    };
+    const list = names[dir] || names.north;
+    const idx = Math.abs(Math.round((x * 3 + z * 7) / 220)) % list.length;
+    return `${list[idx]}${ringSuffix}`;
+  }
+
+  const titleLower = worldTitle.toLowerCase();
+  if (
+    titleLower.includes("giza") ||
+    titleLower.includes("pyramid") ||
+    titleLower.includes("sphinx") ||
+    titleLower.includes("pharaoh") ||
+    titleLower.includes("egypt")
   ) {
     const ring = Math.max(1, Math.round(Math.hypot(x, z) / 220));
     const tierSuffix = ring > 1 ? ` — Sector ${ring}` : "";
@@ -924,24 +951,6 @@ export function generateThematicRoomName(
         `Sandstone Obelisk Pass${tierSuffix}`,
         `Dune Sea Overlook${tierSuffix}`,
       ],
-    };
-    const list = names[dir] || names.north;
-    const idx = Math.abs(Math.round((x * 3 + z * 7) / 220)) % list.length;
-    return list[idx];
-  }
-
-  if (
-    t.includes("times square") ||
-    t.includes("manhattan") ||
-    t.includes("city") ||
-    t.includes("metropolis") ||
-    t.includes("broadway")
-  ) {
-    const names: Record<string, string[]> = {
-      north: ["Broadway Apex Plaza", "Duffy Square Red Steps", "47th Street Neon Crossing", "Marquis Center Esplanade"],
-      south: ["Seventh Avenue South Hub", "42nd Street Theater Way", "Times Square Subway Mezzanine", "One Times Square Forecourt"],
-      east: ["Sixth Avenue Promenade", "Rockefeller Plaza Corridor", "Midtown Neon Arcade", "Avenue of the Americas Crossing"],
-      west: ["Eighth Avenue Theater District", "Hell's Kitchen Broadway Way", "Shubert Alley Promenade", "Broadway Stage Threshold"],
     };
     const list = names[dir] || names.north;
     const idx = Math.abs(Math.round((x * 3 + z * 7) / 220)) % list.length;
@@ -1029,7 +1038,19 @@ export function generateThematicRoomName(
   }
 
   const baseTitle = worldTitle.split("—")[0].trim();
-  return `${baseTitle} - ${dirLabel} Sector`;
+  const words = baseTitle.replace(/[^a-zA-Z0-9\s]/g, "").split(/\s+/).filter((w) => w.length > 2);
+  const subject = words.slice(0, 3).join(" ") || baseTitle;
+  const ring = Math.max(1, Math.round(Math.hypot(x, z) / 220));
+  const ringSuffix = ring > 1 ? ` — Sector ${ring}` : "";
+  const dirSuffixes: Record<string, string[]> = {
+    north: ["Zenith Vista", "Northern Sector", "High Crossing", "Observation Deck"],
+    south: ["Southern Basin", "Valley Threshold", "South Promenade", "Lower Court"],
+    east: ["Eastern Overlook", "Dawn Corridor", "Sunrise Plaza", "East Gate"],
+    west: ["Western Ridge", "Twilight Terrace", "Sunset Causeway", "West Arcade"],
+  };
+  const list = dirSuffixes[dir] || dirSuffixes.north;
+  const idx = Math.abs(Math.round((x * 3 + z * 7) / 220)) % list.length;
+  return `${subject} — ${list[idx]}${ringSuffix}`;
 }
 
 export interface WorldState {
@@ -1079,6 +1100,13 @@ export interface WorldState {
   expandWorld: (fromRoomId?: string, direction?: string, targetX?: number, targetZ?: number) => Promise<WorldRoom | null>;
   initializeSync: () => void;
 }
+
+const expansionQueue: Array<{
+  fromRoomId?: string;
+  direction?: string;
+  targetX?: number;
+  targetZ?: number;
+}> = [];
 
 export const useWorldStore = create<WorldState>((set, get) => ({
   currentRoomId: "noise_origin",
@@ -1575,7 +1603,27 @@ export const useWorldStore = create<WorldState>((set, get) => ({
 
   expandWorld: async (fromRoomId?: string, direction?: string, targetX?: number, targetZ?: number) => {
     const state = get();
-    if (state.isExpanding) return null;
+    if (state.isExpanding) {
+      if (targetX !== undefined && targetZ !== undefined) {
+        const isQueued = expansionQueue.some((q) => q.targetX === targetX && q.targetZ === targetZ);
+        if (!isQueued) {
+          expansionQueue.push({ fromRoomId, direction, targetX, targetZ });
+        }
+      }
+      return null;
+    }
+
+    const drainQueue = () => {
+      set({ isExpanding: false });
+      if (expansionQueue.length > 0) {
+        const nextReq = expansionQueue.shift();
+        if (nextReq) {
+          setTimeout(() => {
+            get().expandWorld(nextReq.fromRoomId, nextReq.direction, nextReq.targetX, nextReq.targetZ);
+          }, 80);
+        }
+      }
+    };
 
     const sourceRoomId = fromRoomId || state.currentRoomId;
     const sourceRoom = state.rooms[sourceRoomId];
@@ -1676,6 +1724,7 @@ export const useWorldStore = create<WorldState>((set, get) => ({
               : state.activeSubtitle,
           });
 
+          drainQueue();
           return newRoom;
         }
       }
@@ -1747,6 +1796,7 @@ export const useWorldStore = create<WorldState>((set, get) => ({
       diffusionProgress: 100,
     });
 
+    drainQueue();
     return fallbackRoom;
   },
 

@@ -987,24 +987,46 @@ def _classify_nature_ground_and_sky(room_name: str, world_prompt: str) -> Tuple[
 
 
 def _build_6face_multi_text_prompts(
-    room_name: str, world_prompt: str, room_idx: int
+    room_name: str,
+    world_prompt: str,
+    room_idx: int,
+    from_room_name: Optional[str] = None,
+    direction: Optional[str] = None,
+    ambient_color: str = "",
+    fog_color: str = "",
 ) -> Tuple[str, List[str], str]:
     """
-    Implements JoPano Section 4.4 (Multi-Text Generation):
-    Generates directional prompts for each of the 6 cubemap faces [Front, Back, Left, Right, Up, Down]
-    and dynamically adapts between pure Natural Wilderness scenes (zero buildings/dojos/pavement)
-    vs. Architectural / Monumental scenes.
-    Returns (anchor_prompt, face_prompts, negative_prompt).
+    Implements JoPano Section 4.4 (Multi-Text Generation) with universal semantic adaptation:
+    Dynamically adapts between:
+      1. Pure Natural Wilderness (zero buildings/dojos/pavement)
+      2. Modern / Urban / Metropolis (street pavement, asphalt, storefronts, towering architecture)
+      3. Sci-Fi / Orbital / Space (pressurized decks, bulkheads, consoles, viewports)
+      4. Classical / Ancient (stone masonry, colonnades, monuments)
+      5. Interior Chambers / Halls (vaulted ceilings, polished floors)
+      6. Generic / Prompt-Derived (harmonious sky, terrain, and atmospheric lighting)
+    Preserves reciprocal visual continuity when connected from a parent room.
     """
     base_negative = (
         "fisheye, little planet, spherical distortion, upside down, inverted, floating islands, "
         "split screen, collage, border, frame, text, watermark, blurry, deformed, cartoon, painting"
     )
 
+    prompt_lower = f"{room_name} {world_prompt}".lower()
+    cardinal = (direction or "forward").lower()
+    reverse_cardinal = {
+        "north": "south",
+        "south": "north",
+        "east": "west",
+        "west": "east",
+        "forward": "backward",
+        "backward": "forward",
+    }.get(cardinal, "backwards")
+
+    # 1. Pure Natural Wilderness
     if _is_natural_wilderness_scene(room_name, world_prompt):
         up_prompt, down_prompt, vantages = _classify_nature_ground_and_sky(room_name, world_prompt)
         vantage = vantages[room_idx % len(vantages)]
-        text_lower = f"{room_name} {world_prompt}".lower()
+        text_lower = prompt_lower
         is_gas_giant = any(w in text_lower for w in ("neptune", "methane", "uranus", "jupiter", "saturn", "gas giant", "ice giant", "diamond hail"))
         is_space = is_gas_giant or any(w in text_lower for w in ("moon", "lunar", "mare", "tranquility", "procellarum", "copernicus", "mars", "martian", "asteroid", "planet", "deep space", "cosmos", "alien"))
         is_underwater = any(w in text_lower for w in ("underwater", "ocean floor", "sea floor", "seabed", "abyss", "benthic", "trench", "deep sea", "hydrothermal", "coral canyon"))
@@ -1028,13 +1050,9 @@ def _build_6face_multi_text_prompts(
             f"{light_desc}, ultra-detailed geological textures, photorealistic, 8k"
         )
         gate_feature = (
-            "an atmospheric illuminated transit gateway archway receding toward connected sectors"
-            if not is_space and not is_underwater
-            else (
-                "a scientific transit beacon mast on the horizon marking the pathway to adjacent coordinates"
-                if is_space
-                else "a bioluminescent underwater portal archway between oceanic trenches"
-            )
+            f"natural terrain pathway connecting from {from_room_name}"
+            if from_room_name
+            else "natural terrain pathway receding toward connected sectors"
         )
         face_prompts = [
             f"Front view of {room_name}, {world_prompt}, {vantage}, pure natural photography, zero buildings",
@@ -1052,35 +1070,166 @@ def _build_6face_multi_text_prompts(
         )
         return anchor_prompt, face_prompts, nature_negative
 
-    vantage_descriptors = [
-        "sunlit stone courtyard pavement in the foreground, grand monumental architecture along the horizon",
-        "elevated marble colonnade walkway in the foreground, classical temple porticos and arches",
-        "ceremonial stone causeway and carved stone courtyard in the foreground, monumental ruins and pillars",
-        "panoramic terrace overlook with carved stone balustrade and sweeping architectural vista",
-    ]
-    vantage = vantage_descriptors[room_idx % len(vantage_descriptors)]
+    # 2. Modern Urban / Metropolis / City / Street
+    is_urban = any(
+        w in prompt_lower
+        for w in (
+            "city", "street", "avenue", "broadway", "square", "downtown", "metropolis",
+            "alley", "boulevard", "urban", "district", "quarter", "manhattan", "york",
+            "tokyo", "arcade", "neon", "cyber", "cyberpunk", "subway", "traffic",
+            "crosswalk", "pedestrian", "commercial", "intersection"
+        )
+    )
+    if is_urban:
+        urban_vantages = [
+            "wide asphalt avenue with pedestrian crosswalk markings in the foreground, illuminated digital signs and towering street architecture receding into the distance",
+            "broad pedestrian sidewalk with polished curb and illuminated storefronts in the foreground, vibrant urban avenue traffic and architectural facades",
+            "bustling street crossing with streetlamps and reflective damp pavement in the foreground, expansive urban avenue and neon signage along the horizon",
+            "elevated pedestrian walkway overlook in the foreground, sweeping view of the multi-lane city avenue and architectural high-rises",
+        ]
+        vantage = urban_vantages[room_idx % len(urban_vantages)]
+        anchor_prompt = (
+            f"Eye-level rectilinear architectural street photography of {room_name}, {world_prompt}, "
+            f"{vantage}, straight level horizon, National Geographic urban photography, "
+            f"realistic architectural lighting, photorealistic, 8k"
+        )
+        up_prompt = "Open urban sky framed by towering architectural skyscrapers and illuminated billboards directly overhead, zenith view, photorealistic"
+        down_prompt = f"Continuous asphalt street pavement with painted road lines and damp ground reflections in {room_name}, nadir view, photorealistic"
 
+        back_face = (
+            f"Rear view of {room_name}, looking {reverse_cardinal} back across the street towards {from_room_name}, seamless connecting urban thoroughfare, photorealistic"
+            if from_room_name
+            else f"Rear view of {room_name}, {world_prompt}, continuous urban street avenue and building facades, photorealistic"
+        )
+
+        face_prompts = [
+            f"Front view along {room_name}, {world_prompt}, {vantage}, photorealistic architectural street photography",
+            back_face,
+            f"Left side view of {room_name}, {world_prompt}, vibrant storefront facades, pedestrian sidewalk, and urban architecture, photorealistic",
+            f"Right side view of {room_name}, {world_prompt}, illuminated commercial storefronts and street architecture, photorealistic",
+            up_prompt,
+            down_prompt,
+        ]
+        urban_negative = (
+            f"{base_negative}, sand dunes, desert, pyramids, sphinx, medieval stone castle, ancient ruins, "
+            "temple pillars, colonnades, hieroglyphics, dirt ground"
+        )
+        return anchor_prompt, face_prompts, urban_negative
+
+    # 3. Sci-Fi / Space / Orbital / Futuristic
+    is_space = any(
+        w in prompt_lower
+        for w in (
+            "space", "station", "orbital", "cosmos", "starship", "spaceship", "hangar",
+            "airlock", "cockpit", "hull", "satellite", "cyberdeck", "reactor", "laboratory"
+        )
+    )
+    if is_space:
+        space_vantages = [
+            "brushed titanium deck plating with illuminated hazard striping in the foreground, modular habitat bulkheads and panoramic viewports along the horizon",
+            "elevated orbital catwalk in the foreground, pressurized transit conduit and modular consoles",
+            "pressurized interior corridor with illuminated instrument panels and reinforced observation portals",
+            "spacious observatory rotunda with curved viewports revealing cosmic vistas in the background",
+        ]
+        vantage = space_vantages[room_idx % len(space_vantages)]
+        anchor_prompt = (
+            f"Eye-level rectilinear perspective of {room_name}, {world_prompt}, "
+            f"{vantage}, high-tech modular architecture, metallic decking, photorealistic, 8k"
+        )
+        up_prompt = "Overhead structural spaceframe, conduit lines, and recessed LED ceiling panels, zenith view, photorealistic"
+        down_prompt = f"Continuous interlocking metallic deck plates and illuminated guidance tracks underfoot in {room_name}, nadir view, photorealistic"
+
+        back_face = (
+            f"Rear view looking {reverse_cardinal} through an open bulkhead portal into {from_room_name}, photorealistic"
+            if from_room_name
+            else f"Rear view of {room_name}, {world_prompt}, pressurized transit bulkheads, photorealistic"
+        )
+
+        face_prompts = [
+            f"Front view along {room_name}, {world_prompt}, {vantage}, photorealistic sci-fi interior",
+            back_face,
+            f"Left side view of {room_name}, {world_prompt}, modular computational consoles and conduits, photorealistic",
+            f"Right side view of {room_name}, {world_prompt}, reinforced bulkheads and status displays, photorealistic",
+            up_prompt,
+            down_prompt,
+        ]
+        space_negative = (
+            f"{base_negative}, sand, desert, trees, plants, stone ruins, ancient pillars, classical statues"
+        )
+        return anchor_prompt, face_prompts, space_negative
+
+    # 4. Ancient / Classical / Monumental
+    is_ancient = any(
+        w in prompt_lower
+        for w in (
+            "pyramid", "giza", "egypt", "sphinx", "pharaoh", "colosseum", "rome", "roman",
+            "pantheon", "forum", "acropolis", "parthenon", "athens", "temple", "cathedral",
+            "monastery", "citadel", "medieval", "castle", "keep"
+        )
+    )
+    if is_ancient:
+        vantage_descriptors = [
+            "sunlit stone courtyard pavement in the foreground, grand monumental architecture along the horizon",
+            "elevated marble colonnade walkway in the foreground, classical temple porticos and arches",
+            "ceremonial stone causeway and carved stone courtyard in the foreground, monumental ruins and pillars",
+            "panoramic terrace overlook with carved stone balustrade and sweeping architectural vista",
+        ]
+        vantage = vantage_descriptors[room_idx % len(vantage_descriptors)]
+        anchor_prompt = (
+            f"Eye-level rectilinear architectural photography of {room_name}, {world_prompt}, "
+            f"{vantage}, straight level horizon, National Geographic architectural photograph, "
+            f"natural golden hour sunlight, ultra-detailed stone masonry, photorealistic, 8k"
+        )
+        is_indoor = any(w in prompt_lower for w in ("interior", "chamber", "hall", "vault", "crypt", "inside", "room"))
+        if is_indoor:
+            up_prompt = f"Ornate coffered stone ceiling and architectural dome overhead in {room_name}, {world_prompt}, photorealistic"
+            down_prompt = f"Continuous polished marble and carved stone floor slabs underfoot in {room_name}, photorealistic"
+        else:
+            up_prompt = "Clear open golden hour sky directly overhead, soft atmospheric clouds, zenith view, photorealistic"
+            down_prompt = f"Continuous flat sunlit stone courtyard flagstone pavement on the ground in {room_name}, nadir view, photorealistic"
+
+        back_face = (
+            f"Rear view of {room_name}, looking {reverse_cardinal} toward the connecting threshold of {from_room_name}, photorealistic"
+            if from_room_name
+            else f"Rear view of {room_name}, {world_prompt}, monumental stone architecture and walkways, photorealistic"
+        )
+
+        face_prompts = [
+            f"Front view of {room_name}, {world_prompt}, {vantage}, photorealistic architectural photography",
+            back_face,
+            f"Left side view of {room_name}, {world_prompt}, classical stone colonnade and courtyard, photorealistic",
+            f"Right side view of {room_name}, {world_prompt}, architectural porticos and stone plaza, photorealistic",
+            up_prompt,
+            down_prompt,
+        ]
+        return anchor_prompt, face_prompts, base_negative
+
+    # 5. General / Bespoke Prompt Adaptation (Zero Hardcoded Presets)
+    is_indoor = any(w in prompt_lower for w in ("interior", "chamber", "hall", "vault", "room", "cabin", "workshop", "inside"))
+    vantage = f"open foreground threshold of {room_name}, panoramic eye-level architectural vista of {world_prompt}"
     anchor_prompt = (
         f"Eye-level rectilinear architectural photography of {room_name}, {world_prompt}, "
-        f"{vantage}, straight level horizon, National Geographic architectural photograph, "
-        f"natural golden hour sunlight, ultra-detailed stone masonry, photorealistic, 8k"
+        f"{vantage}, straight level horizon, authentic environmental materials, "
+        f"balanced natural illumination, ultra-detailed surfaces, photorealistic, 8k"
+    )
+    if is_indoor:
+        up_prompt = f"Architectural ceiling and ambient illumination overhead in {room_name}, zenith view, photorealistic"
+        down_prompt = f"Continuous interior flooring underfoot in {room_name}, nadir view, photorealistic"
+    else:
+        up_prompt = f"Open sky directly overhead in {room_name}, soft atmospheric clouds, zenith view, photorealistic"
+        down_prompt = f"Continuous level ground terrain underfoot in {room_name}, nadir view, photorealistic"
+
+    back_face = (
+        f"Rear view of {room_name}, looking {reverse_cardinal} toward the threshold leading to {from_room_name}, seamless architectural continuity, photorealistic"
+        if from_room_name
+        else f"Rear view of {room_name}, {world_prompt}, expansive architectural surroundings, photorealistic"
     )
 
-    prompt_lower = f"{room_name} {world_prompt}".lower()
-    is_indoor = any(w in prompt_lower for w in ("interior", "chamber", "hall", "vault", "crypt", "inside", "room"))
-
-    if is_indoor:
-        up_prompt = f"Ornate coffered stone ceiling and architectural dome overhead in {room_name}, {world_prompt}, photorealistic"
-        down_prompt = f"Continuous polished marble and carved stone floor slabs underfoot in {room_name}, photorealistic"
-    else:
-        up_prompt = "Clear open golden hour sky directly overhead, soft atmospheric clouds, zenith view, photorealistic"
-        down_prompt = f"Continuous flat sunlit stone courtyard flagstone pavement on the ground in {room_name}, nadir view, photorealistic"
-
     face_prompts = [
-        f"Front view of {room_name}, {world_prompt}, {vantage}, photorealistic architectural photography",
-        f"Rear view of {room_name}, {world_prompt}, monumental stone architecture and walkways, photorealistic",
-        f"Left side view of {room_name}, {world_prompt}, classical stone colonnade and courtyard, photorealistic",
-        f"Right side view of {room_name}, {world_prompt}, architectural porticos and stone plaza, photorealistic",
+        f"Front view of {room_name}, {world_prompt}, {vantage}, photorealistic environment",
+        back_face,
+        f"Left side view of {room_name}, {world_prompt}, continuous architectural environment, photorealistic",
+        f"Right side view of {room_name}, {world_prompt}, balanced architectural vista, photorealistic",
         up_prompt,
         down_prompt,
     ]
@@ -1181,6 +1330,12 @@ def generate_room_panorama_and_depth(
     ambient_color: str = "",
     fog_color: str = "",
     force_regenerate: bool = False,
+    from_room_name: Optional[str] = None,
+    direction: Optional[str] = None,
+    target_x: Optional[float] = None,
+    target_z: Optional[float] = None,
+    from_x: Optional[float] = None,
+    from_z: Optional[float] = None,
 ) -> Optional[Tuple[str, str]]:
     """
     Synthesizes a 360° equirectangular panorama (.webp) and metric depth map (.png) using the
@@ -1218,7 +1373,13 @@ def generate_room_panorama_and_depth(
         return pano_url, depth_url
 
     anchor_prompt, face_prompts, negative_prompt = _build_6face_multi_text_prompts(
-        room_name, world_prompt, room_idx
+        room_name=room_name,
+        world_prompt=world_prompt,
+        room_idx=room_idx,
+        from_room_name=from_room_name,
+        direction=direction,
+        ambient_color=ambient_color,
+        fog_color=fog_color,
     )
 
     # Use world-consistent base seed with room offset so connected sub-rooms share atmospheric coherence

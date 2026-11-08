@@ -849,84 +849,63 @@ function createPromptDrivenPanorama(url: string): THREE.Texture {
       ctx.closePath();
       ctx.fill();
 
-      // Distinct Sub-Room Architectural Structures sharing the bespoke world style
-      const stoneMain = `hsl(${groundHue}, 28%, 76%)`;
-      const stoneShade = `hsl(${groundHue}, 24%, 48%)`;
-      const trimGold = `hsl(${accentHue}, 72%, 56%)`;
+      // Horizon Architectural & Landscape Silhouettes
+      const isUrbanPrompt =
+        promptText.toLowerCase().includes("city") ||
+        promptText.toLowerCase().includes("street") ||
+        promptText.toLowerCase().includes("square") ||
+        promptText.toLowerCase().includes("avenue") ||
+        promptText.toLowerCase().includes("broadway") ||
+        promptText.toLowerCase().includes("metropolis") ||
+        promptText.toLowerCase().includes("york") ||
+        promptText.toLowerCase().includes("tokyo");
 
-      if (subRoomVariant === 0) {
-        // Sub-Room 0: Grand Sovereign Courtyard & Domed Sanctuary Pavilion
-        ctx.fillStyle = stoneMain;
-        ctx.beginPath();
-        ctx.arc(w / 2, horizonY - 110, 210, Math.PI, 0);
-        ctx.fill();
-        ctx.strokeStyle = trimGold;
-        ctx.lineWidth = 4;
-        ctx.stroke();
+      if (isUrbanPrompt) {
+        // High-rise architectural skyline along horizon
+        for (let bx = 0; bx < w; bx += 48) {
+          const bh = 90 + ((bx * 13 + promptHash) % 180);
+          const bw = 36 + ((bx * 7) % 24);
+          ctx.fillStyle = `hsl(${baseHue}, 35%, 16%)`;
+          ctx.fillRect(bx, horizonY - bh, bw, bh);
+          ctx.strokeStyle = `hsl(${accentHue}, 60%, 45%)`;
+          ctx.lineWidth = 1;
+          ctx.strokeRect(bx, horizonY - bh, bw, bh);
 
-        ctx.fillStyle = stoneShade;
-        ctx.fillRect(w / 2 - 260, horizonY - 110, 520, 110);
-
-        for (let cx = 140; cx < w; cx += 180) {
-          ctx.fillStyle = stoneMain;
-          ctx.fillRect(cx - 16, horizonY - 220, 32, 220);
-          ctx.strokeStyle = stoneShade;
-          ctx.strokeRect(cx - 16, horizonY - 220, 32, 220);
-          ctx.fillStyle = trimGold;
-          ctx.fillRect(cx - 22, horizonY - 230, 44, 12);
-        }
-      } else if (subRoomVariant === 1) {
-        // Sub-Room 1: Vaulted Colonnade Cloister & Reflecting Basin
-        for (let ax = 100; ax < w; ax += 160) {
-          ctx.fillStyle = stoneMain;
-          ctx.fillRect(ax - 18, horizonY - 260, 36, 260);
-          ctx.strokeStyle = trimGold;
-          ctx.lineWidth = 4;
-          ctx.beginPath();
-          ctx.arc(ax + 62, horizonY - 180, 62, Math.PI, 0);
-          ctx.stroke();
-        }
-      } else if (subRoomVariant === 2) {
-        // Sub-Room 2: High Citadel Overlook & Monumental Spires
-        for (let sx = 180; sx < w; sx += 320) {
-          const sh = 240 + (sx % 120);
-          ctx.fillStyle = stoneMain;
-          ctx.fillRect(sx - 48, horizonY - sh, 96, sh);
-          ctx.fillStyle = trimGold;
-          ctx.beginPath();
-          ctx.moveTo(sx - 56, horizonY - sh);
-          ctx.lineTo(sx, horizonY - sh - 85);
-          ctx.lineTo(sx + 56, horizonY - sh);
-          ctx.closePath();
-          ctx.fill();
+          // Illuminated window dots
+          ctx.fillStyle = `hsl(${accentHue}, 80%, 75%)`;
+          for (let wy = horizonY - bh + 14; wy < horizonY - 10; wy += 22) {
+            for (let wx = bx + 6; wx < bx + bw - 6; wx += 12) {
+              if ((wx + wy) % 3 === 0) {
+                ctx.fillRect(wx, wy, 4, 6);
+              }
+            }
+          }
         }
       } else {
-        // Sub-Room 3: Inner Rotunda Archive & Illuminated Sanctum
-        ctx.fillStyle = stoneShade;
-        ctx.fillRect(120, horizonY - 250, w - 240, 250);
-        for (let wx = 200; wx < w - 180; wx += 190) {
-          ctx.fillStyle = skyHorizon;
-          ctx.beginPath();
-          ctx.arc(wx, horizonY - 150, 38, Math.PI, 0);
-          ctx.rect(wx - 38, horizonY - 150, 76, 130);
-          ctx.fill();
-          ctx.strokeStyle = trimGold;
-          ctx.lineWidth = 3;
-          ctx.stroke();
+        // Natural topological ridge contours along horizon
+        ctx.fillStyle = `hsl(${baseHue}, 32%, 24%)`;
+        ctx.beginPath();
+        ctx.moveTo(0, horizonY);
+        for (let mx = 0; mx <= w; mx += 32) {
+          const mh = 60 + Math.sin(mx * 0.008 + promptHash) * 45 + Math.cos(mx * 0.02) * 20;
+          ctx.lineTo(mx, horizonY - mh);
         }
+        ctx.lineTo(w, horizonY);
+        ctx.closePath();
+        ctx.fill();
       }
 
       const floorTop = /^#[0-9a-fA-F]{6}$/.test(customFloorHex)
         ? customFloorHex
-        : `hsl(${groundHue}, 34%, 52%)`;
-      const floorBot = `hsl(${groundHue}, 38%, 26%)`;
+        : `hsl(${groundHue}, 34%, 42%)`;
+      const floorBot = `hsl(${groundHue}, 38%, 18%)`;
       const floorGrad = ctx.createLinearGradient(0, horizonY, 0, h);
       floorGrad.addColorStop(0, floorTop);
       floorGrad.addColorStop(1, floorBot);
       ctx.fillStyle = floorGrad;
       ctx.fillRect(0, horizonY, w, horizonY);
 
-    } else {
+    } else if (archetype === "giza") {
       // 8. Egyptian Necropolis of Giza — 4 distinct sub-rooms sharing Old Kingdom Sandstone & Gold style
       if (subRoomVariant === 1) {
         // Sub-Room 1: Sanctuary of the Great Sphinx (Monumental Lion-Human Monolith & Dream Stela)
@@ -1294,6 +1273,31 @@ function createPromptDrivenPanorama(url: string): THREE.Texture {
         ctx.fillStyle = floorGrad;
         ctx.fillRect(0, horizonY, w, horizonY);
       }
+    } else {
+      // 9. General Harmonious Procedural Environment (Zero Presets)
+      const skyGrad = ctx.createLinearGradient(0, 0, 0, horizonY);
+      skyGrad.addColorStop(0, customSkyHex || "#1e293b");
+      skyGrad.addColorStop(1, "#334155");
+      ctx.fillStyle = skyGrad;
+      ctx.fillRect(0, 0, w, horizonY);
+
+      // Atmospheric horizon mountain/terrain contour
+      ctx.fillStyle = "#1e293b";
+      ctx.beginPath();
+      ctx.moveTo(0, horizonY);
+      for (let mx = 0; mx <= w; mx += 32) {
+        const mh = 50 + Math.sin(mx * 0.01) * 35;
+        ctx.lineTo(mx, horizonY - mh);
+      }
+      ctx.lineTo(w, horizonY);
+      ctx.closePath();
+      ctx.fill();
+
+      const floorGrad = ctx.createLinearGradient(0, horizonY, 0, h);
+      floorGrad.addColorStop(0, customFloorHex || "#0f172a");
+      floorGrad.addColorStop(1, "#020617");
+      ctx.fillStyle = floorGrad;
+      ctx.fillRect(0, horizonY, w, horizonY);
     }
 
     // subtle atmospheric film grain & natural ambient occlusion vignette for photorealistic depth
@@ -1396,17 +1400,6 @@ export function loadPanoramaTexture(
   url: string,
   fallbackUrl: string = defaultFallbackUrl
 ): Promise<THREE.Texture> {
-  if (textureCache.has(url)) {
-    return Promise.resolve(textureCache.get(url)!);
-  }
-
-  if (typeof window === "undefined") {
-    const customTex = new THREE.Texture();
-    textureCache.set(url, customTex);
-    return Promise.resolve(customTex);
-  }
-
-  // Strip query string when loading static/generated .webp or .png files from disk
   const cleanFileUrl = url.split("?")[0];
 
   const configureTexture = (texture: THREE.Texture): THREE.Texture => {
@@ -1419,6 +1412,31 @@ export function loadPanoramaTexture(
     texture.needsUpdate = true;
     return texture;
   };
+
+  if (textureCache.has(url)) {
+    const cached = textureCache.get(url)!;
+    if (cached.userData?.isFallback) {
+      loader.load(
+        cleanFileUrl,
+        (realTex) => {
+          const configured = configureTexture(realTex);
+          textureCache.set(url, configured);
+          cached.image = configured.image;
+          cached.needsUpdate = true;
+          cached.userData.isFallback = false;
+        },
+        undefined,
+        () => {}
+      );
+    }
+    return Promise.resolve(cached);
+  }
+
+  if (typeof window === "undefined") {
+    const customTex = new THREE.Texture();
+    textureCache.set(url, customTex);
+    return Promise.resolve(customTex);
+  }
 
   return new Promise((resolve) => {
     loader.load(
@@ -1435,6 +1453,26 @@ export function loadPanoramaTexture(
         synthesizedTex.userData.isFallback = true;
         textureCache.set(url, synthesizedTex);
         resolve(synthesizedTex);
+
+        // Periodically verify if on-disk diffusion panorama has completed writing, swapping seamlessly when ready
+        const checkDisk = () => {
+          loader.load(
+            cleanFileUrl,
+            (realTex) => {
+              const configured = configureTexture(realTex);
+              textureCache.set(url, configured);
+              synthesizedTex.image = configured.image;
+              synthesizedTex.needsUpdate = true;
+              synthesizedTex.userData.isFallback = false;
+            },
+            undefined,
+            () => {}
+          );
+        };
+        setTimeout(checkDisk, 600);
+        setTimeout(checkDisk, 1500);
+        setTimeout(checkDisk, 3200);
+        setTimeout(checkDisk, 6000);
       }
     );
   });
