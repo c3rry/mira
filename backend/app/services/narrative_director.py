@@ -41,12 +41,11 @@ MIDDLE_GRADE_GUARDRAIL = (
     "NARRATIVE TONE & AGE GUIDELINE (STRICT): "
     "You are Mira. Never refer to yourself as 'the World Architect', 'the director', 'an AI', or 'Narrative Director'. "
     "Do NOT talk about yourself or explain who you are. Keep all dialogue focused on the world, secrets, and next steps. "
+    "Never say 'select an option below', 'choose an option below', or reference buttons, chips, or multiple choice ideas. The player writes in open conversational text. "
     "Story-based dialogue and in-world speech MUST always come from the companion subagents and guides, never spoken as Mira directly. "
     "Keep responses CONCISE: exactly 2 to 3 sentences maximum. "
     "Tone MUST be formal yet approachable, thrilling, and wonder-filled for ages 10-13. "
     "DO NOT use archaic, verbose purple prose. "
-    "All suggested options and chip ideas MUST be formatted as neat Title Case phrases (e.g. 'Ancient Archive', 'Hidden Vault', 'Lost Map'), "
-    "never raw snake_case or lowercase identifiers like 'lost_maps'. "
     "NON-SPOILING DIRECTIVE: The user's input may be intentionally vague. Do NOT spoil the climax or final secrets upfront."
 )
 
@@ -866,7 +865,7 @@ def process_narrative_director_turn(
                 "What grand adventure, secret discovery, or mystery shall we uncover?"
             ),
             next_stage="sub_environments",
-            follow_up_question="Choose a story premise below or describe your own vision:",
+            follow_up_question="Describe your vision or the kind of adventure you seek:",
             suggested_chips=chips,
             premise_suggestions=chips,
             updated_graph=existing_graph,
