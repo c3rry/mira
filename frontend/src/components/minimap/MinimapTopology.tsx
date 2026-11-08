@@ -7,6 +7,7 @@ import { isNaturalBiomeContext } from "@/canvas/environment/ReflectiveFloorGrid"
 
 export function MinimapTopology() {
   const [expanded, setExpanded] = useState(false);
+  const [hoveredRoomId, setHoveredRoomId] = useState<string | null>(null);
   const {
     currentRoomId,
     rooms,
@@ -172,8 +173,13 @@ export function MinimapTopology() {
   const playerSvgX = spatialLayout.toSvgX(playerPosition.x);
   const playerSvgY = spatialLayout.toSvgY(playerPosition.z);
   const playerYawDeg = (playerPosition.yaw * 180) / Math.PI;
-  const roomRadiusSvg = Math.max(26, 92 * spatialLayout.scale);
-  const corridorWidthSvg = Math.max(10, 26 * spatialLayout.scale);
+  const interRoomDistanceSvg = 220 * spatialLayout.scale;
+  const roomRadiusSvg = Math.max(7, Math.min(22, interRoomDistanceSvg * 0.35));
+  const corridorWidthSvg = Math.max(2.5, Math.min(6, interRoomDistanceSvg * 0.08));
+  const originSvgX = spatialLayout.toSvgX(0);
+  const originSvgY = spatialLayout.toSvgY(0);
+  const unitSpan = Math.max(28, interRoomDistanceSvg);
+  const hoveredRoom = hoveredRoomId ? rooms[hoveredRoomId] : null;
 
   return (
     <div
@@ -245,6 +251,28 @@ export function MinimapTopology() {
               <stop offset="100%" stopColor={theme.accentColor} stopOpacity="0.0" />
             </linearGradient>
 
+            {/* continuous 2D procedural world field macro-sector terrain gradients */}
+            <radialGradient id="oasisFieldGrad" cx="50%" cy="50%" r="50%">
+              <stop offset="0%" stopColor="#15803d" stopOpacity="0.85" />
+              <stop offset="60%" stopColor="#047857" stopOpacity="0.55" />
+              <stop offset="100%" stopColor="#064e3b" stopOpacity="0.0" />
+            </radialGradient>
+            <radialGradient id="dunesFieldGrad" cx="50%" cy="50%" r="50%">
+              <stop offset="0%" stopColor="#d97706" stopOpacity="0.65" />
+              <stop offset="70%" stopColor="#b45309" stopOpacity="0.35" />
+              <stop offset="100%" stopColor="#78350f" stopOpacity="0.0" />
+            </radialGradient>
+            <radialGradient id="citadelFieldGrad" cx="50%" cy="50%" r="50%">
+              <stop offset="0%" stopColor="#7c2d12" stopOpacity="0.7" />
+              <stop offset="75%" stopColor="#451a03" stopOpacity="0.35" />
+              <stop offset="100%" stopColor="#1c1917" stopOpacity="0.0" />
+            </radialGradient>
+            <radialGradient id="pyramidPlazaGrad" cx="50%" cy="50%" r="50%">
+              <stop offset="0%" stopColor="#ca8a04" stopOpacity="0.6" />
+              <stop offset="70%" stopColor="#854d0e" stopOpacity="0.3" />
+              <stop offset="100%" stopColor="#070a0f" stopOpacity="0.0" />
+            </radialGradient>
+
             {/* dynamic color-capture radial gradients for every single generated room */}
             {roomIds.map((rId) => {
               const rm = rooms[rId];
@@ -269,6 +297,142 @@ export function MinimapTopology() {
 
           {/* background precision grid */}
           <rect x="0" y="0" width="300" height="300" fill="#070a0f" />
+
+          {/* 2D Continuous Procedural World Field Underlay matching infinite continuous geography */}
+          <g opacity={expanded ? "0.48" : "0.34"} name="procedural-2d-terrain-underlay">
+            {/* South Oasis Sector: lush date palm grove & freshwater basins */}
+            <ellipse
+              cx={originSvgX}
+              cy={originSvgY + unitSpan * 1.75}
+              rx={unitSpan * 1.55}
+              ry={unitSpan * 1.15}
+              fill="url(#oasisFieldGrad)"
+            />
+            <ellipse
+              cx={originSvgX - unitSpan * 0.25}
+              cy={originSvgY + unitSpan * 1.8}
+              rx={unitSpan * 0.55}
+              ry={unitSpan * 0.32}
+              fill="#0284c7"
+              opacity="0.65"
+            />
+            {[[-0.6, 1.4], [0.4, 1.5], [-0.3, 2.1], [0.55, 2.2]].map(([ox, oy], i) => (
+              <text
+                key={`palm_${i}`}
+                x={originSvgX + ox * unitSpan}
+                y={originSvgY + oy * unitSpan}
+                fontSize={Math.max(6, unitSpan * 0.16)}
+                opacity="0.8"
+                textAnchor="middle"
+                fill="#4ade80"
+              >
+                🌴
+              </text>
+            ))}
+
+            {/* East Nile River Canal Sector: turquoise waterway ribbon */}
+            <path
+              d={`M ${originSvgX + unitSpan * 1.45} -20 
+                  C ${originSvgX + unitSpan * 1.75} 80, 
+                    ${originSvgX + unitSpan * 1.3} 180, 
+                    ${originSvgX + unitSpan * 1.6} 320 
+                  L ${originSvgX + unitSpan * 2.2} 320 
+                  L ${originSvgX + unitSpan * 2.2} -20 Z`}
+              fill="#0284c7"
+              opacity="0.38"
+            />
+            <path
+              d={`M ${originSvgX + unitSpan * 1.45} -20 
+                  C ${originSvgX + unitSpan * 1.75} 80, 
+                    ${originSvgX + unitSpan * 1.3} 180, 
+                    ${originSvgX + unitSpan * 1.6} 320`}
+              fill="none"
+              stroke="#38bdf8"
+              strokeWidth={Math.max(2, unitSpan * 0.12)}
+              strokeDasharray="4 3"
+              opacity="0.75"
+            />
+
+            {/* West Desert Sandcrest & Basalt Gorge: undulating dunes */}
+            <ellipse
+              cx={originSvgX - unitSpan * 1.75}
+              cy={originSvgY}
+              rx={unitSpan * 1.45}
+              ry={unitSpan * 1.65}
+              fill="url(#dunesFieldGrad)"
+            />
+            {[-0.8, -0.2, 0.4, 1.0].map((dy, i) => (
+              <path
+                key={`dune_${i}`}
+                d={`M ${originSvgX - unitSpan * 2.6} ${originSvgY + dy * unitSpan} 
+                    Q ${originSvgX - unitSpan * 1.75} ${originSvgY + dy * unitSpan - unitSpan * 0.22}, 
+                      ${originSvgX - unitSpan * 0.9} ${originSvgY + dy * unitSpan}`}
+                fill="none"
+                stroke="#f59e0b"
+                strokeWidth={Math.max(1, unitSpan * 0.05)}
+                opacity="0.5"
+              />
+            ))}
+
+            {/* North Royal Necropolis & Citadel: corbelled stone terraces */}
+            <rect
+              x={originSvgX - unitSpan * 1.35}
+              y={originSvgY - unitSpan * 2.4}
+              width={unitSpan * 2.7}
+              height={unitSpan * 1.5}
+              rx="6"
+              fill="url(#citadelFieldGrad)"
+            />
+            <rect
+              x={originSvgX - unitSpan * 0.9}
+              y={originSvgY - unitSpan * 2.1}
+              width={unitSpan * 1.8}
+              height={unitSpan * 0.9}
+              fill="none"
+              stroke="#fbbf24"
+              strokeWidth={Math.max(0.8, unitSpan * 0.04)}
+              strokeDasharray="2 3"
+              opacity="0.6"
+            />
+
+            {/* Center Great Pyramid Precinct: limestone courtyard & pyramid icons */}
+            <rect
+              x={originSvgX - unitSpan * 0.85}
+              y={originSvgY - unitSpan * 0.85}
+              width={unitSpan * 1.7}
+              height={unitSpan * 1.7}
+              rx="8"
+              fill="url(#pyramidPlazaGrad)"
+            />
+            <polygon
+              points={`${originSvgX},${originSvgY - unitSpan * 0.42} 
+                      ${originSvgX - unitSpan * 0.28},${originSvgY + unitSpan * 0.05} 
+                      ${originSvgX + unitSpan * 0.28},${originSvgY + unitSpan * 0.05}`}
+              fill="#facc15"
+              stroke="#78350f"
+              strokeWidth="0.8"
+              opacity="0.85"
+            />
+            <polygon
+              points={`${originSvgX - unitSpan * 0.38},${originSvgY - unitSpan * 0.05} 
+                      ${originSvgX - unitSpan * 0.6},${originSvgY + unitSpan * 0.3} 
+                      ${originSvgX - unitSpan * 0.16},${originSvgY + unitSpan * 0.3}`}
+              fill="#eab308"
+              stroke="#78350f"
+              strokeWidth="0.7"
+              opacity="0.75"
+            />
+            <polygon
+              points={`${originSvgX - unitSpan * 0.68},${originSvgY + unitSpan * 0.22} 
+                      ${originSvgX - unitSpan * 0.84},${originSvgY + unitSpan * 0.48} 
+                      ${originSvgX - unitSpan * 0.52},${originSvgY + unitSpan * 0.48}`}
+              fill="#ca8a04"
+              stroke="#78350f"
+              strokeWidth="0.6"
+              opacity="0.7"
+            />
+          </g>
+
           <rect x="0" y="0" width="300" height="300" fill="url(#cadGridMajor)" />
 
           {/* cardinal compass crosshairs */}
@@ -382,18 +546,22 @@ export function MinimapTopology() {
               })
               .join(" ");
 
+            const isHovered = rId === hoveredRoomId;
+
             // linear subway/train carriage dimensions
-            const carW = Math.max(32, 72 * spatialLayout.scale);
-            const carH = Math.max(50, 116 * spatialLayout.scale);
+            const carW = Math.max(10, Math.min(36, interRoomDistanceSvg * 0.45));
+            const carH = Math.max(16, Math.min(54, interRoomDistanceSvg * 0.75));
 
             // city grid parcel dimensions
-            const blockW = Math.max(38, 86 * spatialLayout.scale);
-            const blockH = Math.max(38, 86 * spatialLayout.scale);
+            const blockW = Math.max(12, Math.min(48, interRoomDistanceSvg * 0.65));
+            const blockH = Math.max(12, Math.min(48, interRoomDistanceSvg * 0.65));
 
             return (
               <g
                 key={rId}
                 className="cursor-pointer"
+                onPointerEnter={() => setHoveredRoomId(rId)}
+                onPointerLeave={() => setHoveredRoomId(null)}
                 onClick={() => {
                   startTransition(() => {
                     setCurrentRoom(rId);
@@ -633,8 +801,8 @@ export function MinimapTopology() {
                   })()}
                 </text>
 
-                {/* prominent, highly legible room name across center */}
-                {(() => {
+                {/* prominent, highly legible room name across center (omitted on dense non-active nodes to avoid clumping) */}
+                {(isCurrent || isHovered || expanded || roomRadiusSvg >= 16) && (() => {
                   const clean = room.name.replace(/^The\s+/i, "");
                   const words = clean.split(" ");
                   const line1 = words.slice(0, 2).join(" ");
@@ -780,10 +948,10 @@ export function MinimapTopology() {
         className="z-10 flex items-center justify-between text-[9px] bg-black/80 px-2 py-0.5 border pointer-events-none"
         style={{ borderColor: `${theme.panelBorder}55`, color: theme.accentText }}
       >
-        <span className="font-bold truncate max-w-[62%]">
-          {activeRoom?.name || currentRoomId}
+        <span className="font-bold truncate max-w-[65%]">
+          {hoveredRoom ? `◈ ${hoveredRoom.name}` : activeRoom?.name || currentRoomId}
         </span>
-        <span className="opacity-75">Click Zone to Jump</span>
+        <span className="opacity-75">{hoveredRoom ? "Click to Jump" : "Click Zone to Jump"}</span>
       </div>
     </div>
   );

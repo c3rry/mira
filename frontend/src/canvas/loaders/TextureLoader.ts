@@ -155,9 +155,13 @@ function createPromptDrivenPanorama(url: string): THREE.Texture {
 
   let subRoomVariant = roomIdx % 4;
   if (!isNaN(worldX) && !isNaN(worldZ) && (Math.abs(worldX) > 40 || Math.abs(worldZ) > 40)) {
-    if (worldZ > 80) subRoomVariant = 3;
-    else if (worldX > 80) subRoomVariant = 1;
-    else if (worldZ < -80) subRoomVariant = 2;
+    if (worldZ > 300) subRoomVariant = 4; // South Verdant Date Palm Oasis & Alabaster Terraces
+    else if (worldZ > 80) subRoomVariant = 3; // Court of the Solar Barque
+    else if (worldX > 300) subRoomVariant = 5; // East Nile River & Reflection Canal Harbor
+    else if (worldX > 80) subRoomVariant = 1; // Sanctuary of the Great Sphinx
+    else if (worldX < -80) subRoomVariant = 6; // West Desert Sandcrest & Wind-Carved Basalt Gorge
+    else if (worldZ < -300) subRoomVariant = 7; // North Royal Hypostyle Hall & Necropolis Citadel
+    else if (worldZ < -80) subRoomVariant = 2; // Grand Gallery of Khufu
     else subRoomVariant = 0;
   }
 
@@ -936,6 +940,161 @@ function createPromptDrivenPanorama(url: string): THREE.Texture {
         ctx.fillStyle = floorGrad;
         ctx.fillRect(0, horizonY, w, horizonY);
 
+      } else if (subRoomVariant === 4) {
+        // Sub-Room 4: Verdant Date Palm Oasis & Alabaster Water Terraces (South Sector)
+        const skyGrad = ctx.createLinearGradient(0, 0, 0, horizonY);
+        skyGrad.addColorStop(0, "#1e3a8a");
+        skyGrad.addColorStop(0.6, "#f59e0b");
+        skyGrad.addColorStop(1, "#fef08a");
+        ctx.fillStyle = skyGrad;
+        ctx.fillRect(0, 0, w, horizonY);
+
+        // Towering silhouetted date palms
+        const palmPositions = [w * 0.18, w * 0.32, w * 0.52, w * 0.68, w * 0.85];
+        palmPositions.forEach((px, pIdx) => {
+          const ph = 260 + (pIdx % 3) * 35;
+          // Curved slender trunk
+          ctx.strokeStyle = "#451a03";
+          ctx.lineWidth = 14;
+          ctx.beginPath();
+          ctx.moveTo(px, horizonY);
+          ctx.quadraticCurveTo(px + ((pIdx % 2 === 0 ? 1 : -1) * 35), horizonY - ph * 0.55, px + ((pIdx % 2 === 0 ? 1 : -1) * 20), horizonY - ph);
+          ctx.stroke();
+
+          // Palm fronds radiating from crown
+          const topX = px + ((pIdx % 2 === 0 ? 1 : -1) * 20);
+          const topY = horizonY - ph;
+          ctx.strokeStyle = "#14532d";
+          ctx.lineWidth = 4;
+          for (let fAng = -Math.PI * 0.85; fAng <= Math.PI * -0.15; fAng += 0.22) {
+            ctx.beginPath();
+            ctx.moveTo(topX, topY);
+            ctx.quadraticCurveTo(
+              topX + Math.cos(fAng) * 75,
+              topY + Math.sin(fAng) * 45,
+              topX + Math.cos(fAng) * 115,
+              topY + Math.sin(fAng) * 65 + 35
+            );
+            ctx.stroke();
+          }
+        });
+
+        // Sacred freshwater alabaster reflection basin
+        const poolX = w * 0.5;
+        ctx.fillStyle = "#0284c7";
+        ctx.beginPath();
+        ctx.ellipse(poolX, horizonY + 110, 360, 65, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.strokeStyle = "#fef08a";
+        ctx.lineWidth = 4;
+        ctx.stroke();
+
+        // Verdant emerald moss & fertile silt floor
+        const floorGrad = ctx.createLinearGradient(0, horizonY, 0, h);
+        floorGrad.addColorStop(0, "#15803d");
+        floorGrad.addColorStop(0.35, "#166534");
+        floorGrad.addColorStop(1, "#14532d");
+        ctx.fillStyle = floorGrad;
+        ctx.fillRect(0, horizonY, w, horizonY);
+
+      } else if (subRoomVariant === 5) {
+        // Sub-Room 5: Nile River Canal Reflection Promenade (East Sector)
+        const skyGrad = ctx.createLinearGradient(0, 0, 0, horizonY);
+        skyGrad.addColorStop(0, "#0284c7");
+        skyGrad.addColorStop(0.65, "#38bdf8");
+        skyGrad.addColorStop(1, "#fef08a");
+        ctx.fillStyle = skyGrad;
+        ctx.fillRect(0, 0, w, horizonY);
+
+        // Radiant morning sun reflecting on water
+        const sunX = w * 0.65;
+        const sunY = horizonY - 180;
+        ctx.fillStyle = "#ffffff";
+        ctx.beginPath();
+        ctx.arc(sunX, sunY, 35, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Expansive shimmering turquoise Nile waterway
+        const floorGrad = ctx.createLinearGradient(0, horizonY, 0, h);
+        floorGrad.addColorStop(0, "#0284c7");
+        floorGrad.addColorStop(0.45, "#0369a1");
+        floorGrad.addColorStop(1, "#075985");
+        ctx.fillStyle = floorGrad;
+        ctx.fillRect(0, horizonY, w, horizonY);
+
+        // White limestone river quays & papyrus reed borders
+        for (let qx = 80; qx < w; qx += 220) {
+          ctx.fillStyle = "#f8fafc";
+          ctx.fillRect(qx, horizonY - 35, 75, 45);
+          ctx.strokeStyle = "#facc15";
+          ctx.lineWidth = 2;
+          ctx.strokeRect(qx, horizonY - 35, 75, 45);
+        }
+
+      } else if (subRoomVariant === 6) {
+        // Sub-Room 6: Giza Plateau Sandcrest & Wind-Carved Basalt Gorge (West Sector)
+        const skyGrad = ctx.createLinearGradient(0, 0, 0, horizonY);
+        skyGrad.addColorStop(0, "#1e40af");
+        skyGrad.addColorStop(0.7, "#d97706");
+        skyGrad.addColorStop(1, "#fbbf24");
+        ctx.fillStyle = skyGrad;
+        ctx.fillRect(0, 0, w, horizonY);
+
+        // Undulating desert sand dunes & wind ridges
+        const floorGrad = ctx.createLinearGradient(0, horizonY, 0, h);
+        floorGrad.addColorStop(0, "#d97706");
+        floorGrad.addColorStop(0.4, "#b45309");
+        floorGrad.addColorStop(1, "#78350f");
+        ctx.fillStyle = floorGrad;
+        ctx.fillRect(0, horizonY, w, horizonY);
+
+        // Stratified basalt canyon ridge silhouette
+        ctx.fillStyle = "#78350f";
+        ctx.beginPath();
+        ctx.moveTo(0, horizonY);
+        for (let dx = 0; dx <= w; dx += 60) {
+          const dy = Math.sin((dx / w) * Math.PI * 4) * 55 + Math.cos((dx / w) * Math.PI * 8) * 22;
+          ctx.lineTo(dx, horizonY - 70 + dy);
+        }
+        ctx.lineTo(w, horizonY);
+        ctx.closePath();
+        ctx.fill();
+
+      } else if (subRoomVariant === 7) {
+        // Sub-Room 7: Northern Royal Hypostyle Hall & Necropolis Citadel (North Sector)
+        const skyGrad = ctx.createLinearGradient(0, 0, 0, horizonY);
+        skyGrad.addColorStop(0, "#1d4ed8");
+        skyGrad.addColorStop(0.65, "#7c2d12");
+        skyGrad.addColorStop(1, "#f59e0b");
+        ctx.fillStyle = skyGrad;
+        ctx.fillRect(0, 0, w, horizonY);
+
+        // Giant carved sandstone lotus columns supporting monumental lintels
+        for (let colX = 120; colX < w; colX += 210) {
+          ctx.fillStyle = "#c29156";
+          ctx.fillRect(colX - 22, horizonY - 280, 44, 280);
+          ctx.strokeStyle = "#7c2d12";
+          ctx.lineWidth = 3;
+          ctx.strokeRect(colX - 22, horizonY - 280, 44, 280);
+
+          // Lotus capital
+          ctx.fillStyle = "#d4af37";
+          ctx.beginPath();
+          ctx.moveTo(colX - 34, horizonY - 280);
+          ctx.lineTo(colX + 34, horizonY - 280);
+          ctx.lineTo(colX + 22, horizonY - 260);
+          ctx.lineTo(colX - 22, horizonY - 260);
+          ctx.closePath();
+          ctx.fill();
+        }
+
+        const floorGrad = ctx.createLinearGradient(0, horizonY, 0, h);
+        floorGrad.addColorStop(0, "#c29156");
+        floorGrad.addColorStop(0.5, "#a16207");
+        floorGrad.addColorStop(1, "#7c2d12");
+        ctx.fillStyle = floorGrad;
+        ctx.fillRect(0, horizonY, w, horizonY);
+
       } else {
         // Sub-Room 0: Great Pyramid Forecourt (Three Pyramids of Giza & Sunlit Colonnade)
         const skyGrad = ctx.createLinearGradient(0, 0, 0, horizonY);
@@ -1035,11 +1194,15 @@ function createPromptDrivenPanorama(url: string): THREE.Texture {
     // Render reciprocal portal gateway leading directly back into parent room
     const fromName = params.get("from");
     const uBackStr = params.get("u_back");
-    if (fromName && uBackStr) {
-      const uBack = parseFloat(uBackStr);
-      if (!isNaN(uBack)) {
-        const portalCx = ((Math.round(uBack * w) % w) + w) % w;
-        const pHalfW = 90;
+    let uBack = uBackStr ? parseFloat(uBackStr) : NaN;
+    if (isNaN(uBack) && (worldX !== 0 || worldZ !== 0)) {
+      const thetaBack = Math.atan2(-worldX, worldZ);
+      uBack = ((thetaBack / (2 * Math.PI)) + 0.5) % 1.0;
+    }
+
+    if (!isNaN(uBack)) {
+      const portalCx = ((Math.round(uBack * w) % w) + w) % w;
+      const pHalfW = 90;
         const pTopY = horizonY - 240;
         const pBotY = horizonY + 115;
 
@@ -1082,11 +1245,11 @@ function createPromptDrivenPanorama(url: string): THREE.Texture {
         ctx.font = "bold 13px 'Times New Roman', serif";
         ctx.textAlign = "center";
         ctx.textBaseline = "middle";
-        const clippedFrom = fromName.length > 22 ? fromName.slice(0, 20) + ".." : fromName;
+        const cleanFrom = fromName || "Central Forecourt";
+        const clippedFrom = cleanFrom.length > 22 ? cleanFrom.slice(0, 20) + ".." : cleanFrom;
         ctx.fillText(`← TO ${clippedFrom.toUpperCase()}`, portalCx, pTopY - 47);
       }
     }
-  }
 
   const texture = new THREE.CanvasTexture(canvas);
   texture.colorSpace = THREE.SRGBColorSpace;

@@ -24,8 +24,9 @@ export function WorldCanvas(_props: WorldCanvasProps) {
 
   const allRooms = useMemo(() => Object.values(rooms), [rooms]);
 
-  // Compute 3D zone transition gateways connecting adjacent sub-rooms with reciprocal headings
+  // Compute 3D zone transition gateways connecting the active room to its adjacent neighbors
   const gateways = useMemo(() => {
+    if (!currentRoom) return [];
     const list: Array<{
       id: string;
       targetRoomId: string;
@@ -35,51 +36,50 @@ export function WorldCanvas(_props: WorldCanvasProps) {
       style: "snow" | "nature" | "architecture";
     }> = [];
 
-    allRooms.forEach((rA) => {
-      const adjList = rA.adjacent_room_ids || [];
-      adjList.forEach((adjId) => {
-        const rB = rooms[adjId];
-        if (!rB) return;
+    const xA = currentRoom.worldX || 0;
+    const zA = currentRoom.worldZ || 0;
+    const adjList = currentRoom.adjacent_room_ids || [];
 
-        const xA = rA.worldX || 0;
-        const zA = rA.worldZ || 0;
-        const xB = rB.worldX || 0;
-        const zB = rB.worldZ || 0;
+    adjList.forEach((adjId) => {
+      const rB = rooms[adjId];
+      if (!rB) return;
 
-        const dx = xB - xA;
-        const dz = zB - zA;
-        const dist = Math.hypot(dx, dz);
-        if (dist < 0.1) return;
+      const xB = rB.worldX || 0;
+      const zB = rB.worldZ || 0;
 
-        const nx = dx / dist;
-        const nz = dz / dist;
+      const dx = xB - xA;
+      const dz = zB - zA;
+      const dist = Math.hypot(dx, dz);
+      if (dist < 0.1) return;
 
-        // Position gateway hotspot 32 units from room origin along bearing vector to neighbor
-        const gateX = xA + nx * 32.0;
-        const gateZ = zA + nz * 32.0;
-        const angleY = Math.atan2(nx, -nz);
+      const nx = dx / dist;
+      const nz = dz / dist;
 
-        const themeCombined = `${rA.biome_type || ""} ${rB.biome_type || ""} ${rA.name} ${rB.name}`.toLowerCase();
-        let style: "snow" | "nature" | "architecture" = "architecture";
-        if (themeCombined.includes("space") || themeCombined.includes("everest") || themeCombined.includes("glacier")) {
-          style = "snow";
-        } else if (themeCombined.includes("forest") || themeCombined.includes("garden") || themeCombined.includes("jungle")) {
-          style = "nature";
-        }
+      // Position gateway hotspot 32 units from room origin along bearing vector to neighbor
+      const gateX = xA + nx * 32.0;
+      const gateZ = zA + nz * 32.0;
+      const angleY = Math.atan2(nx, -nz);
 
-        list.push({
-          id: `${rA.room_id}->${rB.room_id}`,
-          targetRoomId: rB.room_id,
-          position: [gateX, 0, gateZ],
-          angleY,
-          label: rB.name,
-          style,
-        });
+      const themeCombined = `${currentRoom.biome_type || ""} ${rB.biome_type || ""} ${currentRoom.name} ${rB.name}`.toLowerCase();
+      let style: "snow" | "nature" | "architecture" = "architecture";
+      if (themeCombined.includes("space") || themeCombined.includes("everest") || themeCombined.includes("glacier")) {
+        style = "snow";
+      } else if (themeCombined.includes("forest") || themeCombined.includes("garden") || themeCombined.includes("jungle")) {
+        style = "nature";
+      }
+
+      list.push({
+        id: `${currentRoom.room_id}->${rB.room_id}`,
+        targetRoomId: rB.room_id,
+        position: [gateX, 0, gateZ],
+        angleY,
+        label: rB.name,
+        style,
       });
     });
 
     return list;
-  }, [allRooms, rooms]);
+  }, [currentRoom, rooms]);
 
   // guaranteed existing fallback panorama based on active biome
   const themeCat = currentRoom?.biome_type || "desert_oasis";
@@ -118,21 +118,19 @@ export function WorldCanvas(_props: WorldCanvasProps) {
         </group>
 
         <group ref={worldGroupRef} name="walkable-world-root">
-          {allRooms.map((room) => {
-            const rx = room.worldX || 0;
-            const rz = room.worldZ || 0;
-            const isCurrent = room.room_id === currentRoomId;
-            const roomNpcs = Object.values(npcs).filter((n) => n.room_id === room.room_id);
-            const roomCtx = `${room.biome_type || ""} ${room.name || ""} ${worldTitle || ""}`;
-
-            return (
-              <group key={room.room_id} position={[rx, 0, rz]} name={`room-zone-${room.room_id}`}>
-                <ReflectiveFloorGrid roomName={room.name} biomeType={room.biome_type} isCurrentRoom={isCurrent} />
-                <PropSpawner propsList={room.props || []} roomContext={roomCtx} />
-                <CharacterSpawner npcs={roomNpcs} roomContext={roomCtx} />
-              </group>
-            );
-          })}
+          {currentRoom && (
+            <group position={[currentRoom.worldX || 0, 0, currentRoom.worldZ || 0]} name={`room-zone-${currentRoom.room_id}`}>
+              <ReflectiveFloorGrid roomName={currentRoom.name} biomeType={currentRoom.biome_type} isCurrentRoom={true} />
+              <PropSpawner
+                propsList={currentRoom.props || []}
+                roomContext={`${currentRoom.biome_type || ""} ${currentRoom.name || ""} ${worldTitle || ""}`}
+              />
+              <CharacterSpawner
+                npcs={Object.values(npcs).filter((n) => n.room_id === currentRoom.room_id)}
+                roomContext={`${currentRoom.biome_type || ""} ${currentRoom.name || ""} ${worldTitle || ""}`}
+              />
+            </group>
+          )}
 
           {/* Connected zone transition gateways aligned with reciprocal portal bearings */}
           {gateways.map((gate) => (
