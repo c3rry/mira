@@ -1131,15 +1131,15 @@ export function MinimapTopology() {
           <div className="flex items-center gap-1.5 text-[8px] opacity-80 shrink-0">
             <span className="flex items-center gap-1">
               <span className="w-1.5 h-1.5 rounded-full bg-[#22c55e] inline-block shadow-[0_0_3px_#22c55e]"></span>
-              Rendered
+              Explored
             </span>
             <span className="flex items-center gap-1">
               <span className="w-1.5 h-1.5 rounded-full bg-[#ef4444] inline-block shadow-[0_0_3px_#ef4444]"></span>
-              Queued
+              Uncharted
             </span>
           </div>
         </div>
-        <span className="opacity-75 shrink-0">{hoveredRoom ? "Click to Jump" : "Click Zone to Jump"}</span>
+        <span className="opacity-75 shrink-0">{hoveredRoom ? "Click to Travel" : "Click to Travel"}</span>
       </div>
     </div>
   );

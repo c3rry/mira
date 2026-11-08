@@ -353,11 +353,11 @@ function SingleNPC({
     ctx.roundRect(8, 8, 624, 144, 20);
     ctx.stroke();
 
-    // Technical role badge header
+    // Inhabitant badge header
     const badgeText = isGuide
       ? isStalling
-        ? "[ DECIPHERING RUNES • STALLING ]"
-        : "[ PATHFINDER GUIDE • FOLLOW ]"
+        ? "[ INVESTIGATING ANCIENT RUNES ]"
+        : "[ GUIDE ]"
       : `[ ${style.roleBadge} ]`;
 
     const badgeColor = isGuide ? (isStalling ? "#ef4444" : "#22c55e") : style.accentColor;
@@ -367,7 +367,7 @@ function SingleNPC({
     ctx.textAlign = "center";
     ctx.fillText(badgeText, 320, 42);
 
-    // NPC Name
+    // Character Name
     ctx.fillStyle = "#ffffff";
     ctx.font = "bold 32px 'Segoe UI', sans-serif";
     ctx.fillText(npc.name.toUpperCase(), 320, 84);
@@ -376,7 +376,7 @@ function SingleNPC({
     ctx.fillStyle = isStalling ? "#fca5a5" : isSelected || hovered ? "#fde047" : "#94a3b8";
     ctx.font = "italic 18px 'Segoe UI', sans-serif";
     ctx.fillText(
-      isStalling ? "Waiting for archway mechanism..." : "Click to Converse",
+      isStalling ? "Studying the ancient archway..." : "Click to Converse",
       320,
       124
     );

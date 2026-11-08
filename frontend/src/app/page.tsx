@@ -8,7 +8,6 @@ import {
   useWorldStore,
 } from "@/store/useWorldStore";
 import { AudioManager } from "@/audio/AudioManager";
-import { FallbackStatusBadge } from "@/components/hud/FallbackStatusBadge";
 import { DialogueModal } from "@/components/hud/DialogueModal";
 import { GodModePalette } from "@/components/GodModePalette";
 import { GodModeNarrativeDirector } from "@/components/director/GodModeNarrativeDirector";
@@ -378,7 +377,7 @@ export default function Home() {
               className="text-xs uppercase tracking-[0.35em] mb-2"
               style={{ color: theme.accentColor }}
             >
-              Anno Domini MMXXVI • Architectural World Engine
+              Anno Domini MMXXVI • Ancient Mystery & Exploration
             </div>
 
             <h1
@@ -397,8 +396,8 @@ export default function Home() {
               className="text-base sm:text-lg italic max-w-lg mb-8 leading-relaxed"
               style={{ color: theme.mutedText }}
             >
-              An interactive three-dimensional chronicle of historical monuments,
-              latent diffusion spatial synthesis, and autonomous resident scholars.
+              An interactive three-dimensional journey through ancient monuments,
+              hidden chambers, and resident guides.
             </p>
 
             <div className="w-full max-w-md flex flex-col gap-3.5">
@@ -414,7 +413,7 @@ export default function Home() {
                   borderColor: theme.panelBorder,
                 }}
               >
-                I. Enter Active World
+                I. Enter World
               </button>
 
               <button
@@ -428,7 +427,7 @@ export default function Home() {
                   color: theme.mutedText,
                 }}
               >
-                II. World Archives & Storage
+                II. World Archives
               </button>
             </div>
 
@@ -437,7 +436,7 @@ export default function Home() {
               style={{ borderColor: `${theme.panelBorder}44`, color: theme.mutedText }}
             >
               <span>{worldTitle}</span>
-              <span>WASD / Mouse to Explore • Click Entities to Converse</span>
+              <span>WASD / Mouse to Explore • Click Characters to Converse</span>
             </div>
           </div>
         </div>
@@ -465,13 +464,13 @@ export default function Home() {
                   className="text-xs uppercase tracking-[0.28em] mb-1"
                   style={{ color: theme.accentColor }}
                 >
-                  Cartographic Repository
+                  World Chronicles
                 </div>
                 <h2
                   className="text-2xl font-bold uppercase tracking-[0.18em]"
                   style={{ color: theme.accentText }}
                 >
-                  World Archives & Storage
+                  Saved Chronicles
                 </h2>
               </div>
 
@@ -504,10 +503,10 @@ export default function Home() {
                   className="text-sm font-bold uppercase tracking-[0.2em]"
                   style={{ color: theme.accentColor }}
                 >
-                  World Archives Ledger
+                  Chronicles Ledger
                 </h3>
                 <span className="text-xs italic" style={{ color: theme.mutedText }}>
-                  Select any stored chronicle to materialize immediately
+                  Select any chronicle to begin your journey
                 </span>
               </div>
 
@@ -707,7 +706,7 @@ export default function Home() {
                   className="text-[11px] font-bold uppercase tracking-[0.2em] mb-1"
                   style={{ color: theme.accentColor }}
                 >
-                  Synthesizing 3D World : {diffusionProgress}%
+                  Entering World : {diffusionProgress}%
                 </div>
                 <div className="w-full h-1.5 bg-black/70 border overflow-hidden" style={{ borderColor: theme.panelBorder }}>
                   <div
@@ -791,7 +790,7 @@ export default function Home() {
             }}
           >
             <div className="text-[11px] italic hidden sm:block" style={{ color: theme.mutedText }}>
-              Continuous Walk: <strong style={{ color: theme.accentColor }}>WASD / Arrows</strong> (Shift Sprint) • Drag to Look • Click NPCs to Talk
+              Explore: <strong style={{ color: theme.accentColor }}>WASD / Arrows</strong> (Shift Sprint) • Drag to Look • Click Characters to Talk
             </div>
 
             <div className="flex items-center gap-3 text-[11px]">
@@ -799,16 +798,10 @@ export default function Home() {
                 className="text-[10px] uppercase tracking-widest font-bold"
                 style={{ color: theme.accentColor }}
               >
-                Sector:
+                Location:
               </span>
               <span className="font-semibold text-white/90 truncate max-w-[280px]">
-                {rooms[currentRoomId]?.name || "Active Sector"}
-              </span>
-              <span
-                className="text-[10px] uppercase tracking-widest px-1.5 py-0.5 border bg-black/60 font-mono"
-                style={{ borderColor: `${theme.panelBorder}66`, color: theme.accentText }}
-              >
-                ({Math.round(rooms[currentRoomId]?.worldX || 0)}, {Math.round(rooms[currentRoomId]?.worldZ || 0)})
+                {rooms[currentRoomId]?.name || "Active Chamber"}
               </span>
             </div>
           </footer>

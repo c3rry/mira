@@ -26,7 +26,7 @@ export function MutationControls() {
           color: theme.accentText,
         }}
       >
-        Lighting & Relief ({(mutationLevel * 100).toFixed(0)}%)
+        Atmospheric Light ({(mutationLevel * 100).toFixed(0)}%)
       </button>
     );
   }
@@ -41,7 +41,7 @@ export function MutationControls() {
     >
       <div className="flex items-center justify-between text-[10px] uppercase tracking-[0.16em]">
         <span className="font-bold" style={{ color: theme.accentColor }}>
-          Solar & Relief ({(mutationLevel * 100).toFixed(0)}%)
+          Atmosphere & Illumination
         </span>
         <button
           onClick={() => setExpanded(false)}

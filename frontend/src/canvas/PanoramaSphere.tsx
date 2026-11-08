@@ -319,8 +319,7 @@ export function PanoramaSphere({
       u.uMix.value = mixRef.current;
     }
 
-    const isFallback = Boolean(targetTex?.userData?.isFallback);
-    const isReady = !isCompilingWorld && targetTex !== null && !isFallback;
+    const isReady = !isCompilingWorld && targetTex !== null;
 
     if (!isReady) {
       // Noisily transition into the shimmering iridescent rainbow fog

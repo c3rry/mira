@@ -141,7 +141,7 @@ export function GodModeNarrativeDirector() {
                 MIRA : STORY CREATOR
               </h2>
               <p className="text-[11px]" style={{ color: theme.mutedText }}>
-                Direct GPU Nemotron World Architect : Interactive Story Director
+                Interactive Story Creator : An Ancient Mystery Adventure
               </p>
             </div>
           </div>
@@ -267,7 +267,7 @@ export function GodModeNarrativeDirector() {
             >
               <div className="flex items-center gap-2 mb-1 text-[11px] font-bold">
                 <span style={{ color: msg.role === "player" ? theme.accentColor : "#38bdf8" }}>
-                  {msg.role === "player" ? "You" : "Mira (Nemotron)"}
+                  {msg.role === "player" ? "You" : "Mira"}
                 </span>
                 <span className="text-[10px] font-normal" style={{ color: theme.mutedText }}>{msg.timestamp}</span>
               </div>
@@ -285,7 +285,7 @@ export function GodModeNarrativeDirector() {
                     className="mt-2.5 pt-2 border-t font-semibold"
                     style={{ borderColor: `${theme.panelBorder}55`, color: theme.accentColor }}
                   >
-                    Directive: {msg.followUp}
+                    Question: {msg.followUp}
                   </div>
                 )}
               </div>
@@ -295,7 +295,7 @@ export function GodModeNarrativeDirector() {
           {isNarrativeLoading && (
             <div className="flex items-center gap-2.5 p-3 text-xs italic" style={{ color: theme.accentColor }}>
               <div className="w-2.5 h-2.5 rounded-full animate-ping bg-sky-400" />
-              <span>Mira is analyzing world semantics...</span>
+              <span>Mira is preparing your next discovery...</span>
             </div>
           )}
         </div>
@@ -307,7 +307,7 @@ export function GodModeNarrativeDirector() {
             style={{ borderColor: `${theme.panelBorder}44`, backgroundColor: "rgba(0,0,0,0.5)" }}
           >
             <span className="text-[10px] uppercase tracking-wider font-bold" style={{ color: theme.mutedText }}>
-              Directives:
+              Ideas:
             </span>
             {chips.map((chip, cIdx) => (
               <button
@@ -341,10 +341,10 @@ export function GodModeNarrativeDirector() {
             onChange={(e) => setInputText(e.target.value)}
             placeholder={
               stageStep === 1
-                ? "Describe your premise or scenario to Nemotron..."
+                ? "Describe your adventure or mystery..."
                 : stageStep === 2
-                ? "Define the spatial layout or secret rooms..."
-                : "Specify key figures, allies, or rival factions..."
+                ? "Define the chambers or secret rooms..."
+                : "Specify key guides, allies, or rival factions..."
             }
             className="flex-1 px-4 py-2 text-xs border rounded bg-black/70 focus:outline-none transition-colors"
             style={{
@@ -362,7 +362,7 @@ export function GodModeNarrativeDirector() {
               backgroundColor: theme.buttonBg,
             }}
           >
-            Send Turn
+            Send
           </button>
         </form>
 
@@ -422,7 +422,7 @@ export function GodModeNarrativeDirector() {
               color: isConfident ? "#ffffff" : theme.buttonText,
             }}
           >
-            <span>{isCompilingWorld ? "Synthesizing 3D World..." : isConfident ? "Enter 3D World (Ready)" : "Enter 3D World"}</span>
+            <span>{isCompilingWorld ? "Opening Realm..." : isConfident ? "Enter 3D World (Ready)" : "Enter 3D World"}</span>
           </button>
         </div>
       </div>

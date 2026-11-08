@@ -2078,54 +2078,42 @@ export const useWorldStore = create<WorldState>((set, get) => ({
 
     if (typeof window !== "undefined") {
       try {
+        // Completely flush all saved environments and active sessions on reload to start from scratch
         localStorage.removeItem(ARCHIVE_STORAGE_KEY);
-        set({ savedWorlds: [] });
-        const stored = null;
-        if (stored) {
-          const parsed = JSON.parse(stored);
-          if (Array.isArray(parsed) && parsed.length > 0) {
-            const mergedIds = new Set(parsed.map((p: SavedWorldEntry) => p.world_id));
-            const combined = [
-              ...parsed,
-              ...BUILTIN_ARCHIVES.filter((b) => !mergedIds.has(b.world_id)),
-            ];
-            set({ savedWorlds: combined });
+        localStorage.removeItem(CHECKPOINTS_STORAGE_KEY);
+        localStorage.removeItem(ACTIVE_STATE_STORAGE_KEY);
+        const keysToRemove: string[] = [];
+        for (let i = 0; i < localStorage.length; i++) {
+          const k = localStorage.key(i);
+          if (k && (k.startsWith("mira_") || k.includes("checkpoint") || k.includes("world"))) {
+            keysToRemove.push(k);
           }
         }
-
-        const storedCheckpoints = localStorage.getItem(CHECKPOINTS_STORAGE_KEY);
-        if (storedCheckpoints) {
-          const parsedCps = JSON.parse(storedCheckpoints);
-          if (Array.isArray(parsedCps) && parsedCps.length > 0) {
-            set({ checkpoints: parsedCps });
-          }
-        }
-
-        const storedActive = localStorage.getItem(ACTIVE_STATE_STORAGE_KEY);
-        if (storedActive) {
-          const activeCp: WorldCheckpoint = JSON.parse(storedActive);
-          if (activeCp && activeCp.rooms && Object.keys(activeCp.rooms).length > 0) {
-            set({
-              worldTitle: activeCp.world_title,
-              currentRoomId: activeCp.current_room_id,
-              rooms: activeCp.rooms,
-              storyGraph: activeCp.storyGraph,
-              narrativeMessages: activeCp.narrativeMessages || [],
-              guideState: activeCp.guideState,
-              playerPosition: activeCp.playerPosition || { x: 0, z: 0, yaw: 0 },
-              activeCheckpoint: { ...activeCp, status: "restored" },
-              activeScreen: "game",
-              checkpointStatusText: `Restored progress: ${activeCp.room_name}`,
-            });
-            get().ensureNeighborZones(activeCp.current_room_id);
-            get().scheduleBoundedPriorityRendering();
-            get().updateGuideGuidance();
-          }
-        }
+        keysToRemove.forEach((k) => localStorage.removeItem(k));
       } catch (err) {
-        console.warn("Local storage state restore notice:", err);
+        console.warn("Storage flush notice:", err);
       }
     }
+
+    // Reset store state to clean initial scratch state
+    set({
+      savedWorlds: [],
+      checkpoints: [],
+      activeCheckpoint: null,
+      storyGraph: null,
+      narrativeMessages: [],
+      currentRoomId: initialRoomId,
+      worldTitle: initialWorldTitle,
+      rooms: { ...initialRoomsMap },
+      npcs: { ...initialNpcsMap },
+      activeScreen: "title",
+      isCompilingWorld: false,
+      diffusionProgress: 100,
+      activeSubtitle: null,
+      playerPosition: { x: 0, z: 0, yaw: 0 },
+      guideState: null,
+      renderedRoomIds: { [initialRoomId]: true },
+    });
 
     if (!isOffline && typeof window !== "undefined") {
       try {
