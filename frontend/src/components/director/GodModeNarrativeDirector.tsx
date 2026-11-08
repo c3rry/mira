@@ -311,31 +311,7 @@ export function GodModeNarrativeDirector() {
           )}
         </div>
 
-        {/* Quick-Reply Recommendation Chips */}
-        {chips.length > 0 && !isNarrativeLoading && (
-          <div
-            className="px-5 py-2.5 border-t flex flex-wrap items-center gap-2 shrink-0"
-            style={{ borderColor: `${theme.panelBorder}44`, backgroundColor: "rgba(0,0,0,0.5)" }}
-          >
-            <span className="text-[10px] uppercase tracking-wider font-bold" style={{ color: theme.mutedText }}>
-              Ideas:
-            </span>
-            {chips.map((chip, cIdx) => (
-              <button
-                key={cIdx}
-                onClick={() => handleSendMessage(chip)}
-                className="text-xs px-3 py-1.5 border rounded transition-all hover:scale-[1.02] text-left shadow-sm"
-                style={{
-                  borderColor: `${theme.panelBorder}88`,
-                  backgroundColor: "rgba(20, 25, 35, 0.85)",
-                  color: theme.accentText,
-                }}
-              >
-                {chip}
-              </button>
-            ))}
-          </div>
-        )}
+
 
         {/* Chat Input Bar */}
         <form

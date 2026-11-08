@@ -1193,7 +1193,7 @@ export const useWorldStore = create<WorldState>((set, get) => ({
     }
 
     const controller = new AbortController();
-    const abortTimeout = setTimeout(() => controller.abort(), 6500);
+    const abortTimeout = setTimeout(() => controller.abort(), 20000);
 
     try {
       const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8001";
@@ -1279,11 +1279,11 @@ export const useWorldStore = create<WorldState>((set, get) => ({
     const fallbackDirMsg: NarrativeDirectorMessage = {
       role: "mira",
       content: playerMessage
-        ? `I have recorded your command: "${playerMessage}". The ancient mechanisms are turning!`
+        ? `I have recorded your command: "${playerMessage}". Preparing to enter your world.`
         : "What other clues or allies shall we summon to aid our quest?",
       timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
-      chips: ["Deploy Pathfinder Guide", "Trace the cipher dial", "Advance to next sector"],
-      followUp: "Who should join us? Name a companion or select an option below:",
+      chips: [],
+      followUp: "Who should join us? Name a companion:",
     };
 
     set({
