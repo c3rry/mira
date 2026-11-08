@@ -727,7 +727,7 @@ export default function Home() {
           </header>
 
           {/* compact world manifestation banner */}
-          {(isCompilingWorld || diffusionProgress < 98) && (
+          {(isCompilingWorld && diffusionProgress < 100) && (
             <div className="fixed top-12 left-1/2 -translate-x-1/2 z-30 pointer-events-none select-none w-full max-w-sm px-4">
               <div
                 className="p-2 border shadow-xl text-center backdrop-blur-md"
