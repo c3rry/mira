@@ -75,6 +75,28 @@ def clean_ai_artifacts(text: str) -> str:
     return emoji_pattern.sub("", text).strip()
 
 
+def format_chip_label(text: str) -> str:
+    """Formats chip options from raw snake_case or messy text to clean Title Case."""
+    if not text:
+        return ""
+    clean = clean_ai_artifacts(str(text))
+    # Replace underscores and hyphens with spaces
+    clean = clean.replace("_", " ").replace("-", " ")
+    # Capitalize words
+    words = [w.capitalize() if not w.isupper() or len(w) > 4 else w for w in clean.split()]
+    formatted = " ".join(words)
+    return formatted.strip()
+
+
+def sanitize_mira_self_references(text: str) -> str:
+    """Removes awkward self-referential AI phrases like 'As the World Architect', 'I am an AI', etc."""
+    if not text:
+        return ""
+    text = re.sub(r"^(?:As the World Architect|As Mira,? the World Architect|As an AI|As your Narrative Director)[,:\s]+", "", text, flags=re.IGNORECASE)
+    text = re.sub(r"(?:As the World Architect|As your Narrative Director)[,:\s]+", "", text, flags=re.IGNORECASE)
+    return text.strip()
+
+
 def parse_nemotron_structured_response(response_text: str, user_prompt: str = "") -> Dict[str, Any]:
     """
     Parses both strict JSON, relaxed JSON, or labeled Utterance/Follow-up text into a valid dict.
@@ -101,15 +123,20 @@ def parse_nemotron_structured_response(response_text: str, user_prompt: str = ""
                 norm_chips = []
                 for c in chips:
                     if isinstance(c, dict):
-                        norm_chips.append(clean_ai_artifacts(c.get("name") or c.get("title") or str(c)))
+                        norm_chips.append(format_chip_label(c.get("name") or c.get("title") or str(c)))
                     elif isinstance(c, str):
-                        norm_chips.append(clean_ai_artifacts(c))
+                        norm_chips.append(format_chip_label(c))
                 chips = norm_chips
 
-            if u or f:
+            if u or f or chips:
+                # If utterance is empty but we have chips, give an inspiring narrative intro
+                cleaned_u = sanitize_mira_self_references(clean_ai_artifacts(str(u)))
+                cleaned_f = sanitize_mira_self_references(clean_ai_artifacts(str(f)))
+                if not cleaned_u and chips:
+                    cleaned_u = f"The realm unfolds. Which pathway or clue calls to you?"
                 return {
-                    "utterance": clean_ai_artifacts(str(u)),
-                    "follow_up": clean_ai_artifacts(str(f)),
+                    "utterance": cleaned_u,
+                    "follow_up": cleaned_f,
                     "suggested_chips": chips,
                     **{k: v for k, v in parsed.items() if k not in ["utterance", "follow_up", "suggested_chips"]},
                 }
@@ -169,9 +196,9 @@ def parse_nemotron_structured_response(response_text: str, user_prompt: str = ""
         ]
 
     return {
-        "utterance": clean_ai_artifacts(utterance or "Welcome explorer. The world unfolds before you."),
-        "follow_up": clean_ai_artifacts(follow_up or "What distinct sector or clue shall we investigate?"),
-        "suggested_chips": default_chips,
+        "utterance": sanitize_mira_self_references(clean_ai_artifacts(utterance or "Welcome explorer. The world unfolds before you.")),
+        "follow_up": sanitize_mira_self_references(clean_ai_artifacts(follow_up or "What distinct sector or clue shall we investigate?")),
+        "suggested_chips": [format_chip_label(c) for c in default_chips],
     }
 
 

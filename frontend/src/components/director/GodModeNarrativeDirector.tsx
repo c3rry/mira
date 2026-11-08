@@ -59,6 +59,7 @@ export function GodModeNarrativeDirector() {
     sendNarrativeTurn,
     compileAndManifestFromMira,
     isCompilingWorld,
+    resetWorld,
   } = useWorldStore();
 
   const [inputText, setInputText] = useState("");
@@ -157,6 +158,16 @@ export function GodModeNarrativeDirector() {
             >
               Confidence: {confidence}% {isConfident ? "[READY]" : "[BUILDING]"}
             </div>
+
+            <button
+              onClick={() => resetWorld()}
+              title="Reset world and clear history to start fresh"
+              className="px-2.5 py-1 text-xs uppercase tracking-wider border font-bold hover:bg-red-950/40 hover:border-red-500/60 transition-all rounded flex items-center gap-1.5"
+              style={{ borderColor: `${theme.panelBorder}88`, color: theme.mutedText }}
+            >
+              <span>↺</span>
+              <span>Reset</span>
+            </button>
 
             <button
               onClick={() => setGodModeDirectorOpen(false)}
@@ -413,12 +424,12 @@ export function GodModeNarrativeDirector() {
             disabled={isCompilingWorld}
             className={`px-6 py-2.5 border rounded text-xs uppercase tracking-widest font-bold transition-all shadow-xl flex items-center gap-2 disabled:opacity-50 hover:scale-105 active:scale-95 ${
               isConfident
-                ? "animate-pulse ring-2 ring-amber-400/80 shadow-[0_0_20px_rgba(251,191,36,0.5)] border-amber-400 text-amber-200"
+                ? "animate-pulse ring-2 ring-emerald-400/80 shadow-[0_0_20px_rgba(34,197,94,0.6)] border-emerald-400 text-white"
                 : ""
             }`}
             style={{
-              backgroundColor: isConfident ? "rgba(217, 119, 6, 0.9)" : theme.buttonBg,
-              borderColor: isConfident ? "#fbbf24" : theme.accentColor,
+              backgroundColor: isConfident ? "rgba(22, 163, 74, 0.95)" : theme.buttonBg,
+              borderColor: isConfident ? "#22c55e" : theme.accentColor,
               color: isConfident ? "#ffffff" : theme.buttonText,
             }}
           >

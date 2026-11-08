@@ -85,6 +85,7 @@ export default function Home() {
     setActiveSubtitle,
     expandWorld,
     isExpanding,
+    resetWorld,
   } = useWorldStore();
 
   const [backendHealth, setBackendHealth] = useState<string>("online");
@@ -661,6 +662,18 @@ export default function Home() {
               >
                 <span className="w-1.5 h-1.5 rounded-full bg-sky-400 animate-pulse" />
                 Mira Director [G]
+              </button>
+
+              <button
+                onClick={() => resetWorld()}
+                className="px-2.5 py-0.5 border uppercase tracking-wider font-bold transition-colors hover:border-red-400"
+                style={{
+                  backgroundColor: theme.buttonBg,
+                  color: theme.buttonText,
+                  borderColor: theme.panelBorder,
+                }}
+              >
+                Reset
               </button>
 
               <button

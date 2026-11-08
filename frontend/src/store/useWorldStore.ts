@@ -784,6 +784,7 @@ export interface WorldState {
   setSimulatedProvider: (provider: "nemotron_70b" | "gemini_flash" | "offline_mock" | null) => void;
   toggleGodMode: () => void;
   toggleGodModeDirector: () => void;
+  resetWorld: () => void;
   setGodModeDirectorOpen: (open: boolean) => void;
   sendNarrativeTurn: (playerMessage?: string) => Promise<void>;
   compileAndManifestFromMira: (prompt?: string, biome?: string) => Promise<void>;
@@ -1128,6 +1129,41 @@ export const useWorldStore = create<WorldState>((set, get) => ({
     if (next && get().narrativeMessages.length === 0) {
       get().sendNarrativeTurn();
     }
+  },
+
+  resetWorld: () => {
+    // Completely clear conversation history, story graph, active subtitles, and restart world cleanly
+    try {
+      if (typeof window !== "undefined") {
+        for (let i = 0; i < localStorage.length; i++) {
+          const k = localStorage.key(i);
+          if (k && (k.startsWith("mira_") || k.includes("checkpoint") || k.includes("world"))) {
+            localStorage.removeItem(k);
+          }
+        }
+      }
+    } catch (e) {
+      console.warn("Storage reset warning:", e);
+    }
+
+    set({
+      storyGraph: null,
+      narrativeMessages: [],
+      isNarrativeLoading: false,
+      activeSubtitle: null,
+      isCompilingWorld: false,
+      diffusionProgress: 100,
+      currentRoomId: initialRoomId,
+      worldTitle: initialWorldTitle,
+      rooms: { ...initialRoomsMap },
+      npcs: { ...initialNpcsMap },
+      renderedRoomIds: { [initialRoomId]: true },
+    });
+
+    // Automatically trigger fresh opening prompt
+    setTimeout(() => {
+      get().sendNarrativeTurn();
+    }, 100);
   },
 
   setGodModeDirectorOpen: (open: boolean) => {

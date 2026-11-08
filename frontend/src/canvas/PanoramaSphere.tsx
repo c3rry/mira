@@ -322,20 +322,26 @@ export function PanoramaSphere({
     const isReady = !isCompilingWorld && targetTex !== null;
 
     if (!isReady) {
-      // Noisily transition into the shimmering iridescent rainbow fog
-      rainbowFogRef.current = Math.min(1.0, rainbowFogRef.current + delta * 2.5);
-      noiseRef.current = Math.min(0.98, noiseRef.current + delta * 1.8);
+      // Smoothly build up noise during compilation
+      rainbowFogRef.current = Math.min(0.95, rainbowFogRef.current + delta * 0.8);
+      noiseRef.current = Math.min(0.95, noiseRef.current + delta * 0.8);
     } else {
-      // Immediately transform into the sharp neural environment once it is ready
-      rainbowFogRef.current = Math.max(0.0, rainbowFogRef.current - delta * 3.8);
+      // Smoothly clear fog and reveal the crisp neural world
+      rainbowFogRef.current = Math.max(0.0, rainbowFogRef.current - delta * 2.5);
       const minNoise = mutationFactor > 0.0 ? Math.min(0.4, mutationFactor * 0.85) : 0.0;
       if (noiseRef.current > minNoise) {
-        noiseRef.current = Math.max(minNoise, noiseRef.current - delta * 2.2);
+        noiseRef.current = Math.max(minNoise, noiseRef.current - delta * 2.0);
       }
     }
     u.uRainbowFog.value = rainbowFogRef.current;
     u.uNoise.value = noiseRef.current;
-    setDiffusionProgress(Math.round((1.0 - rainbowFogRef.current) * 100));
+    
+    // Smooth progress from 15% during compiling up to 100% when rendered
+    if (isCompilingWorld) {
+      setDiffusionProgress(Math.min(90, Math.round((1.0 - rainbowFogRef.current * 0.5) * 60)));
+    } else {
+      setDiffusionProgress(Math.round((1.0 - rainbowFogRef.current) * 100));
+    }
   });
 
   return (
