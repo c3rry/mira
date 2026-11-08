@@ -181,9 +181,21 @@ def test_prop_spawner_is_deactivated():
 
 
 def test_character_spawner_prompt_driven_architecture():
-    """Verify CharacterSpawner.tsx contains prompt-driven style inference and natural scale."""
+    """Verify CharacterSpawner.tsx contains prompt-driven style inference, distinct legs, and zero gladiator skirts."""
     char_file = Path("frontend/src/canvas/CharacterSpawner.tsx")
     assert char_file.exists()
+    content = char_file.read_text(encoding="utf-8")
+    assert "inferPromptCharacterStyle" in content
+    assert "worldPrompt" in content
+    assert "charScale = 0.165" in content  # Accurate human proportion
+    assert "roleBadge" in content
+    assert "smartphone" in content
+    assert "datapad" in content
+    assert "scanner" in content
+    assert "ZERO GLADIATOR SKIRT" in content
+    assert "TWO DISTINCT INDEPENDENT LEGS" in content
+    # Ensure archaic gladiator skirt cylinder is eradicated
+    assert "args={[5.0, 5.6, 11.5, 32]}" not in content
     content = char_file.read_text(encoding="utf-8")
     assert "inferPromptCharacterStyle" in content
     assert "worldPrompt" in content
