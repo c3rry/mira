@@ -12,6 +12,7 @@ import { DialogueModal } from "@/components/hud/DialogueModal";
 import { GodModePalette } from "@/components/GodModePalette";
 import { GodModeNarrativeDirector } from "@/components/director/GodModeNarrativeDirector";
 import { MinimapTopology } from "@/components/minimap/MinimapTopology";
+import { PromptRefinementChat } from "@/components/chat/PromptRefinementChat";
 
 
 // dynamically import 3d canvas to prevent ssr webgl errors
@@ -356,9 +357,16 @@ export default function Home() {
   const diffusionStep = Math.max(1, Math.min(40, Math.ceil((diffusionProgress / 100) * 40)));
 
   return (
-    <main className="relative w-screen h-screen overflow-hidden flex flex-col bg-[#120e0a]">
+    <main
+      className="relative w-screen h-screen overflow-hidden flex flex-col bg-[#120e0a]"
+      style={{ position: "fixed", top: 0, left: 0, width: "100vw", height: "100vh", overflow: "hidden" }}
+    >
       {/* persistent 3d webgl viewport */}
-      <div id="mira-canvas-container" className="absolute inset-0 z-0">
+      <div
+        id="mira-canvas-container"
+        className="absolute inset-0 z-0"
+        style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0, width: "100%", height: "100%", zIndex: 0 }}
+      >
         <WorldCanvas />
       </div>
 
@@ -734,8 +742,9 @@ export default function Home() {
             </div>
           )}
 
-          {/* left floating quick story creator button */}
-          <div className="absolute top-12 left-4 z-20 pointer-events-auto">
+          {/* left floating quick world compiler & story director */}
+          <div className="absolute top-12 left-4 z-20 pointer-events-auto flex items-center gap-2">
+            <PromptRefinementChat />
             <button
               onClick={() => toggleGodModeDirector()}
               className="px-3 py-1.5 border text-xs uppercase tracking-wider font-bold transition-all shadow-xl backdrop-blur-md flex items-center gap-2 hover:scale-[1.02]"
@@ -747,7 +756,7 @@ export default function Home() {
               title="Open Mira Story & World Creator [Key G]"
             >
               <span className="w-2 h-2 rounded-full animate-ping bg-sky-400" />
-              <span>Mira Story Creator [G]</span>
+              <span>Mira Director [G]</span>
             </button>
           </div>
 

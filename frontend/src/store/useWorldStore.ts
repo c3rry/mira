@@ -848,7 +848,7 @@ export const useWorldStore = create<WorldState>((set, get) => ({
   isGodModeOpen: false,
   selectedNpcId: null,
 
-  activeScreen: "title",
+  activeScreen: "game",
   savedWorlds: BUILTIN_ARCHIVES,
   isCompilingWorld: false,
   diffusionProgress: 100,
@@ -2142,7 +2142,7 @@ export const useWorldStore = create<WorldState>((set, get) => ({
       worldTitle: initialWorldTitle,
       rooms: { ...initialRoomsMap },
       npcs: { ...initialNpcsMap },
-      activeScreen: "title",
+      activeScreen: "game",
       isCompilingWorld: false,
       diffusionProgress: 100,
       activeSubtitle: null,

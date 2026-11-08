@@ -177,7 +177,7 @@ const skyFragmentShader = `
       vec3 fullEnvFog = mix(deepMist, dynamicEnvMist, clamp(combinedNoise * 1.35, 0.25, 1.0));
 
       float fogWeight = smoothstep(0.0, 1.0, uRainbowFog);
-      col = mix(col, fullEnvFog, fogWeight);
+      col = mix(col, fullEnvFog, clamp(fogWeight * 0.3, 0.0, 0.3));
     }
 
     // Dynamic continuous procedural 3D noise modulation reflecting environmental tones
@@ -186,7 +186,7 @@ const skyFragmentShader = `
       float n2 = fbm(dir * 6.5 - vec3(uTime * 0.07, 0.0, uTime * 0.05));
       vec3 noiseCol = mix(uEnvDominant, uEnvSky, n * 0.5 + 0.5);
       noiseCol = mix(noiseCol, uEnvAccent, clamp(n2 * 0.6 + 0.2, 0.0, 1.0));
-      col = mix(col, noiseCol, clamp(uNoise * 0.92, 0.0, 0.96));
+      col = mix(col, noiseCol, clamp(uNoise * 0.25, 0.0, 0.25));
     }
 
     col = mix(col, col * vec3(1.12, 0.95, 0.82), uMutation * 0.45);
@@ -203,8 +203,8 @@ export function PanoramaSphere({
   visualPalette,
 }: PanoramaSphereProps) {
   const [targetTex, setTargetTex] = useState<THREE.Texture | null>(null);
-  const noiseRef = useRef<number>(0.65);
-  const rainbowFogRef = useRef<number>(1.0);
+  const noiseRef = useRef<number>(0.0);
+  const rainbowFogRef = useRef<number>(0.0);
   const mixRef = useRef<number>(1.0);
   const isCompilingWorld = useWorldStore((state) => state.isCompilingWorld);
   const setDiffusionProgress = useWorldStore((state) => state.setDiffusionProgress);
@@ -231,8 +231,8 @@ export function PanoramaSphere({
           uTexA: { value: baselineTex },
           uTexB: { value: baselineTex },
           uMix: { value: 1.0 },
-          uNoise: { value: 0.65 },
-          uRainbowFog: { value: 1.0 },
+          uNoise: { value: 0.0 },
+          uRainbowFog: { value: 0.0 },
           uMutation: { value: 0.0 },
           uTime: { value: 0.0 },
           uTransitionDir: { value: new THREE.Vector3(0, 0, -1) },
@@ -306,7 +306,10 @@ export function PanoramaSphere({
   }, [targetTex, material, transitionDirection]);
 
   useEffect(() => {
-    if (isCompilingWorld) noiseRef.current = 0.98;
+    if (isCompilingWorld) {
+      noiseRef.current = 0.2;
+      rainbowFogRef.current = 0.3;
+    }
   }, [isCompilingWorld]);
 
   useFrame(({ clock }, delta) => {
@@ -315,35 +318,21 @@ export function PanoramaSphere({
     u.uMutation.value = mutationFactor;
 
     if (mixRef.current < 1.0) {
-      mixRef.current = Math.min(1.0, mixRef.current + delta * 1.25);
+      mixRef.current = Math.min(1.0, mixRef.current + delta * 1.5);
       u.uMix.value = mixRef.current;
     }
 
-    const isFallback = Boolean(targetTex?.userData?.isFallback);
-    const isReady = !isCompilingWorld && targetTex !== null && !isFallback;
-
-    if (!isReady) {
-      // Shimmering iridescent rainbow fog while waiting for texture
-      rainbowFogRef.current = Math.min(1.0, rainbowFogRef.current + delta * 2.5);
-      noiseRef.current = Math.min(0.98, noiseRef.current + delta * 1.8);
-      // Progressively creep up to 92% during compilation so user sees continuous motion
+    if (isCompilingWorld) {
+      rainbowFogRef.current = Math.min(0.35, rainbowFogRef.current + delta * 0.8);
+      noiseRef.current = Math.min(0.25, noiseRef.current + delta * 0.8);
       const currentProg = useWorldStore.getState().diffusionProgress;
       if (currentProg < 92) {
-        setDiffusionProgress(Math.min(92, currentProg + Math.max(1, Math.round(delta * 12))));
+        setDiffusionProgress(Math.min(92, currentProg + Math.max(1, Math.round(delta * 16))));
       }
     } else {
-      // Immediately transform into the sharp neural environment once it is ready
-      rainbowFogRef.current = Math.max(0.0, rainbowFogRef.current - delta * 3.8);
-      const minNoise = mutationFactor > 0.0 ? Math.min(0.4, mutationFactor * 0.85) : 0.0;
-      if (noiseRef.current > minNoise) {
-        noiseRef.current = Math.max(minNoise, noiseRef.current - delta * 2.2);
-      }
-      // Snap to 100% as fog clears
-      if (rainbowFogRef.current <= 0.05) {
-        setDiffusionProgress(100);
-      } else {
-        setDiffusionProgress(Math.max(92, Math.round((1.0 - rainbowFogRef.current) * 100)));
-      }
+      rainbowFogRef.current = Math.max(0.0, rainbowFogRef.current - delta * 4.0);
+      noiseRef.current = Math.max(0.0, noiseRef.current - delta * 4.0);
+      setDiffusionProgress(100);
     }
     u.uRainbowFog.value = rainbowFogRef.current;
     u.uNoise.value = noiseRef.current;
