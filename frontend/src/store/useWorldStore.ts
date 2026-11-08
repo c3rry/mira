@@ -16,6 +16,13 @@ export interface PropItem {
   interactive?: boolean;
 }
 
+export interface RoomVisualPalette {
+  dominant_color: string;
+  accent_color: string;
+  sky_tone: string;
+  floor_tone: string;
+}
+
 export interface WorldRoom {
   room_id: string;
   name: string;
@@ -27,6 +34,8 @@ export interface WorldRoom {
   props?: PropItem[];
   worldX?: number;
   worldZ?: number;
+  topology_type?: "linear" | "nature_open" | "city_grid" | "hub_spoke" | string;
+  visual_palette?: RoomVisualPalette;
 }
 
 export interface NPCAgent {
@@ -544,9 +553,155 @@ export const BUILTIN_ARCHIVES: SavedWorldEntry[] = [
   },
 ];
 
+export function inferTopologyType(text?: string): "linear" | "nature_open" | "city_grid" | "hub_spoke" {
+  const t = (text || "").toLowerCase();
+  if (
+    t.includes("subway") ||
+    t.includes("metro") ||
+    t.includes("train") ||
+    t.includes("carriage") ||
+    t.includes("plane") ||
+    t.includes("airplane") ||
+    t.includes("flight") ||
+    t.includes("cabin") ||
+    t.includes("tunnel") ||
+    t.includes("corridor") ||
+    t.includes("hallway")
+  ) {
+    return "linear";
+  }
+  // nature environments: no limits, always give all 4 directions!
+  if (
+    t.includes("everest") ||
+    t.includes("mountain") ||
+    t.includes("himalaya") ||
+    t.includes("peak") ||
+    t.includes("summit") ||
+    t.includes("trail") ||
+    t.includes("hike") ||
+    t.includes("canyon") ||
+    t.includes("gorge") ||
+    t.includes("glacier") ||
+    t.includes("wilderness") ||
+    t.includes("forest") ||
+    t.includes("jungle") ||
+    t.includes("garden") ||
+    t.includes("grove") ||
+    t.includes("desert") ||
+    t.includes("oasis") ||
+    t.includes("dune") ||
+    t.includes("giza") ||
+    t.includes("pyramid") ||
+    t.includes("sphinx") ||
+    t.includes("nature") ||
+    t.includes("ocean") ||
+    t.includes("planet")
+  ) {
+    return "nature_open";
+  }
+  if (
+    t.includes("city") ||
+    t.includes("downtown") ||
+    t.includes("seattle") ||
+    t.includes("street") ||
+    t.includes("avenue") ||
+    t.includes("boulevard") ||
+    t.includes("district") ||
+    t.includes("metropolis") ||
+    t.includes("urban")
+  ) {
+    return "city_grid";
+  }
+  return "hub_spoke";
+}
+
+export function inferRoomVisualPalette(roomName?: string, worldTitle?: string, biome?: string): RoomVisualPalette {
+  const combined = `${roomName || ""} ${worldTitle || ""} ${biome || ""}`.toLowerCase();
+  if (combined.includes("subway") || combined.includes("metro") || combined.includes("train") || combined.includes("carriage")) {
+    return {
+      dominant_color: "#475569",
+      accent_color: "#f59e0b",
+      sky_tone: "#334155",
+      floor_tone: "#0f172a",
+    };
+  }
+  if (combined.includes("plane") || combined.includes("airplane") || combined.includes("flight") || combined.includes("cabin")) {
+    return {
+      dominant_color: "#3b82f6",
+      accent_color: "#60a5fa",
+      sky_tone: "#1e3a8a",
+      floor_tone: "#1e293b",
+    };
+  }
+  if (combined.includes("seattle") || combined.includes("pier") || combined.includes("sound") || combined.includes("waterfront")) {
+    return {
+      dominant_color: "#0f766e",
+      accent_color: "#22d3ee",
+      sky_tone: "#1e293b",
+      floor_tone: "#0f172a",
+    };
+  }
+  if (combined.includes("city") || combined.includes("metropolis") || combined.includes("cyber") || combined.includes("tokyo")) {
+    return {
+      dominant_color: "#7c3aed",
+      accent_color: "#06b6d4",
+      sky_tone: "#0f172a",
+      floor_tone: "#18181b",
+    };
+  }
+  if (combined.includes("everest") || combined.includes("glacier") || combined.includes("icefall") || combined.includes("himalaya")) {
+    return {
+      dominant_color: "#0284c7",
+      accent_color: "#e0f2fe",
+      sky_tone: "#38bdf8",
+      floor_tone: "#0c4a6e",
+    };
+  }
+  if (combined.includes("giza") || combined.includes("pyramid") || combined.includes("sphinx") || combined.includes("desert") || combined.includes("oasis")) {
+    return {
+      dominant_color: "#d97706",
+      accent_color: "#fbbf24",
+      sky_tone: "#fed7aa",
+      floor_tone: "#78350f",
+    };
+  }
+  if (combined.includes("rome") || combined.includes("colosseum") || combined.includes("forum") || combined.includes("pantheon")) {
+    return {
+      dominant_color: "#b45309",
+      accent_color: "#f59e0b",
+      sky_tone: "#fef3c7",
+      floor_tone: "#451a03",
+    };
+  }
+  if (combined.includes("babylon") || combined.includes("garden") || combined.includes("forest") || combined.includes("sylvan")) {
+    return {
+      dominant_color: "#059669",
+      accent_color: "#34d399",
+      sky_tone: "#134e4a",
+      floor_tone: "#064e3b",
+    };
+  }
+  if (combined.includes("neptune") || combined.includes("methane") || combined.includes("space") || combined.includes("station") || combined.includes("astrolabe")) {
+    return {
+      dominant_color: "#0284c7",
+      accent_color: "#38bdf8",
+      sky_tone: "#0f172a",
+      floor_tone: "#082f49",
+    };
+  }
+  return {
+    dominant_color: "#ca8a04",
+    accent_color: "#fde047",
+    sky_tone: "#1e293b",
+    floor_tone: "#0f172a",
+  };
+}
+
 export interface WorldState {
   currentRoomId: string;
   worldTitle: string;
+  topologyType: string;
+  isExpanding: boolean;
   rooms: Record<string, WorldRoom>;
   npcs: Record<string, NPCAgent>;
   quests: QuestObjective[];
@@ -584,12 +739,15 @@ export interface WorldState {
   setSimulatedProvider: (provider: "nemotron_70b" | "gemini_flash" | "offline_mock" | null) => void;
   toggleGodMode: () => void;
   hydrateFromMockWorld: (worldData: any) => void;
+  expandWorld: (fromRoomId?: string, direction?: string) => Promise<WorldRoom | null>;
   initializeSync: () => void;
 }
 
 export const useWorldStore = create<WorldState>((set, get) => ({
   currentRoomId: "giza_forecourt",
   worldTitle: "The Necropolis of Giza",
+  topologyType: "nature_open",
+  isExpanding: false,
   rooms: {},
   npcs: {},
   quests: [],
@@ -768,32 +926,66 @@ export const useWorldStore = create<WorldState>((set, get) => ({
     const roomsMap: Record<string, WorldRoom> = {};
     const npcsMap: Record<string, NPCAgent> = {};
 
-    const roomSpacing = 220;
-    const gridOffsets: Array<[number, number]> = [
-      [0, 0],
-      [0, -roomSpacing],
-      [roomSpacing, -roomSpacing],
-      [roomSpacing, 0],
-      [-roomSpacing, 0],
-      [-roomSpacing, -roomSpacing],
-    ];
+    const rawTitle = worldData.title || "Architectural Chronicle";
+    const topo = (worldData.topology_type || inferTopologyType(`${rawTitle} ${worldData.prompt || ""}`)) as "linear" | "nature_open" | "city_grid" | "hub_spoke";
 
     worldData.rooms.forEach((r: any, idx: number) => {
       const inferredBiome = r.biome_type || "medieval_tavern";
       const rawPano = r.panorama_url || `/cached_worlds/${inferredBiome}/panorama.webp`;
-      const [wx, wz] = gridOffsets[idx % gridOffsets.length];
+
+      let defaultX = 0;
+      let defaultZ = 0;
+      if (topo === "linear") {
+        defaultX = 0;
+        defaultZ = -idx * 220;
+      } else if (topo === "nature_open") {
+        // Nature environment: 4 cardinal directions, open expansion
+        const cardinalOffsets = [
+          [0, 0],       // Center
+          [0, -220],    // North
+          [220, 0],     // East
+          [0, 220],     // South
+          [-220, 0],    // West
+        ];
+        const [nx, nz] = cardinalOffsets[idx % cardinalOffsets.length];
+        defaultX = nx;
+        defaultZ = nz;
+      } else if (topo === "city_grid") {
+        defaultX = (idx % 2) * 220;
+        defaultZ = -Math.floor(idx / 2) * 220;
+      } else {
+        // hub_spoke
+        if (idx === 0) {
+          defaultX = 0;
+          defaultZ = 0;
+        } else {
+          const spokeOffsets = [
+            [0, -220],
+            [220, 0],
+            [0, 220],
+            [-220, 0],
+          ];
+          const [sx, sz] = spokeOffsets[(idx - 1) % spokeOffsets.length];
+          defaultX = sx;
+          defaultZ = sz;
+        }
+      }
+
+      const assignedPalette = r.visual_palette || inferRoomVisualPalette(r.name, rawTitle, inferredBiome);
 
       roomsMap[r.room_id] = {
         room_id: r.room_id,
         name: r.name,
         panorama_url: rawPano,
         depth_url: r.depth_url || `/cached_worlds/${inferredBiome}/depth.png`,
-        adjacent_room_ids: r.adjacent_room_ids || [],
+        adjacent_room_ids: Array.isArray(r.adjacent_room_ids) ? [...r.adjacent_room_ids] : [],
         mutation_level: r.mutation_level || 0.0,
         biome_type: inferredBiome,
         props: r.props || [],
-        worldX: typeof r.worldX === "number" ? r.worldX : wx,
-        worldZ: typeof r.worldZ === "number" ? r.worldZ : wz,
+        worldX: typeof r.worldX === "number" ? r.worldX : defaultX,
+        worldZ: typeof r.worldZ === "number" ? r.worldZ : defaultZ,
+        topology_type: r.topology_type || topo,
+        visual_palette: assignedPalette,
       };
 
       const rawNpcs = Array.isArray(r.npcs) && r.npcs.length > 0
@@ -828,16 +1020,51 @@ export const useWorldStore = create<WorldState>((set, get) => ({
       });
     });
 
-    // ensure all rooms form a connected walkable loop so every room can be reached on foot
     const orderedIds = Object.keys(roomsMap);
-    orderedIds.forEach((rid, idx) => {
-      const nextId = orderedIds[(idx + 1) % orderedIds.length];
-      const prevId = orderedIds[(idx - 1 + orderedIds.length) % orderedIds.length];
-      const existing = new Set(roomsMap[rid].adjacent_room_ids);
-      if (nextId && nextId !== rid) existing.add(nextId);
-      if (prevId && prevId !== rid) existing.add(prevId);
-      roomsMap[rid].adjacent_room_ids = Array.from(existing);
-    });
+
+    // establish strict topology-specific adjacencies
+    if (topo === "linear") {
+      // strictly 1D corridor: room i connects only to i-1 and i+1, NO circular loop!
+      orderedIds.forEach((rid, idx) => {
+        const adj: string[] = [];
+        if (idx > 0) adj.push(orderedIds[idx - 1]);
+        if (idx < orderedIds.length - 1) adj.push(orderedIds[idx + 1]);
+        roomsMap[rid].adjacent_room_ids = adj;
+      });
+    } else if (topo === "nature_open") {
+      // 4-directional open nature environment: NO LIMITS
+      orderedIds.forEach((rid, idx) => {
+        if (idx === 0) {
+          // Center connects in all 4 cardinal directions
+          roomsMap[rid].adjacent_room_ids = orderedIds.slice(1, 5);
+        } else {
+          // Surrounding zones connect back to center and adjacent perimeter neighbor
+          const nextIdx = 1 + ((idx) % (orderedIds.length - 1));
+          roomsMap[rid].adjacent_room_ids = [orderedIds[0], orderedIds[nextIdx]];
+        }
+      });
+    } else if (topo === "city_grid") {
+      // 2D grid orthogonal connections
+      orderedIds.forEach((rid, idx) => {
+        const col = idx % 2;
+        const row = Math.floor(idx / 2);
+        const adj: string[] = [];
+        if (col > 0 && orderedIds[idx - 1]) adj.push(orderedIds[idx - 1]);
+        if (col < 1 && orderedIds[idx + 1]) adj.push(orderedIds[idx + 1]);
+        if (row > 0 && orderedIds[idx - 2]) adj.push(orderedIds[idx - 2]);
+        if (orderedIds[idx + 2]) adj.push(orderedIds[idx + 2]);
+        roomsMap[rid].adjacent_room_ids = adj;
+      });
+    } else {
+      // hub & spoke: center connects to all spokes, spokes connect to center
+      orderedIds.forEach((rid, idx) => {
+        if (idx === 0) {
+          roomsMap[rid].adjacent_room_ids = orderedIds.slice(1, 4);
+        } else {
+          roomsMap[rid].adjacent_room_ids = [orderedIds[0]];
+        }
+      });
+    }
 
     const initialId =
       worldData.initial_room_id && roomsMap[worldData.initial_room_id]
@@ -847,7 +1074,8 @@ export const useWorldStore = create<WorldState>((set, get) => ({
     const initialRoom = roomsMap[initialId];
 
     set((state) => ({
-      worldTitle: worldData.title || "Architectural Chronicle",
+      worldTitle: rawTitle,
+      topologyType: topo,
       currentRoomId: initialId,
       rooms: roomsMap,
       npcs: npcsMap,
@@ -861,6 +1089,161 @@ export const useWorldStore = create<WorldState>((set, get) => ({
       },
       teleportTrigger: state.teleportTrigger + 1,
     }));
+  },
+
+  expandWorld: async (fromRoomId?: string, direction?: string) => {
+    const state = get();
+    if (state.isExpanding) return null;
+
+    const sourceRoomId = fromRoomId || state.currentRoomId;
+    const sourceRoom = state.rooms[sourceRoomId];
+    const topo = (sourceRoom?.topology_type || state.topologyType || "nature_open") as string;
+    const existingIds = Object.keys(state.rooms);
+
+    set({ isExpanding: true, diffusionProgress: 15 });
+
+    try {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8001";
+      const res = await fetch(`${apiUrl}/world/expand`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          world_id: state.worldTitle.toLowerCase().replace(/[^a-z0-9_-]/g, "_") || "world_active",
+          from_room_id: sourceRoomId,
+          direction: direction || (topo === "linear" ? "forward" : "north"),
+          world_prompt: state.worldTitle,
+          existing_room_ids: existingIds,
+          topology_type: topo,
+        }),
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        const nr = data.new_room;
+        if (nr && nr.room_id) {
+          const newRoom: WorldRoom = {
+            room_id: nr.room_id,
+            name: nr.name,
+            panorama_url: nr.panorama_url,
+            depth_url: nr.depth_url,
+            adjacent_room_ids: nr.adjacent_room_ids || [sourceRoomId],
+            mutation_level: nr.mutation_level || 0,
+            biome_type: nr.biome_type || sourceRoom?.biome_type || "desert_oasis",
+            props: nr.props || [],
+            worldX: nr.worldX,
+            worldZ: nr.worldZ,
+            topology_type: nr.topology_type || topo,
+            visual_palette: nr.visual_palette || inferRoomVisualPalette(nr.name, state.worldTitle, nr.biome_type),
+          };
+
+          const newNpcs = { ...state.npcs };
+          if (Array.isArray(nr.npcs)) {
+            nr.npcs.forEach((npc: any) => {
+              newNpcs[npc.npc_id] = {
+                npc_id: npc.npc_id,
+                name: npc.name,
+                room_id: nr.room_id,
+                persona_description: npc.persona_description,
+                thought_log: npc.thought_log || [],
+                active_plan: npc.active_plan,
+                inventory: npc.inventory || [],
+                hp: npc.hp || 100,
+                position: npc.position || { r: 500, theta: -0.22, phi: 1.65 },
+              };
+            });
+          }
+
+          const updatedSource = sourceRoom
+            ? {
+                ...sourceRoom,
+                adjacent_room_ids: Array.from(new Set([...(sourceRoom.adjacent_room_ids || []), nr.room_id])),
+              }
+            : null;
+
+          const updatedRooms = {
+            ...state.rooms,
+            ...(updatedSource ? { [sourceRoomId]: updatedSource } : {}),
+            [nr.room_id]: newRoom,
+          };
+
+          const firstNpc = Array.isArray(nr.npcs) && nr.npcs.length > 0 ? nr.npcs[0] : null;
+
+          set({
+            rooms: updatedRooms,
+            npcs: newNpcs,
+            isExpanding: false,
+            diffusionProgress: 100,
+            activeSubtitle: firstNpc
+              ? {
+                  npcId: firstNpc.npc_id,
+                  speaker: firstNpc.name,
+                  persona: firstNpc.persona_description,
+                  text: `Discovered new sector: ${nr.name}. Welcome, explorer.`,
+                  thoughtLog: firstNpc.thought_log?.[0],
+                  timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+                }
+              : state.activeSubtitle,
+          });
+
+          return newRoom;
+        }
+      }
+    } catch (err) {
+      console.warn("Continuous expansion fetch failed, synthesizing client-side:", err);
+    }
+
+    // Client-side fallback expansion so user never gets stuck even if offline
+    const nextIdx = existingIds.length + 1;
+    const fromX = sourceRoom?.worldX || 0;
+    const fromZ = sourceRoom?.worldZ || 0;
+    let newX = fromX;
+    let newZ = fromZ - 220;
+    if (topo === "linear") {
+      newX = 0;
+      newZ = direction === "backward" ? fromZ + 220 : fromZ - 220;
+    } else {
+      if (direction === "south") newZ = fromZ + 220;
+      else if (direction === "east") newX = fromX + 220;
+      else if (direction === "west") newX = fromX - 220;
+      else newZ = fromZ - 220;
+    }
+
+    const fallbackId = `room_expanded_${nextIdx}`;
+    const fallbackName = `${state.worldTitle.split("—")[0].trim()} - Sector ${nextIdx}`;
+
+    const fallbackRoom: WorldRoom = {
+      room_id: fallbackId,
+      name: fallbackName,
+      panorama_url: sourceRoom?.panorama_url || "/cached_worlds/desert_oasis/panorama.webp",
+      depth_url: sourceRoom?.depth_url || "/cached_worlds/desert_oasis/depth.png",
+      adjacent_room_ids: [sourceRoomId],
+      mutation_level: 0,
+      biome_type: sourceRoom?.biome_type || "desert_oasis",
+      props: [],
+      worldX: newX,
+      worldZ: newZ,
+      topology_type: topo,
+      visual_palette: inferRoomVisualPalette(fallbackName, state.worldTitle, sourceRoom?.biome_type),
+    };
+
+    const updatedSource = sourceRoom
+      ? {
+          ...sourceRoom,
+          adjacent_room_ids: Array.from(new Set([...(sourceRoom.adjacent_room_ids || []), fallbackId])),
+        }
+      : null;
+
+    set({
+      rooms: {
+        ...state.rooms,
+        ...(updatedSource ? { [sourceRoomId]: updatedSource } : {}),
+        [fallbackId]: fallbackRoom,
+      },
+      isExpanding: false,
+      diffusionProgress: 100,
+    });
+
+    return fallbackRoom;
   },
 
   initializeSync: () => {

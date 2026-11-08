@@ -60,6 +60,13 @@ class LightingConfig(BaseModel):
     fog_density: float = 0.015
 
 
+class RoomVisualPalette(BaseModel):
+    dominant_color: str = "#0284c7"
+    accent_color: str = "#38bdf8"
+    sky_tone: str = "#1e293b"
+    floor_tone: str = "#0f172a"
+
+
 class NodeState(BaseModel):
     # 360 panoramic room node definition
     room_id: str
@@ -72,6 +79,10 @@ class NodeState(BaseModel):
     lighting: LightingConfig = Field(default_factory=LightingConfig)
     npcs: List[NPCEntity] = Field(default_factory=list)
     props: List[PropEntity] = Field(default_factory=list)
+    worldX: Optional[float] = None
+    worldZ: Optional[float] = None
+    topology_type: Optional[str] = None
+    visual_palette: Optional[RoomVisualPalette] = None
 
 
 class QuestObjective(BaseModel):
@@ -89,6 +100,23 @@ class WorldGraph(BaseModel):
     initial_room_id: str
     rooms: List[NodeState] = Field(default_factory=list)
     quests: List[QuestObjective] = Field(default_factory=list)
+    topology_type: Optional[str] = "hub_spoke"
+
+
+class WorldExpandRequest(BaseModel):
+    world_id: str
+    from_room_id: str
+    direction: Optional[str] = "forward"
+    world_prompt: str
+    existing_room_ids: List[str] = Field(default_factory=list)
+    topology_type: Optional[str] = None
+
+
+class WorldExpandResponse(BaseModel):
+    new_room: NodeState
+    connected_room_id: str
+    world_id: str
+    topology_type: str
 
 
 class NPCInteractionRequest(BaseModel):

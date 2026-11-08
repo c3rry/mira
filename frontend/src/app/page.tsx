@@ -82,6 +82,8 @@ export default function Home() {
     toggleGodMode,
     setLastTelemetry,
     setActiveSubtitle,
+    expandWorld,
+    isExpanding,
   } = useWorldStore();
 
   const [backendHealth, setBackendHealth] = useState<string>("online");
@@ -850,6 +852,22 @@ export default function Home() {
                   {idx + 1}. {rooms[rId]?.name || rId}
                 </button>
               ))}
+              <button
+                onClick={(e) => {
+                  e.currentTarget.blur();
+                  expandWorld(currentRoomId);
+                }}
+                disabled={isExpanding}
+                className="px-2 py-0.5 text-[11px] border uppercase tracking-wider transition-all font-bold hover:opacity-90"
+                style={{
+                  backgroundColor: "rgba(20,25,35,0.75)",
+                  color: isExpanding ? theme.mutedText : theme.accentColor,
+                  borderColor: `${theme.panelBorder}88`,
+                }}
+                title="Continuously expand into new room [E]"
+              >
+                {isExpanding ? "Synthesizing..." : "+ Expand [E]"}
+              </button>
             </div>
           </footer>
         </>

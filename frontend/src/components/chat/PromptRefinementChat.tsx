@@ -314,7 +314,7 @@ export function PromptRefinementChat() {
 
               {clarifyingQuestions.map((q) => (
                 <div key={q.id} className="flex flex-col gap-1.5">
-                  <span className="text-[11px] font-semibold" style={{ color: theme.panelText }}>
+                  <span className="text-[11px] font-semibold" style={{ color: theme.accentText }}>
                     {q.question}
                   </span>
                   <div className="flex flex-wrap gap-1">

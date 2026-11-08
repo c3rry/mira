@@ -3,6 +3,7 @@ import asyncio
 import hashlib
 import json
 import logging
+import math
 import os
 from pathlib import Path
 import re
@@ -18,6 +19,7 @@ from backend.app.schemas import (
     NPCEntity,
     PropEntity,
     QuestObjective,
+    RoomVisualPalette,
     SphericalCoord,
     WorldGraph,
 )
@@ -153,18 +155,211 @@ def detect_theme_category(text: str, biome_hint: Optional[str] = None) -> str:
     return "space_station" if any(w in lower_text for w in ["alien", "star", "sky", "flight"]) else "desert_oasis"
 
 
+def detect_topology_type(text: str, biome_hint: Optional[str] = None) -> str:
+    # identify spatial topology: linear (subways/planes), nature_open (4-way unbounded), city_grid, or hub_spoke
+    lower_text = (text or "").lower()
+    if any(
+        k in lower_text
+        for k in [
+            "subway", "metro", "train", "carriage", "rail", "railway",
+            "plane", "airplane", "airliner", "cabin", "cockpit", "flight",
+            "corridor", "hallway", "tunnel", "pipe", "pipeline", "hyperloop",
+            "tram", "walkway", "aisle", "gangway"
+        ]
+    ):
+        return "linear"
+
+    # nature environments: no limits, always give all 4 directions!
+    if any(
+        k in lower_text
+        for k in [
+            "everest", "mountain", "himalaya", "peak", "summit", "ridge",
+            "trail", "path", "pass", "hike", "canyon", "gorge", "glacier",
+            "serac", "icefall", "wilds", "wilderness", "valley", "slope",
+            "forest", "jungle", "garden", "grove", "woods", "ocean", "sea",
+            "island", "desert", "dune", "dunes", "sahara", "oasis", "nile",
+            "giza", "pyramid", "sphinx", "mars", "moon", "neptune", "planet",
+            "nature", "alpine", "arctic", "tundra"
+        ]
+    ):
+        return "nature_open"
+
+    if any(
+        k in lower_text
+        for k in [
+            "city", "downtown", "seattle", "manhattan", "tokyo", "chicago",
+            "street", "avenue", "boulevard", "alley", "district", "quarter",
+            "blocks", "intersection", "metropolis", "urban", "grid"
+        ]
+    ):
+        return "city_grid"
+
+    return "hub_spoke"
+
+
+def generate_room_visual_palette(
+    room_name: str, prompt: str, biome: str
+) -> RoomVisualPalette:
+    # compute authentic visual colors to reflect the materials and sky/ground of each room
+    combined = f"{room_name} {prompt} {biome}".lower()
+
+    if any(k in combined for k in ["subway", "metro", "train", "carriage", "rail"]):
+        return RoomVisualPalette(
+            dominant_color="#475569",  # industrial brushed steel
+            accent_color="#f59e0b",    # transit amber / hazard gold
+            sky_tone="#334155",        # curved metallic ceiling
+            floor_tone="#0f172a",      # ribbed transit rubber floor
+        )
+    if any(k in combined for k in ["plane", "airplane", "flight", "cabin", "cockpit"]):
+        return RoomVisualPalette(
+            dominant_color="#3b82f6",  # pressurized aero blue
+            accent_color="#60a5fa",    # avionics display cyan
+            sky_tone="#1e3a8a",        # high-altitude stratosphere
+            floor_tone="#1e293b",      # cabin carpet slate
+        )
+    if any(k in combined for k in ["seattle", "emerald", "sound", "waterfront", "pier"]):
+        return RoomVisualPalette(
+            dominant_color="#0f766e",  # pac-nw emerald teal
+            accent_color="#22d3ee",    # rainy neon cyan
+            sky_tone="#1e293b",        # overcast twilight slate
+            floor_tone="#0f172a",      # wet asphalt
+        )
+    if any(k in combined for k in ["city", "downtown", "metropolis", "arcade", "cyber", "tokyo", "alley"]):
+        return RoomVisualPalette(
+            dominant_color="#7c3aed",  # neon violet
+            accent_color="#06b6d4",    # electric cyan
+            sky_tone="#0f172a",        # night sky
+            floor_tone="#18181b",      # dark concrete
+        )
+    if any(k in combined for k in ["everest", "himalaya", "glacier", "icefall", "snow", "peak", "alpine"]):
+        return RoomVisualPalette(
+            dominant_color="#0284c7",  # glacial azure
+            accent_color="#e0f2fe",    # pristine snow white
+            sky_tone="#38bdf8",        # high-altitude cerulean
+            floor_tone="#0c4a6e",      # deep crevasse blue
+        )
+    if any(k in combined for k in ["giza", "pyramid", "sphinx", "egypt", "desert", "sand", "oasis"]):
+        return RoomVisualPalette(
+            dominant_color="#d97706",  # sunlit sandstone
+            accent_color="#fbbf24",    # solar gold
+            sky_tone="#fed7aa",        # desert dusk
+            floor_tone="#78350f",      # limestone bedrock
+        )
+    if any(k in combined for k in ["rome", "roman", "colosseum", "pantheon", "forum"]):
+        return RoomVisualPalette(
+            dominant_color="#b45309",  # travertine bronze
+            accent_color="#f59e0b",    # imperial gold
+            sky_tone="#fef3c7",        # sunlit marble
+            floor_tone="#451a03",      # porphyry terra
+        )
+    if any(k in combined for k in ["babylon", "garden", "forest", "sylvan", "grove", "botanical"]):
+        return RoomVisualPalette(
+            dominant_color="#059669",  # lush jade
+            accent_color="#34d399",    # spring leaf
+            sky_tone="#134e4a",        # cedar canopy
+            floor_tone="#064e3b",      # mossy loam
+        )
+    if any(k in combined for k in ["neptune", "methane", "ice giant", "uranus"]):
+        return RoomVisualPalette(
+            dominant_color="#0284c7",  # methane cobalt
+            accent_color="#38bdf8",    # storm azure
+            sky_tone="#0c4a6e",        # deep atmosphere
+            floor_tone="#082f49",      # mantle ocean
+        )
+    if any(k in combined for k in ["space", "station", "orbital", "cosmos", "astrolabe", "observatory"]):
+        return RoomVisualPalette(
+            dominant_color="#3b82f6",  # orbital sapphire
+            accent_color="#93c5fd",    # starlight silver
+            sky_tone="#0f172a",        # cosmic void
+            floor_tone="#1e293b",      # titanium deck
+        )
+
+    return RoomVisualPalette(
+        dominant_color="#ca8a04",
+        accent_color="#fde047",
+        sky_tone="#1e293b",
+        floor_tone="#0f172a",
+    )
+
+
 def enrich_and_normalize_graph(
     graph: WorldGraph, prompt: str, biome_hint: Optional[str] = None
 ) -> WorldGraph:
-    # guarantee every room has custom panorama parameters, connected edges, and visible npcs
+    # guarantee every room has custom panorama parameters, connected edges, coordinates, and visible npcs
     theme_cat = detect_theme_category(prompt, biome_hint)
+    topology_type = detect_topology_type(f"{graph.title} {prompt}", biome_hint)
+    graph.topology_type = topology_type
+
     room_ids = [r.room_id for r in graph.rooms]
+    num_rooms = len(graph.rooms)
 
     for idx, room in enumerate(graph.rooms):
         b_type = detect_theme_category(f"{room.name} {prompt}", biome_hint or room.biome_type)
         room.biome_type = b_type
+        room.topology_type = topology_type
+        room.visual_palette = generate_room_visual_palette(room.name, prompt, b_type)
         base_pano = f"/cached_worlds/{b_type}/panorama.webp"
         base_depth = f"/cached_worlds/{b_type}/depth.png"
+
+        # assign context-appropriate spatial coordinates & adjacency vectors
+        if topology_type == "linear":
+            # strict 1D linear corridor (Z axis, spacing 220)
+            room.worldX = 0.0
+            room.worldZ = -float(idx) * 220.0
+            adj = []
+            if idx > 0:
+                adj.append(graph.rooms[idx - 1].room_id)
+            if idx < num_rooms - 1:
+                adj.append(graph.rooms[idx + 1].room_id)
+            room.adjacent_room_ids = adj
+        elif topology_type == "nature_open":
+            # 4-way unbounded open nature exploration: NO LIMITS
+            cardinal_offsets = [
+                (0.0, 0.0),      # Center / Base camp
+                (0.0, -220.0),   # North Expanse
+                (220.0, 0.0),    # East Ridge
+                (0.0, 220.0),    # South Basin
+                (-220.0, 0.0),   # West Vista
+            ]
+            wx, wz = cardinal_offsets[idx % len(cardinal_offsets)]
+            room.worldX = wx
+            room.worldZ = wz
+            if idx == 0:
+                room.adjacent_room_ids = [r.room_id for i, r in enumerate(graph.rooms) if i != 0]
+            else:
+                room.adjacent_room_ids = [graph.rooms[0].room_id]
+        elif topology_type == "city_grid":
+            # 2D city street intersections (2x2 or 2x3 block grid)
+            col = idx % 2
+            row = idx // 2
+            room.worldX = float(col) * 220.0
+            room.worldZ = -float(row) * 220.0
+            adj = []
+            if col > 0:
+                adj.append(graph.rooms[idx - 1].room_id)
+            if col < 1 and (idx + 1) < num_rooms:
+                adj.append(graph.rooms[idx + 1].room_id)
+            if row > 0:
+                adj.append(graph.rooms[idx - 2].room_id)
+            if (idx + 2) < num_rooms:
+                adj.append(graph.rooms[idx + 2].room_id)
+            room.adjacent_room_ids = adj
+        else:  # hub_spoke
+            if idx == 0:
+                room.worldX = 0.0
+                room.worldZ = 0.0
+                room.adjacent_room_ids = [r.room_id for i, r in enumerate(graph.rooms) if i != 0][:3]
+            else:
+                spoke_offsets = [
+                    (0.0, -220.0),   # North
+                    (220.0, 0.0),    # East
+                    (0.0, 220.0),    # South
+                    (-220.0, 0.0),   # West
+                ]
+                sx, sz = spoke_offsets[(idx - 1) % len(spoke_offsets)]
+                room.worldX = sx
+                room.worldZ = sz
+                room.adjacent_room_ids = [graph.rooms[0].room_id]
 
         q_room = urllib.parse.quote(room.name)
         q_prompt = urllib.parse.quote(prompt[:100])
@@ -266,6 +461,186 @@ def enrich_and_normalize_graph(
         graph.initial_room_id = graph.rooms[0].room_id
 
     return graph
+
+
+def generate_expanded_room(
+    world_id: str,
+    from_room_id: str,
+    direction: Optional[str],
+    world_prompt: str,
+    existing_room_ids: List[str],
+    from_room: Optional[NodeState] = None,
+    topology_type: Optional[str] = None,
+) -> NodeState:
+    # Synthesizes a new authentic, connected room extending the world frontier
+    clean_prompt = (world_prompt or "").strip() or "Architectural Zone"
+    topo = topology_type or detect_topology_type(clean_prompt)
+    theme = detect_theme_category(clean_prompt)
+    next_idx = len(existing_room_ids) + 1
+    digest = hashlib.md5(f"{world_id}_{next_idx}_{clean_prompt}".encode("utf-8")).hexdigest()[:6]
+    new_room_id = f"room_{digest}_{next_idx}"
+
+    if from_room and from_room.worldX is not None and from_room.worldZ is not None:
+        from_x = from_room.worldX
+        from_z = from_room.worldZ
+    else:
+        if topo == "linear":
+            from_x = 0.0
+            from_z = -float(max(0, len(existing_room_ids) - 1)) * 220.0
+        else:
+            from_x = 0.0
+            from_z = 0.0
+
+    dir_lower = (direction or "forward").lower()
+    if topo == "linear":
+        new_x = from_x
+        # forward extends negative Z, backward extends positive Z
+        new_z = from_z + 220.0 if dir_lower in ["backward", "back", "south", "down"] else from_z - 220.0
+    elif topo == "nature_open" or topo == "city_grid":
+        # NO LIMITS: full 4-directional continuous exploration in all 4 cardinal directions!
+        if dir_lower in ["north", "forward", "up"]:
+            new_x, new_z = from_x, from_z - 220.0
+        elif dir_lower in ["south", "backward", "down"]:
+            new_x, new_z = from_x, from_z + 220.0
+        elif dir_lower in ["east", "right"]:
+            new_x, new_z = from_x + 220.0, from_z
+        elif dir_lower in ["west", "left"]:
+            new_x, new_z = from_x - 220.0, from_z
+        else:
+            cardinals = [
+                (from_x, from_z - 220.0),
+                (from_x + 220.0, from_z),
+                (from_x, from_z + 220.0),
+                (from_x - 220.0, from_z),
+            ]
+            new_x, new_z = cardinals[(next_idx - 1) % len(cardinals)]
+    else:  # hub_spoke
+        ang = ((next_idx - 1) * 0.785)
+        new_x = 220.0 * math.sin(ang)
+        new_z = -220.0 * math.cos(ang)
+
+    # Evocative naming synthesis based on prompt & topology
+    lower_p = clean_prompt.lower()
+    if any(k in lower_p for k in ["subway", "metro", "train"]):
+        car_titles = [
+            ("Carriage Beta: Passenger Lounge", "Stainless steel passenger cabin with overhead handrails and illuminated transit route maps", "Conductor Ellis", "Transit conductor verifying passenger tickets and station interchanges."),
+            ("Carriage Gamma: Dining & Bistro Car", "Art-deco dining carriage with polished mahogany tables and warm amber lamps", "Chef Armand", "Rail steward serving warm tea and pastries along the line."),
+            ("Carriage Delta: Observation Vista", "Glass-domed panoramic observatory car surveying the subterranean tracks", "Navigator Silas", "Signalman monitoring the switch tracks and tunnel lanterns."),
+            ("Carriage Epsilon: Freight & Machine Hold", "Industrial engine compartment humming with bronze dynamos and pneumatic valves", "Chief Engineer Vance", "Master mechanic maintaining the electric traction motors."),
+        ]
+        name, desc, npc_n, npc_p = car_titles[(next_idx - 1) % len(car_titles)]
+    elif any(k in lower_p for k in ["plane", "airplane", "flight"]):
+        plane_titles = [
+            ("Forward First Class Cabin", "Pressurized leather interior with panoramic curved portholes overlooking cloud seas", "Purser Claire", "Chief flight purser offering warm hospitality at cruising altitude."),
+            ("Flight Deck Navigation Vestibule", "Avionics threshold gleaming with illuminated altimeters and celestial heading gyros", "First Officer Ray", "Co-pilot charting celestial vectors through the upper jetstream."),
+            ("Mid-Fuselage Sky Galley", "Sleek composite galley with illuminated service carts and soft blue cabin illumination", "Attendant Devon", "Flight attendant preparing refreshments for transcontinental travelers."),
+            ("Aft Panorama Lounge", "Observation seating at the tail of the aircraft surveying the vast contrails and twilight horizon", "Captain Sterling", "Senior captain briefing passengers on atmospheric crossing waypoints."),
+        ]
+        name, desc, npc_n, npc_p = plane_titles[(next_idx - 1) % len(plane_titles)]
+    elif any(k in lower_p for k in ["seattle"]):
+        seattle_titles = [
+            ("Pike Place Waterfront Arcade", "Historic brick market arcade overlooking Elliott Bay under misty Pacific Northwest skies", "Fishmonger Sam", "Market vendor reciting the history of the century-old public market."),
+            ("Pioneer Square Pergola Promenade", "Victorian iron pergola and cobblestone square ringed by illuminated cafes", "Curator Maeve", "Urban historian preserving the Klondike Gold Rush archives."),
+            ("Westlake Transit Mall", "Sleek elevated monorail platform and pedestrian promenade amidst misted skyscrapers", "Conductor Roy", "Monorail engineer guiding travelers between downtown and the Seattle Center."),
+            ("Elliott Bay Pier Promenade", "Cedar boardwalk pier extending into Puget Sound with views of the snow-capped Olympics", "Captain Thorne", "Ferry captain docking the cross-sound vessel at sunset."),
+        ]
+        name, desc, npc_n, npc_p = seattle_titles[(next_idx - 1) % len(seattle_titles)]
+    elif any(k in lower_p for k in ["everest", "mountain", "himalaya"]):
+        everest_titles = [
+            ("Khumbu High Serac Camp", "Wind-hardened expedition tent platform perched above colossal blue ice pinnacles", "Dawa Sherpa", "Veteran route-fixer securing safety lines across the icefall."),
+            ("Lhotse Face Traverses", "Sheer blue ice wall reflecting the sun with ascending fixed ropes", "Dr. Chen, High Altitude Medic", "Expedition doctor monitoring physiological adaptation."),
+            ("Hillary Step Rock Crest", "Knife-edge rock ridge between Nepal and Tibet under dark indigo sky", "Pasang the Guide", "Summit veteran pointing out the Kangchenjunga massif on the horizon."),
+            ("South Summit Cornice", "Windswept snow cornice overlooking the endless Himalayan sea of peaks", "Tashi, Cairn Chronicler", "Chronicler leaving prayer flags at the high vantage point."),
+        ]
+        name, desc, npc_n, npc_p = everest_titles[(next_idx - 1) % len(everest_titles)]
+    elif any(k in lower_p for k in ["giza", "pyramid", "sphinx", "egypt"]):
+        giza_titles = [
+            ("Western Mastaba Field", "Ancient limestone offering chapels stretching into the sunlit western plateau", "Scribe Sennefer", "Chronicler recording sacred funerary liturgies upon carved limestone stelae."),
+            ("Causeway of Khafre", "Monumental stone processional roadway bridging the valley temple to the second pyramid", "Overseer Rahotep", "Architect surveying the astronomical alignment with the morning star."),
+            ("Valley Temple Porphyry Court", "Colossal monolithic red granite hall illuminated by clerestory sunlight", "Priestess Meritaten", "Keeper of the sacred libations and alabaster unguent jars."),
+            ("Plateau South Horizon", "Windswept desert sands surveying the southern pyramid horizons under the solar disc", "Pathfinder Tariq", "Desert navigator guiding caravans along the ancient trade routes."),
+        ]
+        name, desc, npc_n, npc_p = giza_titles[(next_idx - 1) % len(giza_titles)]
+    else:
+        cardinal_name = dir_lower.capitalize() if dir_lower in ["north", "south", "east", "west"] else "Quadrant"
+        name = f"{clean_prompt[:18]} - {cardinal_name} Sector {next_idx}"
+        desc = f"Newly expanded continuous natural quadrant within {clean_prompt}."
+        npc_n = f"Guardian of Sector {next_idx}"
+        npc_p = f"Resident scout charting the continuous 4-directional frontier of {clean_prompt}."
+
+    palette = generate_room_visual_palette(name, clean_prompt, theme)
+    from_id = from_room.room_id if from_room else from_room_id
+    adj_ids = [from_id] if from_id else []
+
+    safe_world = re.sub(r"[^a-zA-Z0-9_-]", "", world_id or "world_default")
+    safe_room = re.sub(r"[^a-zA-Z0-9_-]", "", new_room_id)
+
+    new_node = NodeState(
+        room_id=new_room_id,
+        name=name,
+        biome_type=theme,
+        panorama_url=f"/generated_worlds/{safe_world}/{safe_room}_panorama.webp",
+        depth_url=f"/generated_worlds/{safe_world}/{safe_room}_depth.png",
+        adjacent_room_ids=adj_ids,
+        mutation_level=0.0,
+        lighting=LightingConfig(
+            ambient_color=palette.dominant_color,
+            ambient_intensity=1.1,
+            fog_color=palette.sky_tone,
+            fog_density=0.006,
+        ),
+        npcs=[
+            NPCEntity(
+                npc_id=f"npc_{new_room_id}",
+                name=npc_n,
+                room_id=new_room_id,
+                persona_description=npc_p,
+                thought_log=[
+                    f"[MEMORY] Stationed in {name}.",
+                    "[REFLECTION] The world expands as traveler approaches the boundary.",
+                    f"[PLANNING] Counsel the traveler in {name}.",
+                    f"[ACTION] Welcome traveler to this newly charted sector.",
+                ],
+                active_plan=f"Survey {name}.",
+                inventory=["sector_map", "traveler_key"],
+                hp=100,
+                position=SphericalCoord(r=500.0, theta=-0.22, phi=1.65),
+            )
+        ],
+        props=[
+            PropEntity(
+                prop_id=f"prop_{new_room_id}",
+                name=f"{name} Terminal",
+                mesh_url="/cached_worlds/models/terminal.glb",
+                position=SphericalCoord(r=500.0, theta=0.38, phi=1.70),
+                scale=1.0,
+                interactive=True,
+            )
+        ],
+        worldX=round(new_x, 1),
+        worldZ=round(new_z, 1),
+        topology_type=topo,
+        visual_palette=palette,
+    )
+
+    # Spawn asynchronous background panorama generation so user can walk into it
+    import threading
+    threading.Thread(
+        target=generate_room_panorama_and_depth,
+        kwargs={
+            "world_id": world_id,
+            "room_id": new_node.room_id,
+            "room_name": new_node.name,
+            "world_prompt": clean_prompt,
+            "biome_type": theme,
+            "room_idx": next_idx,
+            "ambient_color": palette.dominant_color,
+            "fog_color": palette.sky_tone,
+        },
+        daemon=True,
+    ).start()
+
+    return new_node
 
 
 def synthesize_prompt_world_graph(

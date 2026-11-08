@@ -53,6 +53,9 @@ export function CameraController({
   const teleportTrigger = useWorldStore((state) => state.teleportTrigger);
   const setCurrentRoom = useWorldStore((state) => state.setCurrentRoom);
   const setPlayerPosition = useWorldStore((state) => state.setPlayerPosition);
+  const expandWorld = useWorldStore((state) => state.expandWorld);
+  const isExpanding = useWorldStore((state) => state.isExpanding);
+  const lastAutoExpandTime = useRef<number>(0);
 
   const keysRef = useRef<{
     forward: boolean;
@@ -239,24 +242,41 @@ export function CameraController({
         if (closestRoomId !== currentRoomId && closestDist < distToCurrent - 12.0) {
           setCurrentRoom(closestRoomId, true);
         }
+
+        // continuously expand environment when walking near boundary of open frontiers
+        const now = performance.now();
+        if (
+          !isExpanding &&
+          now - lastAutoExpandTime.current > 4000 &&
+          (clampedZ <= minZ + 35 || clampedZ >= maxZ - 35 || clampedX <= minX + 35 || clampedX >= maxX - 35)
+        ) {
+          lastAutoExpandTime.current = now;
+          let dir = "forward";
+          if (clampedZ <= minZ + 35) dir = "forward";
+          else if (clampedZ >= maxZ - 35) dir = "backward";
+          else if (clampedX >= maxX - 35) dir = "east";
+          else if (clampedX <= minX + 35) dir = "west";
+          expandWorld(closestRoomId, dir);
+        }
       }
 
-      walkBobPhase.current += delta * (sprint ? 12.0 : 8.5);
+      walkBobPhase.current += delta * (sprint ? 5.5 : 4.0);
     } else {
       walkBobPhase.current = THREE.MathUtils.lerp(walkBobPhase.current, 0, 0.15);
     }
 
-    // dynamic speed FOV expansion for immediate kinetic forward rush
-    const targetFov = isMoving ? (sprint ? 84 : 79) : 75;
+    // smooth stable FOV (no jarring zoom wobble on key taps)
+    const targetFov = sprint ? 76.5 : 75.0;
     if ("fov" in camera && typeof (camera as any).fov === "number") {
       const persCamera = camera as THREE.PerspectiveCamera;
-      persCamera.fov = THREE.MathUtils.lerp(persCamera.fov, targetFov, delta * 8.0);
+      persCamera.fov = THREE.MathUtils.lerp(persCamera.fov, targetFov, delta * 4.0);
       persCamera.updateProjectionMatrix();
     }
 
-    // natural footstep head-bob with gentle walking gait (subtle 0.05 amplitude, never violent bounce)
-    const bobOffset = isMoving ? Math.sin(walkBobPhase.current) * 0.05 : 0;
-    camera.position.y = THREE.MathUtils.lerp(camera.position.y, bobOffset, 0.22);
+    // ultra-subtle, smooth walking displacement without angular pitch rocking
+    const bobOffset = isMoving ? Math.sin(walkBobPhase.current) * 0.008 : 0;
+    camera.position.y = THREE.MathUtils.lerp(camera.position.y, bobOffset, 0.15);
+    controls.target.y = THREE.MathUtils.lerp(controls.target.y, bobOffset, 0.15);
 
     // anchor skybox sphere at active room origin so walking forward physically moves the player through the 3D space
     const currentRoom = rooms[currentRoomId];
