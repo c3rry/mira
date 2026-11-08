@@ -1,7 +1,8 @@
 # Mira: 3D Generative RPG Engine
 Photorealistic 360 Degree Spherical Neural Diffusion, Local Nemotron-70B Cognitive Cascade, and Topological World Fusion.
 
----
+ps. You see two contributors because I switched to my lab computer in which was signed in with someone else's account, about half way through, I apologize for the inconvenience
+
 
 ## Visual Showcase
 
