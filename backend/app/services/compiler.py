@@ -12,6 +12,7 @@ from backend.app.services.gemini_generator import (
     generate_world_graph,
     synthesize_prompt_world_graph,
 )
+from backend.app.services.fusion_logger import trace_compilation_start
 
 logger = logging.getLogger("mira.compiler")
 
@@ -30,6 +31,7 @@ async def compile_world_with_circuit_breaker(
         else CIRCUIT_BREAKER_TIMEOUT_SECONDS
     )
     start_time = time.perf_counter()
+    trace_compilation_start("compile_request", prompt, biome_hint)
 
     try:
         # wrap generative call in strict circuit breaker timeout
@@ -54,9 +56,13 @@ async def compile_world_with_circuit_breaker(
             f"[CircuitBreaker] Upstream generation timed out after {effective_timeout}s. Returning fallback."
         )
 
+        is_cached_match = any(
+            k in prompt.lower()
+            for k in ["giza", "pyramid", "egypt", "sphinx", "pharaoh", "slow", "failing"]
+        ) or not prompt.strip()
         fallback_graph = (
             cached_world.model_copy(deep=True)
-            if cached_world
+            if (cached_world and is_cached_match)
             else synthesize_prompt_world_graph(prompt=prompt, biome_hint=biome_hint)
         )
 
@@ -76,9 +82,13 @@ async def compile_world_with_circuit_breaker(
             f"[CircuitBreaker] Upstream error ({type(exc).__name__}: {exc}). Returning fallback."
         )
 
+        is_cached_match = any(
+            k in prompt.lower()
+            for k in ["giza", "pyramid", "egypt", "sphinx", "pharaoh", "slow", "failing"]
+        ) or not prompt.strip()
         fallback_graph = (
             cached_world.model_copy(deep=True)
-            if cached_world
+            if (cached_world and is_cached_match)
             else synthesize_prompt_world_graph(prompt=prompt, biome_hint=biome_hint)
         )
 

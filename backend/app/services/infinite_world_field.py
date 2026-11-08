@@ -4,6 +4,7 @@
 
 import math
 import hashlib
+import re
 from typing import Any, Dict, List, Optional, Tuple
 import numpy as np
 from PIL import Image, ImageDraw, ImageFilter
@@ -39,6 +40,7 @@ class InfiniteWorldField:
 
     def __init__(self, world_prompt: str = "The Necropolis of Giza", seed: int = 42):
         self.world_prompt = world_prompt.lower()
+        self.prompt = self.world_prompt
         self.seed = seed
         self.archetype = self._classify_archetype(self.world_prompt)
 
@@ -177,119 +179,171 @@ class InfiniteWorldField:
     def _sample_desert_field(
         self, x: float, z: float, dist: float, deg: float, ring: int, moisture: float, elevation: float
     ) -> Dict[str, Any]:
-        # Egyptian Giza Necropolis Infinite Macro-Biome Field
-        # Center (dist < 100): Grand Pyramids Complex & Forecourt
-        # East (deg 45..135): Sphinx Sanctuary, Papyrus Nile Canal, Water Reflection Basins, River Quays
-        # South (deg 135..225): Lush Date Palm Oasis, Cedarwood Solar Barques, Sacred Wells, Terraced Gardens
-        # West (deg 225..315): High Desert Sandcrest, Wind-Carved Basalt Mesas, Alabaster Mastaba Terraces
-        # North (deg 315..360 or 0..45): Royal Necropolis Hypostyle Halls, Ascending Corbelled Granite Vaults
+        is_egypt = any(k in self.prompt.lower() for k in ["giza", "pyramid", "egypt", "sphinx", "pharaoh"])
 
-        if dist < 90:
-            sector_type = "court"
-            name = "Great Pyramid Forecourt"
-            desc = "Monumental limestone courtyard facing the three great pyramid massifs at golden hour."
-            dominant_feature = "pyramids"
-            sky_hex = "#1d4ed8"
-            floor_hex = "#eab664"
-            accent_hex = "#facc15"
-            npc_title = "Khaemwaset, Royal Architect"
-            npc_role = "Chief Overseer of Royal Works and keeper of sacred cubits."
-        elif 45 <= deg < 135:
-            # Eastern Nile Sector
-            if dist < 320:
-                sector_type = "sphinx"
-                name = "Sanctuary of the Great Sphinx"
-                desc = "Carved limestone monolith with the recumbent lion body, royal nemes, and Dream Stela altar."
-                dominant_feature = "sphinx"
-                floor_hex = "#e5b162"
-            elif dist < 580:
-                sector_type = "canal"
-                name = f"Nile Canal Reflection Promenade - Sector {ring}"
-                desc = "Turquoise reflecting basin flanked by papyrus reed colonnades and white limestone quays."
-                dominant_feature = "canal"
-                floor_hex = "#38bdf8"
+        if is_egypt:
+            if dist < 90:
+                sector_type = "court"
+                name = "Great Pyramid Forecourt"
+                desc = "Monumental limestone courtyard facing the three great pyramid massifs at golden hour."
+                dominant_feature = "pyramids"
+                sky_hex = "#1d4ed8"
+                floor_hex = "#eab664"
+                accent_hex = "#facc15"
+                npc_title = "Khaemwaset, Royal Architect"
+                npc_role = "Chief Overseer of Royal Works and keeper of sacred cubits."
+            elif 45 <= deg < 135:
+                # Eastern Nile Sector
+                if dist < 320:
+                    sector_type = "sphinx"
+                    name = "Sanctuary of the Great Sphinx"
+                    desc = "Carved limestone monolith with the recumbent lion body, royal nemes, and Dream Stela altar."
+                    dominant_feature = "sphinx"
+                    floor_hex = "#e5b162"
+                elif dist < 580:
+                    sector_type = "canal"
+                    name = f"Nile Canal Reflection Promenade - Sector {ring}"
+                    desc = "Turquoise reflecting basin flanked by papyrus reed colonnades and white limestone quays."
+                    dominant_feature = "canal"
+                    floor_hex = "#38bdf8"
+                else:
+                    sector_type = "riverfront"
+                    name = f"Eastern River Port & Royal Harbor - Tier {ring}"
+                    desc = "Expansive sandstone wharf with trading barques, ceremonial pylons, and fertile river reeds."
+                    dominant_feature = "harbor"
+                    floor_hex = "#0284c7"
+                sky_hex = "#2563eb"
+                accent_hex = "#38bdf8"
+                npc_title = f"High Priestess Neferu of Tier {ring}"
+                npc_role = "Keeper of the eastern dawn rites and sacred waters."
+            elif 135 <= deg < 225:
+                # Southern Oasis Sector
+                if dist < 320:
+                    sector_type = "solar_barque"
+                    name = "Court of the Solar Barque"
+                    desc = "Sacred Lebanon cedarwood solar vessel with golden oars resting under a star-vaulted ceiling."
+                    dominant_feature = "solar_barque"
+                    floor_hex = "#92400e"
+                elif dist < 580:
+                    sector_type = "oasis"
+                    name = f"Verdant Date Palm Oasis - Sector {ring}"
+                    desc = "Emerald oasis grove with towering date palms, natural freshwater spring pools, and shade canopies."
+                    dominant_feature = "oasis_grove"
+                    floor_hex = "#16a34a"
+                else:
+                    sector_type = "valley"
+                    name = f"Sacred Alabaster Water Terraces - Tier {ring}"
+                    desc = "Tiered freshwater reservoirs carved into desert limestone surrounded by blooming papyrus and palms."
+                    dominant_feature = "terraced_pools"
+                    floor_hex = "#059669"
+                sky_hex = "#0f172a" if sector_type == "solar_barque" else "#1e3a8a"
+                accent_hex = "#facc15"
+                npc_title = f"Master Navigator Seneb of Sector {ring}"
+                npc_role = "Navigator of celestial pathways and keeper of the southern springs."
+            elif 225 <= deg < 315:
+                # Western Desert Plateau Sector
+                if dist < 320:
+                    sector_type = "sandcrest"
+                    name = "Giza Plateau Sandcrest"
+                    desc = "Elevated sandstone ridge overlooking the undulating desert dunes and distant necropolis silhouette."
+                    dominant_feature = "dunes"
+                    floor_hex = "#d97706"
+                elif dist < 580:
+                    sector_type = "mastaba"
+                    name = f"Western Mastaba Terrace - Sector {ring}"
+                    desc = "Ancient flat-roofed rectangular royal tomb structures made of fine Tura limestone blocks."
+                    dominant_feature = "mastabas"
+                    floor_hex = "#b45309"
+                else:
+                    sector_type = "canyon"
+                    name = f"Wind-Carved Basalt Gorge - Tier {ring}"
+                    desc = "Dramatic stratified sandstone canyon walls with carved hieroglyphic friezes and light shafts."
+                    dominant_feature = "canyon"
+                    floor_hex = "#78350f"
+                sky_hex = "#1e40af"
+                accent_hex = "#fbbf24"
+                npc_title = f"Pathfinder Tariq of Sector {ring}"
+                npc_role = "Desert scout guarding the western caravan ridges."
             else:
-                sector_type = "riverfront"
-                name = f"Eastern River Port & Royal Harbor - Tier {ring}"
-                desc = "Expansive sandstone wharf with trading barques, ceremonial pylons, and fertile river reeds."
-                dominant_feature = "harbor"
-                floor_hex = "#0284c7"
-            sky_hex = "#2563eb"
-            accent_hex = "#38bdf8"
-            npc_title = f"High Priestess Neferu of Tier {ring}"
-            npc_role = "Keeper of the eastern dawn rites and sacred waters."
-        elif 135 <= deg < 225:
-            # Southern Oasis Sector
-            if dist < 320:
-                sector_type = "solar_barque"
-                name = "Court of the Solar Barque"
-                desc = "Sacred Lebanon cedarwood solar vessel with golden oars resting under a star-vaulted ceiling."
-                dominant_feature = "solar_barque"
-                floor_hex = "#92400e"
-            elif dist < 580:
-                sector_type = "oasis"
-                name = f"Verdant Date Palm Oasis - Sector {ring}"
-                desc = "Emerald oasis grove with towering date palms, natural freshwater spring pools, and shade canopies."
-                dominant_feature = "oasis_grove"
-                floor_hex = "#16a34a"
-            else:
-                sector_type = "valley"
-                name = f"Sacred Alabaster Water Terraces - Tier {ring}"
-                desc = "Tiered freshwater reservoirs carved into desert limestone surrounded by blooming papyrus and palms."
-                dominant_feature = "terraced_pools"
-                floor_hex = "#059669"
-            sky_hex = "#0f172a" if sector_type == "solar_barque" else "#1e3a8a"
-            accent_hex = "#facc15"
-            npc_title = f"Master Navigator Seneb of Sector {ring}"
-            npc_role = "Navigator of celestial pathways and keeper of the southern springs."
-        elif 225 <= deg < 315:
-            # Western Desert Plateau Sector
-            if dist < 320:
-                sector_type = "sandcrest"
-                name = "Giza Plateau Sandcrest"
-                desc = "Elevated sandstone ridge overlooking the undulating desert dunes and distant necropolis silhouette."
-                dominant_feature = "dunes"
-                floor_hex = "#d97706"
-            elif dist < 580:
-                sector_type = "mastaba"
-                name = f"Western Mastaba Terrace - Sector {ring}"
-                desc = "Ancient flat-roofed rectangular royal tomb structures made of fine Tura limestone blocks."
-                dominant_feature = "mastabas"
-                floor_hex = "#b45309"
-            else:
-                sector_type = "canyon"
-                name = f"Wind-Carved Basalt Gorge - Tier {ring}"
-                desc = "Dramatic stratified sandstone canyon walls with carved hieroglyphic friezes and light shafts."
-                dominant_feature = "canyon"
-                floor_hex = "#78350f"
-            sky_hex = "#1e40af"
-            accent_hex = "#fbbf24"
-            npc_title = f"Pathfinder Tariq of Sector {ring}"
-            npc_role = "Desert scout guarding the western caravan ridges."
+                # Northern Royal Necropolis Sector
+                if dist < 320:
+                    sector_type = "khufu_gallery"
+                    name = "Grand Gallery of Khufu"
+                    desc = "Interior ascending red-granite corbelled vault illuminated by glowing bronze oil torches."
+                    dominant_feature = "corbelled_vault"
+                    floor_hex = "#7c2d12"
+                elif dist < 580:
+                    sector_type = "hypostyle"
+                    name = f"Northern Royal Hypostyle Hall - Sector {ring}"
+                    desc = "Monumental hall of gigantic carved sandstone lotus columns supporting massive stone lintels."
+                    dominant_feature = "colonnade"
+                    floor_hex = "#c29156"
+                else:
+                    sector_type = "citadel"
+                    name = f"Upper Necropolis Fortress Citadel - Tier {ring}"
+                    desc = "High plateau citadel overlooking the Great Pyramids with monumental watchtowers and golden flags."
+                    dominant_feature = "citadel"
+                    floor_hex = "#a16207"
+                sky_hex = "#291811" if sector_type == "khufu_gallery" else "#1d4ed8"
+                accent_hex = "#f59e0b"
+                npc_title = f"Scribe Merer of Sector {ring}"
+                npc_role = "Chronicler of royal stone transport and archive ledger inspector."
         else:
-            # Northern Royal Necropolis Sector
-            if dist < 320:
-                sector_type = "khufu_gallery"
-                name = "Grand Gallery of Khufu"
-                desc = "Interior ascending red-granite corbelled vault illuminated by glowing bronze oil torches."
-                dominant_feature = "corbelled_vault"
-                floor_hex = "#7c2d12"
-            elif dist < 580:
-                sector_type = "hypostyle"
-                name = f"Northern Royal Hypostyle Hall - Sector {ring}"
-                desc = "Monumental hall of gigantic carved sandstone lotus columns supporting massive stone lintels."
-                dominant_feature = "colonnade"
-                floor_hex = "#c29156"
+            # Genuine general desert landscape (dunes, canyon, oasis, mesa)
+            if dist < 90:
+                sector_type = "dune_origin"
+                name = "Desert Sandcrest Threshold"
+                desc = "Sweeping golden sand dunes stretching to the vast open sky under radiant sunlight."
+                dominant_feature = "dunes"
+                sky_hex = "#0284c7"
+                floor_hex = "#d97706"
+                accent_hex = "#fbbf24"
+                npc_title = "Desert Nomad Elder"
+                npc_role = "Guide of the wind-swept sand trails."
+            elif 45 <= deg < 135:
+                # East: canyon wash
+                sector_type = "canyon_wash"
+                name = f"Arid Canyon Wash - Sector {ring}"
+                desc = "Dry river canyon carved through towering sandstone cliffs with desert brush."
+                dominant_feature = "canyon"
+                sky_hex = "#0369a1"
+                floor_hex = "#b45309"
+                accent_hex = "#f59e0b"
+                npc_title = f"Canyon Scout of Sector {ring}"
+                npc_role = "Tracking natural paths across the dry gulch."
+            elif 135 <= deg < 225:
+                # South: oasis spring
+                sector_type = "oasis_spring"
+                name = f"Hidden Desert Spring - Sector {ring}"
+                desc = "Freshwater oasis basin surrounded by date palms and wild desert grasses."
+                dominant_feature = "oasis"
+                sky_hex = "#0ea5e9"
+                floor_hex = "#15803d"
+                accent_hex = "#10b981"
+                npc_title = f"Oasis Keeper of Sector {ring}"
+                npc_role = "Guarding the freshwater spring."
+            elif 225 <= deg < 315:
+                # West: sandstone mesa
+                sector_type = "mesa"
+                name = f"Sun-Baked Sandstone Mesa - Sector {ring}"
+                desc = "Flat-topped red sandstone mesa surveying the undulating dune sea."
+                dominant_feature = "mesa"
+                sky_hex = "#0284c7"
+                floor_hex = "#c2410c"
+                accent_hex = "#ea580c"
+                npc_title = f"Mesa Pathfinder of Sector {ring}"
+                npc_role = "Watching the sunset across the dunes."
             else:
-                sector_type = "citadel"
-                name = f"Upper Necropolis Fortress Citadel - Tier {ring}"
-                desc = "High plateau citadel overlooking the Great Pyramids with monumental watchtowers and golden flags."
-                dominant_feature = "citadel"
-                floor_hex = "#a16207"
-            sky_hex = "#291811" if sector_type == "khufu_gallery" else "#1d4ed8"
-            accent_hex = "#f59e0b"
-            npc_title = f"Scribe Merer of Sector {ring}"
-            npc_role = "Chronicler of royal stone transport and archive ledger inspector."
+                # North: high dunes
+                sector_type = "high_dunes"
+                name = f"High Dune Crest - Sector {ring}"
+                desc = "Monumental undulating sand dunes sculpted by prevailing desert trade winds."
+                dominant_feature = "dunes"
+                sky_hex = "#38bdf8"
+                floor_hex = "#f59e0b"
+                accent_hex = "#fef08a"
+                npc_title = f"Dune Wayfarer of Sector {ring}"
+                npc_role = "Navigating by celestial azimuths across the sands."
 
         palette = RoomVisualPalette(
             sky_tone=sky_hex,

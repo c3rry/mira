@@ -13,6 +13,7 @@ from backend.app.schemas import (
 from backend.app.services.compiler import compile_world_with_circuit_breaker
 from backend.app.services.gemini_generator import generate_expanded_room
 from backend.app.services.prompt_refiner import refine_prompt_and_ask_clarifications
+from backend.app.services.fusion_logger import trace_expansion_event
 
 router = APIRouter(tags=["world"])
 
@@ -74,6 +75,19 @@ async def expand_world_endpoint(body: WorldExpandRequest, request: Request):
         topology_type=body.topology_type,
         target_x=body.target_x,
         target_z=body.target_z,
+    )
+
+    npc_name = new_node.npcs[0].name if new_node.npcs else "None"
+    trace_expansion_event(
+        from_room_id=body.from_room_id,
+        direction=body.direction,
+        target_x=new_node.worldX or 0.0,
+        target_z=new_node.worldZ or 0.0,
+        new_room_id=new_node.room_id,
+        new_room_name=new_node.name,
+        pano_url=new_node.panorama_url,
+        depth_url=new_node.depth_url,
+        npc_name=npc_name,
     )
 
     return WorldExpandResponse(

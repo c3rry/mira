@@ -30,6 +30,11 @@ from backend.app.services.connected_synthesizer import (
     build_connected_multi_face_prompts,
 )
 from backend.app.services.infinite_world_field import InfiniteWorldField
+from backend.app.services.fusion_logger import (
+    trace_theme_detected,
+    trace_room_planned,
+    trace_minimap_alignment,
+)
 
 load_dotenv(os.path.join(os.path.dirname(__file__), "..", "..", ".env"))
 load_dotenv()
@@ -308,6 +313,16 @@ def enrich_and_normalize_graph(
     room_ids = [r.room_id for r in graph.rooms]
     num_rooms = len(graph.rooms)
 
+    init_palette = generate_room_visual_palette(
+        graph.rooms[0].name if graph.rooms else "Origin", prompt, theme_cat
+    )
+    trace_theme_detected(
+        prompt=prompt,
+        archetype=theme_cat,
+        topology_type=topology_type,
+        palette=init_palette.model_dump(),
+    )
+
     for idx, room in enumerate(graph.rooms):
         b_type = detect_theme_category(f"{room.name} {prompt}", biome_hint or room.biome_type)
         room.biome_type = b_type
@@ -375,6 +390,24 @@ def enrich_and_normalize_graph(
                 room.worldX = sx
                 room.worldZ = sz
                 room.adjacent_room_ids = [graph.rooms[0].room_id]
+
+        dx = (room.worldX or 0.0) - (graph.rooms[0].worldX or 0.0)
+        dz = (room.worldZ or 0.0) - (graph.rooms[0].worldZ or 0.0)
+        theta_fwd = math.atan2(dx, dz) if idx > 0 else 0.0
+        theta_recip = (theta_fwd + math.pi) % (2 * math.pi) if idx > 0 else 0.0
+        u_recip = ((theta_recip / (2 * math.pi)) + 0.5) % 1.0 if idx > 0 else 0.5
+        trace_room_planned(
+            room_idx=idx,
+            room_id=room.room_id,
+            name=room.name,
+            world_x=room.worldX or 0.0,
+            world_z=room.worldZ or 0.0,
+            parent_id=graph.rooms[0].room_id if idx > 0 else None,
+            parent_name=graph.rooms[0].name if idx > 0 else None,
+            theta_forward=theta_fwd if idx > 0 else None,
+            theta_reciprocal=theta_recip if idx > 0 else None,
+            u_reciprocal=u_recip if idx > 0 else None,
+        )
 
         q_room = urllib.parse.quote(room.name)
         q_prompt = urllib.parse.quote(prompt[:100])
@@ -468,6 +501,20 @@ def enrich_and_normalize_graph(
 
     if graph.rooms and graph.initial_room_id not in room_ids:
         graph.initial_room_id = graph.rooms[0].room_id
+
+    trace_minimap_alignment(
+        world_id=graph.world_id,
+        rooms_summary=[
+            {
+                "room_id": r.room_id,
+                "name": r.name,
+                "x": r.worldX,
+                "z": r.worldZ,
+                "adjacent": r.adjacent_room_ids,
+            }
+            for r in graph.rooms
+        ],
+    )
 
     return graph
 

@@ -20,13 +20,19 @@ import httpx
 import numpy as np
 from PIL import Image, ImageFilter
 
+from backend.app.services.fusion_logger import (
+    trace_6face_prompts,
+    trace_diffusion_inference,
+    trace_jopano_blending,
+    trace_assets_saved,
+)
+
 logger = logging.getLogger("mira.local_diffusion")
 
 _PIPELINE_LOCK = threading.Lock()
 _ANCHOR_PIPE: Any = None
 _JOPANO_CUBE_PIPE: Any = None
 _DEPTH_PIPE: Any = None
-_LOAD_FAILED: bool = False
 
 
 def apply_circular_conv2d_padding(model: Any) -> int:
@@ -592,7 +598,7 @@ def _build_and_patch_jopano_cubemap_pipeline(model_id: str) -> Any:
             if isinstance(child, nn.GroupNorm) and not isinstance(child, JoPanoSharedGroupNorm):
                 setattr(root, name, JoPanoSharedGroupNorm(child))
 
-    pipe = StableDiffusionPipeline.from_pretrained(model_id, torch_dtype=torch.float16)
+    pipe = StableDiffusionPipeline.from_pretrained(model_id, torch_dtype=torch.float16, low_cpu_mem_usage=False)
     _swap_blocks(pipe.unet)
     _patch_gn(pipe.vae)
     pipe.scheduler = DDIMScheduler.from_config(pipe.scheduler.config)
@@ -601,9 +607,7 @@ def _build_and_patch_jopano_cubemap_pipeline(model_id: str) -> Any:
 
 
 def _get_or_load_local_pipelines() -> Tuple[Any, Any, Any]:
-    global _ANCHOR_PIPE, _JOPANO_CUBE_PIPE, _DEPTH_PIPE, _LOAD_FAILED
-    if _LOAD_FAILED:
-        return None, None, None
+    global _ANCHOR_PIPE, _JOPANO_CUBE_PIPE, _DEPTH_PIPE
     if _ANCHOR_PIPE is not None and _JOPANO_CUBE_PIPE is not None:
         return _ANCHOR_PIPE, _JOPANO_CUBE_PIPE, _DEPTH_PIPE
 
@@ -613,7 +617,6 @@ def _get_or_load_local_pipelines() -> Tuple[Any, Any, Any]:
 
         if not torch.cuda.is_available():
             logger.warning("CUDA is not available; skipping local GPU JoPano pipeline load.")
-            _LOAD_FAILED = True
             return None, None, None
 
         t0 = time.perf_counter()
@@ -661,7 +664,6 @@ def _get_or_load_local_pipelines() -> Tuple[Any, Any, Any]:
 
     except Exception as exc:
         logger.warning(f"Local JoPano diffusion load failed: {exc}")
-        _LOAD_FAILED = True
         return None, None, None
 
 
@@ -1382,6 +1384,17 @@ def generate_room_panorama_and_depth(
         fog_color=fog_color,
     )
 
+    modality = "natural_wilderness" if _is_natural_wilderness_scene(room_name, world_prompt) else "architectural_urban"
+    trace_6face_prompts(
+        room_id=room_id,
+        room_name=room_name,
+        world_prompt=world_prompt,
+        anchor_prompt=anchor_prompt,
+        face_prompts=face_prompts,
+        negative_prompt=negative_prompt,
+        modality=modality,
+    )
+
     # Use world-consistent base seed with room offset so connected sub-rooms share atmospheric coherence
     world_seed_base = int(
         hashlib.md5(f"{safe_world}:{world_prompt}".encode("utf-8")).hexdigest()[:8], 16
@@ -1493,6 +1506,15 @@ def generate_room_panorama_and_depth(
                 blended_faces = jopano_poisson_cross_face_blend(cropped_faces, iterations=200)
                 metrics_after = compute_jopano_seam_metrics(blended_faces)
 
+                trace_jopano_blending(
+                    room_id=room_id,
+                    seam_ssim_before=float(metrics_before["seam_ssim"]),
+                    seam_ssim_after=float(metrics_after["seam_ssim"]),
+                    seam_sobel_before=float(metrics_before["seam_sobel"]),
+                    seam_sobel_after=float(metrics_after["seam_sobel"]),
+                    poisson_iterations=200,
+                )
+
                 # Step 4: Project 6 blended cubemap faces to 2048x1024 ERP panorama
                 pano_img = cubemap_to_erp_torch(blended_faces, h=1024, w=2048)
                 pano_img = blend_horizontal_seam(pano_img, blend_width=16)
@@ -1508,6 +1530,24 @@ def generate_room_panorama_and_depth(
                 depth_img.save(depth_file, "PNG")
 
             elapsed = time.perf_counter() - t0
+            vram_mb = torch.cuda.memory_allocated() / (1024 * 1024) if torch.cuda.is_available() else 0.0
+            trace_diffusion_inference(
+                room_id=room_id,
+                room_name=room_name,
+                seed=seed,
+                gamma=gamma,
+                num_steps=num_cube_steps,
+                latency_ms=elapsed * 1000.0,
+                vram_mb=vram_mb,
+            )
+            trace_assets_saved(
+                room_id=room_id,
+                pano_path=str(pano_file),
+                pano_size_bytes=pano_file.stat().st_size if pano_file.exists() else 0,
+                depth_path=str(depth_file),
+                depth_size_bytes=depth_file.stat().st_size if depth_file.exists() else 0,
+                is_real_diffusion=True,
+            )
             logger.info(
                 f"JoPano 6-Face Cubemap + Poisson CFB synthesized '{room_name}' -> {pano_url} in {elapsed:.2f}s | "
                 f"Seam-SSIM: {metrics_before['seam_ssim']} -> {metrics_after['seam_ssim']} | "
