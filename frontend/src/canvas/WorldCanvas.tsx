@@ -9,6 +9,7 @@ import { CameraController } from "./controls/CameraController";
 import { PropSpawner } from "./PropSpawner";
 import { CharacterSpawner } from "./CharacterSpawner";
 import { ReflectiveFloorGrid } from "./environment/ReflectiveFloorGrid";
+import { ZoneGateway } from "./environment/ZoneGateway";
 import { useWorldStore } from "@/store/useWorldStore";
 
 interface WorldCanvasProps {
@@ -16,12 +17,69 @@ interface WorldCanvasProps {
 }
 
 export function WorldCanvas(_props: WorldCanvasProps) {
-  const { currentRoomId, rooms, npcs, worldTitle } = useWorldStore();
+  const { currentRoomId, rooms, npcs, worldTitle, transitionDirection, setCurrentRoom } = useWorldStore();
   const currentRoom = rooms[currentRoomId];
   const worldGroupRef = useRef<THREE.Group>(null);
   const skyboxGroupRef = useRef<THREE.Group>(null);
 
   const allRooms = useMemo(() => Object.values(rooms), [rooms]);
+
+  // Compute 3D zone transition gateways connecting adjacent sub-rooms with reciprocal headings
+  const gateways = useMemo(() => {
+    const list: Array<{
+      id: string;
+      targetRoomId: string;
+      position: [number, number, number];
+      angleY: number;
+      label: string;
+      style: "snow" | "nature" | "architecture";
+    }> = [];
+
+    allRooms.forEach((rA) => {
+      const adjList = rA.adjacent_room_ids || [];
+      adjList.forEach((adjId) => {
+        const rB = rooms[adjId];
+        if (!rB) return;
+
+        const xA = rA.worldX || 0;
+        const zA = rA.worldZ || 0;
+        const xB = rB.worldX || 0;
+        const zB = rB.worldZ || 0;
+
+        const dx = xB - xA;
+        const dz = zB - zA;
+        const dist = Math.hypot(dx, dz);
+        if (dist < 0.1) return;
+
+        const nx = dx / dist;
+        const nz = dz / dist;
+
+        // Position gateway hotspot 32 units from room origin along bearing vector to neighbor
+        const gateX = xA + nx * 32.0;
+        const gateZ = zA + nz * 32.0;
+        const angleY = Math.atan2(nx, -nz);
+
+        const themeCombined = `${rA.biome_type || ""} ${rB.biome_type || ""} ${rA.name} ${rB.name}`.toLowerCase();
+        let style: "snow" | "nature" | "architecture" = "architecture";
+        if (themeCombined.includes("space") || themeCombined.includes("everest") || themeCombined.includes("glacier")) {
+          style = "snow";
+        } else if (themeCombined.includes("forest") || themeCombined.includes("garden") || themeCombined.includes("jungle")) {
+          style = "nature";
+        }
+
+        list.push({
+          id: `${rA.room_id}->${rB.room_id}`,
+          targetRoomId: rB.room_id,
+          position: [gateX, 0, gateZ],
+          angleY,
+          label: rB.name,
+          style,
+        });
+      });
+    });
+
+    return list;
+  }, [allRooms, rooms]);
 
   // guaranteed existing fallback panorama based on active biome
   const themeCat = currentRoom?.biome_type || "desert_oasis";
@@ -54,6 +112,7 @@ export function WorldCanvas(_props: WorldCanvasProps) {
             panoramaUrl={panoramaUrl}
             fallbackUrl={worldFallbackPano}
             mutationFactor={mutationLevel}
+            transitionDirection={transitionDirection}
             radius={180}
           />
         </group>
@@ -74,6 +133,18 @@ export function WorldCanvas(_props: WorldCanvasProps) {
               </group>
             );
           })}
+
+          {/* Connected zone transition gateways aligned with reciprocal portal bearings */}
+          {gateways.map((gate) => (
+            <ZoneGateway
+              key={gate.id}
+              position={gate.position}
+              angleY={gate.angleY}
+              label={gate.label}
+              style={gate.style}
+              onNavigate={() => setCurrentRoom(gate.targetRoomId)}
+            />
+          ))}
         </group>
 
         <CameraController

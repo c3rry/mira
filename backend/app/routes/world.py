@@ -3,6 +3,8 @@ from fastapi import APIRouter, Request
 from backend.app.schemas import (
     ChatRefineRequest,
     ChatRefineResponse,
+    LightingConfig,
+    NodeState,
     WorldCompileRequest,
     WorldCompileResponse,
     WorldExpandRequest,
@@ -48,6 +50,20 @@ async def expand_world_endpoint(body: WorldExpandRequest, request: Request):
                 from_room = r
                 break
 
+    if not from_room and body.from_room_name:
+        b_theme = body.from_room_biome or "desert_oasis"
+        from_room = NodeState(
+            room_id=body.from_room_id,
+            name=body.from_room_name,
+            biome_type=b_theme,
+            panorama_url=body.from_room_panorama_url or f"/cached_worlds/{b_theme}/panorama.webp",
+            depth_url=body.from_room_depth_url or f"/cached_worlds/{b_theme}/depth.png",
+            worldX=body.from_room_x or 0.0,
+            worldZ=body.from_room_z or 0.0,
+            visual_palette=body.from_room_palette,
+            lighting=body.from_room_lighting or LightingConfig(),
+        )
+
     new_node = generate_expanded_room(
         world_id=body.world_id,
         from_room_id=body.from_room_id,
@@ -56,6 +72,8 @@ async def expand_world_endpoint(body: WorldExpandRequest, request: Request):
         world_prompt=body.world_prompt,
         existing_room_ids=body.existing_room_ids,
         topology_type=body.topology_type,
+        target_x=body.target_x,
+        target_z=body.target_z,
     )
 
     return WorldExpandResponse(

@@ -280,6 +280,8 @@ export const BUILTIN_ARCHIVES: SavedWorldEntry[] = [
           room_id: "giza_forecourt",
           name: "Great Pyramid Forecourt",
           biome_type: "desert_oasis",
+          worldX: 0,
+          worldZ: 0,
           panorama_url: "/generated_worlds/archive_giza_necropolis/giza_forecourt_panorama.webp",
           depth_url: "/generated_worlds/archive_giza_necropolis/giza_forecourt_depth.png",
           adjacent_room_ids: ["sphinx_causeway", "khufu_gallery", "solar_barque"],
@@ -306,9 +308,11 @@ export const BUILTIN_ARCHIVES: SavedWorldEntry[] = [
           room_id: "sphinx_causeway",
           name: "Sanctuary of the Great Sphinx",
           biome_type: "desert_oasis",
+          worldX: 220,
+          worldZ: 0,
           panorama_url: "/generated_worlds/archive_giza_necropolis/sphinx_causeway_panorama.webp",
           depth_url: "/generated_worlds/archive_giza_necropolis/sphinx_causeway_depth.png",
-          adjacent_room_ids: ["giza_forecourt", "khufu_gallery"],
+          adjacent_room_ids: ["giza_forecourt"],
           mutation_level: 0.0,
           npcs: [
             {
@@ -332,9 +336,11 @@ export const BUILTIN_ARCHIVES: SavedWorldEntry[] = [
           room_id: "khufu_gallery",
           name: "Grand Gallery of Khufu",
           biome_type: "desert_oasis",
+          worldX: 0,
+          worldZ: -220,
           panorama_url: "/generated_worlds/archive_giza_necropolis/khufu_gallery_panorama.webp",
           depth_url: "/generated_worlds/archive_giza_necropolis/khufu_gallery_depth.png",
-          adjacent_room_ids: ["giza_forecourt", "solar_barque"],
+          adjacent_room_ids: ["giza_forecourt"],
           mutation_level: 0.0,
           npcs: [
             {
@@ -358,9 +364,11 @@ export const BUILTIN_ARCHIVES: SavedWorldEntry[] = [
           room_id: "solar_barque",
           name: "Court of the Solar Barque",
           biome_type: "desert_oasis",
+          worldX: 0,
+          worldZ: 220,
           panorama_url: "/generated_worlds/archive_giza_necropolis/solar_barque_panorama.webp",
           depth_url: "/generated_worlds/archive_giza_necropolis/solar_barque_depth.png",
-          adjacent_room_ids: ["giza_forecourt", "khufu_gallery"],
+          adjacent_room_ids: ["giza_forecourt"],
           mutation_level: 0.0,
           npcs: [
             {
@@ -868,6 +876,7 @@ export interface WorldState {
   activeSubtitle: SubtitleCue | null;
   playerPosition: { x: number; z: number; yaw: number };
   teleportTrigger: number;
+  transitionDirection: [number, number, number];
 
   // actions
   setActiveScreen: (screen: "title" | "storage" | "create" | "game") => void;
@@ -888,7 +897,7 @@ export interface WorldState {
   toggleGodMode: () => void;
   hydrateFromMockWorld: (worldData: any) => void;
   ensureNeighborZones: (roomId: string) => void;
-  expandWorld: (fromRoomId?: string, direction?: string) => Promise<WorldRoom | null>;
+  expandWorld: (fromRoomId?: string, direction?: string, targetX?: number, targetZ?: number) => Promise<WorldRoom | null>;
   initializeSync: () => void;
 }
 
@@ -918,6 +927,7 @@ export const useWorldStore = create<WorldState>((set, get) => ({
   activeSubtitle: null,
   playerPosition: { x: 0, z: 0, yaw: 0 },
   teleportTrigger: 0,
+  transitionDirection: [0, 0, -1],
 
   setActiveScreen: (screen) => {
     set({ activeScreen: screen });
@@ -983,10 +993,22 @@ export const useWorldStore = create<WorldState>((set, get) => ({
 
   setCurrentRoom: (roomId: string, walkedInto: boolean = false) => {
     const { rooms } = get();
+    const prevRoom = rooms[get().currentRoomId];
     const targetRoom = rooms[roomId];
     if (targetRoom) {
+      let tDir: [number, number, number] = [0, 0, -1];
+      if (prevRoom && prevRoom.room_id !== roomId) {
+        const dx = (targetRoom.worldX || 0) - (prevRoom.worldX || 0);
+        const dz = (targetRoom.worldZ || 0) - (prevRoom.worldZ || 0);
+        const len = Math.hypot(dx, dz);
+        if (len > 0.001) {
+          tDir = [dx / len, 0, dz / len];
+        }
+      }
+
       set((state) => ({
         currentRoomId: roomId,
+        transitionDirection: tDir,
         selectedNpcId: null,
         activeSubtitle: null,
         playerPosition: walkedInto
@@ -1297,18 +1319,25 @@ export const useWorldStore = create<WorldState>((set, get) => ({
           modified = true;
         }
       } else {
-        // generate newly connected neighboring zone immediately!
+        // generate newly connected neighboring zone with spherical bearing continuity!
+        const dx = targetX - srcX;
+        const dz = targetZ - srcZ;
+        const thetaFwd = Math.atan2(dx, -dz);
+        const thetaBack = (thetaFwd + Math.PI) % (2 * Math.PI);
+        const uBack = (thetaBack / (2 * Math.PI) + 0.5) % 1.0;
+
         const coordKey = `x${targetX >= 0 ? "p" : "m"}${Math.abs(targetX)}_z${targetZ >= 0 ? "p" : "m"}${Math.abs(targetZ)}`;
         const safeId = `room_gen_${coordKey}`;
         const name = generateThematicRoomName(state.worldTitle, sourceRoom.biome_type, offset.dir, targetX, targetZ);
         const biome = sourceRoom.biome_type || "desert_oasis";
         const pal = inferRoomVisualPalette(name, state.worldTitle, biome);
+        const safeWorld = state.worldTitle.toLowerCase().replace(/[^a-z0-9_-]/g, "_") || "world_active";
 
         const newRoom: WorldRoom = {
           room_id: safeId,
           name,
-          panorama_url: `/cached_worlds/${biome}/panorama.webp?room=${encodeURIComponent(name)}&prompt=${encodeURIComponent(state.worldTitle)}&biome=${encodeURIComponent(biome)}&sky=${encodeURIComponent(pal.sky_tone)}&floor=${encodeURIComponent(pal.floor_tone)}`,
-          depth_url: `/cached_worlds/${biome}/depth.png`,
+          panorama_url: `/generated_worlds/${safeWorld}/${safeId}_panorama.webp?room=${encodeURIComponent(name)}&prompt=${encodeURIComponent(state.worldTitle)}&from=${encodeURIComponent(sourceRoom.name)}&dir=${offset.dir}&biome=${encodeURIComponent(biome)}&sky=${encodeURIComponent(pal.sky_tone)}&floor=${encodeURIComponent(pal.floor_tone)}&u_back=${uBack.toFixed(3)}`,
+          depth_url: `/generated_worlds/${safeWorld}/${safeId}_depth.png`,
           adjacent_room_ids: [sourceRoom.room_id],
           mutation_level: 0,
           biome_type: biome,
@@ -1333,10 +1362,10 @@ export const useWorldStore = create<WorldState>((set, get) => ({
           npc_id: npcId,
           name: `Guardian of ${name.split(" ")[0]}`,
           room_id: safeId,
-          persona_description: `Resident scout guarding and surveying ${name}.`,
+          persona_description: `Resident scout guarding threshold connected to ${sourceRoom.name}.`,
           thought_log: [
-            `[MEMORY] Surveying ${name}.`,
-            `[REFLECTION] Explorer has arrived at the threshold.`,
+            `[MEMORY] Watching gateway connected from ${sourceRoom.name}.`,
+            `[REFLECTION] Explorer has crossed the threshold into ${name}.`,
             `[ACTION] Welcome traveler to ${name}.`,
           ],
           active_plan: `Survey sector ${name}.`,
@@ -1348,6 +1377,11 @@ export const useWorldStore = create<WorldState>((set, get) => ({
         currentRooms[safeId] = newRoom;
         newAdjacent.add(safeId);
         modified = true;
+
+        // Asynchronously trigger backend synthesis to generate on-disk panorama with reciprocal portal
+        setTimeout(() => {
+          get().expandWorld(sourceRoom.room_id, offset.dir, targetX, targetZ);
+        }, 80);
       }
     }
 
@@ -1360,7 +1394,7 @@ export const useWorldStore = create<WorldState>((set, get) => ({
     }
   },
 
-  expandWorld: async (fromRoomId?: string, direction?: string) => {
+  expandWorld: async (fromRoomId?: string, direction?: string, targetX?: number, targetZ?: number) => {
     const state = get();
     if (state.isExpanding) return null;
 
@@ -1383,6 +1417,15 @@ export const useWorldStore = create<WorldState>((set, get) => ({
           world_prompt: state.worldTitle,
           existing_room_ids: existingIds,
           topology_type: topo,
+          from_room_name: sourceRoom?.name,
+          from_room_biome: sourceRoom?.biome_type,
+          from_room_x: sourceRoom?.worldX,
+          from_room_z: sourceRoom?.worldZ,
+          from_room_palette: sourceRoom?.visual_palette,
+          from_room_panorama_url: sourceRoom?.panorama_url,
+          from_room_depth_url: sourceRoom?.depth_url,
+          target_x: targetX,
+          target_z: targetZ,
         }),
       });
 
@@ -1461,20 +1504,23 @@ export const useWorldStore = create<WorldState>((set, get) => ({
       console.warn("Continuous expansion fetch failed, synthesizing client-side:", err);
     }
 
-    // Client-side fallback expansion so user never gets stuck even if offline
+    // Client-side fallback expansion with exact reciprocal spherical bearing math
     const nextIdx = existingIds.length + 1;
     const fromX = sourceRoom?.worldX || 0;
     const fromZ = sourceRoom?.worldZ || 0;
-    let newX = fromX;
-    let newZ = fromZ - 220;
-    if (topo === "linear") {
-      newX = 0;
-      newZ = direction === "backward" ? fromZ + 220 : fromZ - 220;
-    } else {
-      if (direction === "south") newZ = fromZ + 220;
-      else if (direction === "east") newX = fromX + 220;
-      else if (direction === "west") newX = fromX - 220;
-      else newZ = fromZ - 220;
+    let newX = targetX !== undefined ? targetX : fromX;
+    let newZ = targetZ !== undefined ? targetZ : fromZ - 220;
+
+    if (targetX === undefined || targetZ === undefined) {
+      if (topo === "linear") {
+        newX = 0;
+        newZ = direction === "backward" ? fromZ + 220 : fromZ - 220;
+      } else {
+        if (direction === "south") newZ = fromZ + 220;
+        else if (direction === "east") newX = fromX + 220;
+        else if (direction === "west") newX = fromX - 220;
+        else newZ = fromZ - 220;
+      }
     }
 
     const fallbackDir = direction || (topo === "linear" ? "forward" : "north");
@@ -1482,12 +1528,19 @@ export const useWorldStore = create<WorldState>((set, get) => ({
     const fallbackName = generateThematicRoomName(state.worldTitle, sourceRoom?.biome_type, fallbackDir, newX, newZ);
     const fallbackBiome = sourceRoom?.biome_type || "desert_oasis";
     const fallbackPal = inferRoomVisualPalette(fallbackName, state.worldTitle, fallbackBiome);
+    const safeWorld = state.worldTitle.toLowerCase().replace(/[^a-z0-9_-]/g, "_") || "world_active";
+
+    const dx = newX - fromX;
+    const dz = newZ - fromZ;
+    const thetaFwd = Math.atan2(dx, -dz);
+    const thetaBack = (thetaFwd + Math.PI) % (2 * Math.PI);
+    const uBack = (thetaBack / (2 * Math.PI) + 0.5) % 1.0;
 
     const fallbackRoom: WorldRoom = {
       room_id: fallbackId,
       name: fallbackName,
-      panorama_url: `/cached_worlds/${fallbackBiome}/panorama.webp?room=${encodeURIComponent(fallbackName)}&prompt=${encodeURIComponent(state.worldTitle)}&biome=${encodeURIComponent(fallbackBiome)}&sky=${encodeURIComponent(fallbackPal.sky_tone)}&floor=${encodeURIComponent(fallbackPal.floor_tone)}`,
-      depth_url: `/cached_worlds/${fallbackBiome}/depth.png`,
+      panorama_url: `/generated_worlds/${safeWorld}/${fallbackId}_panorama.webp?room=${encodeURIComponent(fallbackName)}&prompt=${encodeURIComponent(state.worldTitle)}&from=${encodeURIComponent(sourceRoom?.name || "")}&dir=${fallbackDir}&biome=${encodeURIComponent(fallbackBiome)}&sky=${encodeURIComponent(fallbackPal.sky_tone)}&floor=${encodeURIComponent(fallbackPal.floor_tone)}&u_back=${uBack.toFixed(3)}`,
+      depth_url: `/generated_worlds/${safeWorld}/${fallbackId}_depth.png`,
       adjacent_room_ids: [sourceRoomId],
       mutation_level: 0,
       biome_type: fallbackBiome,

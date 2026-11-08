@@ -13,6 +13,7 @@ interface PanoramaSphereProps {
   fallbackUrl?: string;
   mutationFactor?: number;
   radius?: number;
+  transitionDirection?: [number, number, number];
 }
 
 const skyVertexShader = `
@@ -23,7 +24,7 @@ const skyVertexShader = `
   }
 `;
 
-// crossfades two equirect textures and overlays latent diffusion noise while compiling
+// directional forward-warp shader providing physical optical expansion into adjacent room
 const skyFragmentShader = `
   uniform sampler2D uTexA;
   uniform sampler2D uTexB;
@@ -31,7 +32,25 @@ const skyFragmentShader = `
   uniform float uNoise;
   uniform float uMutation;
   uniform float uTime;
+  uniform vec3 uTransitionDir;
   varying vec2 vUv;
+
+  const float PI = 3.141592653589793;
+  const float TWO_PI = 6.283185307179586;
+
+  vec3 uvToDir(vec2 uv) {
+    float theta = (uv.x - 0.5) * TWO_PI;
+    float phi = (1.0 - uv.y) * PI;
+    return vec3(sin(phi) * sin(theta), cos(phi), sin(phi) * cos(theta));
+  }
+
+  vec2 dirToUv(vec3 dir) {
+    float theta = atan(dir.x, dir.z);
+    float phi = acos(clamp(dir.y, -1.0, 1.0));
+    float u = fract(theta / TWO_PI + 0.5);
+    float v = 1.0 - phi / PI;
+    return vec2(u, v);
+  }
 
   float hash21(vec2 p) {
     p = fract(p * vec2(234.34, 435.345));
@@ -40,12 +59,30 @@ const skyFragmentShader = `
   }
 
   void main() {
-    vec3 a = texture2D(uTexA, vUv).rgb;
-    vec3 b = texture2D(uTexB, vUv).rgb;
     float blend = smoothstep(0.0, 1.0, uMix);
+    vec3 dir = uvToDir(vUv);
+    vec3 a;
+    vec3 b;
+
+    float lenDir = length(uTransitionDir);
+    if (lenDir > 0.05 && blend > 0.001 && blend < 0.999) {
+      vec3 dirNorm = normalize(uTransitionDir);
+      // Outgoing texture warps/expands forward in direction of travel
+      vec3 dirA = normalize(dir + dirNorm * (blend * 0.42));
+      // Incoming destination texture smoothly zooms in from distance
+      vec3 dirB = normalize(dir - dirNorm * ((1.0 - blend) * 0.42));
+      a = texture2D(uTexA, dirToUv(dirA)).rgb;
+      b = texture2D(uTexB, dirToUv(dirB)).rgb;
+    } else {
+      a = texture2D(uTexA, vUv).rgb;
+      b = texture2D(uTexB, vUv).rgb;
+    }
+
     vec3 col = max(mix(a, b, blend), vec3(0.04, 0.05, 0.08));
-    vec3 grain = vec3(hash21(vUv * 512.0 + uTime), hash21(vUv * 512.0 + uTime + 1.3), hash21(vUv * 512.0 + uTime + 2.9));
-    col = mix(col, grain, clamp(uNoise * 0.9, 0.0, 0.92));
+    if (uNoise > 0.01) {
+      vec3 grain = vec3(hash21(vUv * 512.0 + uTime), hash21(vUv * 512.0 + uTime + 1.3), hash21(vUv * 512.0 + uTime + 2.9));
+      col = mix(col, grain, clamp(uNoise * 0.9, 0.0, 0.92));
+    }
     col = mix(col, col * vec3(1.12, 0.95, 0.82), uMutation * 0.45);
     gl_FragColor = vec4(col, 1.0);
   }
@@ -56,6 +93,7 @@ export function PanoramaSphere({
   fallbackUrl,
   mutationFactor = 0.0,
   radius = 900,
+  transitionDirection = [0, 0, -1],
 }: PanoramaSphereProps) {
   const [targetTex, setTargetTex] = useState<THREE.Texture | null>(null);
   const noiseRef = useRef<number>(0.65);
@@ -88,6 +126,7 @@ export function PanoramaSphere({
           uNoise: { value: 0.65 },
           uMutation: { value: 0.0 },
           uTime: { value: 0.0 },
+          uTransitionDir: { value: new THREE.Vector3(0, 0, -1) },
         },
         vertexShader: skyVertexShader,
         fragmentShader: skyFragmentShader,
@@ -120,16 +159,19 @@ export function PanoramaSphere({
     };
   }, [panoramaUrl, fallbackUrl]);
 
-  // start a crossfade from the previous sky to the new one
+  // start a directional forward-warp crossfade from the previous sky to the new one
   useEffect(() => {
     if (!targetTex) return;
     const u = material.uniforms;
     const current = mixRef.current >= 0.5 ? u.uTexB.value : u.uTexA.value;
     u.uTexA.value = current || targetTex;
     u.uTexB.value = targetTex;
+    if (transitionDirection) {
+      u.uTransitionDir.value.set(transitionDirection[0], transitionDirection[1], transitionDirection[2]);
+    }
     mixRef.current = current ? 0.0 : 1.0;
     u.uMix.value = mixRef.current;
-  }, [targetTex, material]);
+  }, [targetTex, material, transitionDirection]);
 
   useEffect(() => {
     if (isCompilingWorld) noiseRef.current = 0.98;
@@ -141,7 +183,7 @@ export function PanoramaSphere({
     u.uMutation.value = mutationFactor;
 
     if (mixRef.current < 1.0) {
-      mixRef.current = Math.min(1.0, mixRef.current + delta * 1.1);
+      mixRef.current = Math.min(1.0, mixRef.current + delta * 1.25);
       u.uMix.value = mixRef.current;
     }
 

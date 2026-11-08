@@ -110,6 +110,16 @@ class WorldExpandRequest(BaseModel):
     world_prompt: str
     existing_room_ids: List[str] = Field(default_factory=list)
     topology_type: Optional[str] = None
+    from_room_name: Optional[str] = None
+    from_room_biome: Optional[str] = None
+    from_room_x: Optional[float] = None
+    from_room_z: Optional[float] = None
+    from_room_palette: Optional[RoomVisualPalette] = None
+    from_room_panorama_url: Optional[str] = None
+    from_room_depth_url: Optional[str] = None
+    from_room_lighting: Optional[LightingConfig] = None
+    target_x: Optional[float] = None
+    target_z: Optional[float] = None
 
 
 class WorldExpandResponse(BaseModel):

@@ -24,6 +24,11 @@ from backend.app.schemas import (
     WorldGraph,
 )
 from backend.app.services.local_diffusion import generate_room_panorama_and_depth
+from backend.app.services.connected_synthesizer import (
+    compute_inter_room_bearing,
+    synthesize_connected_room_assets,
+    build_connected_multi_face_prompts,
+)
 
 load_dotenv(os.path.join(os.path.dirname(__file__), "..", "..", ".env"))
 load_dotenv()
@@ -471,6 +476,8 @@ def generate_expanded_room(
     existing_room_ids: List[str],
     from_room: Optional[NodeState] = None,
     topology_type: Optional[str] = None,
+    target_x: Optional[float] = None,
+    target_z: Optional[float] = None,
 ) -> NodeState:
     # Synthesizes a new authentic, connected room extending the world frontier
     clean_prompt = (world_prompt or "").strip() or "Architectural Zone"
@@ -492,7 +499,10 @@ def generate_expanded_room(
             from_z = 0.0
 
     dir_lower = (direction or "forward").lower()
-    if topo == "linear":
+    if target_x is not None and target_z is not None:
+        new_x = float(target_x)
+        new_z = float(target_z)
+    elif topo == "linear":
         new_x = from_x
         # forward extends negative Z, backward extends positive Z
         new_z = from_z + 220.0 if dir_lower in ["backward", "back", "south", "down"] else from_z - 220.0
@@ -519,7 +529,10 @@ def generate_expanded_room(
         new_x = 220.0 * math.sin(ang)
         new_z = -220.0 * math.cos(ang)
 
-    # Evocative naming synthesis based on prompt & topology
+    # Evocative naming synthesis referencing parent room connection
+    from_base_name = (from_room.name if from_room else clean_prompt).split("-")[0].strip()
+    cardinal_name = dir_lower.capitalize() if dir_lower in ["north", "south", "east", "west"] else "Forward"
+
     lower_p = clean_prompt.lower()
     if any(k in lower_p for k in ["subway", "metro", "train"]):
         car_titles = [
@@ -539,49 +552,50 @@ def generate_expanded_room(
         name, desc, npc_n, npc_p = plane_titles[(next_idx - 1) % len(plane_titles)]
     elif any(k in lower_p for k in ["seattle"]):
         seattle_titles = [
-            ("Pike Place Waterfront Arcade", "Historic brick market arcade overlooking Elliott Bay under misty Pacific Northwest skies", "Fishmonger Sam", "Market vendor reciting the history of the century-old public market."),
-            ("Pioneer Square Pergola Promenade", "Victorian iron pergola and cobblestone square ringed by illuminated cafes", "Curator Maeve", "Urban historian preserving the Klondike Gold Rush archives."),
-            ("Westlake Transit Mall", "Sleek elevated monorail platform and pedestrian promenade amidst misted skyscrapers", "Conductor Roy", "Monorail engineer guiding travelers between downtown and the Seattle Center."),
-            ("Elliott Bay Pier Promenade", "Cedar boardwalk pier extending into Puget Sound with views of the snow-capped Olympics", "Captain Thorne", "Ferry captain docking the cross-sound vessel at sunset."),
+            (f"{from_base_name} - Waterfront Arcade", "Historic brick market arcade overlooking Elliott Bay under misty Pacific Northwest skies", "Fishmonger Sam", "Market vendor reciting the history of the century-old public market."),
+            (f"{from_base_name} - Pergola Promenade", "Victorian iron pergola and cobblestone square ringed by illuminated cafes", "Curator Maeve", "Urban historian preserving the Klondike Gold Rush archives."),
+            (f"{from_base_name} - Transit Mall", "Sleek elevated monorail platform and pedestrian promenade amidst misted skyscrapers", "Conductor Roy", "Monorail engineer guiding travelers between downtown and the Seattle Center."),
+            (f"{from_base_name} - Pier Promenade", "Cedar boardwalk pier extending into Puget Sound with views of the snow-capped Olympics", "Captain Thorne", "Ferry captain docking the cross-sound vessel at sunset."),
         ]
         name, desc, npc_n, npc_p = seattle_titles[(next_idx - 1) % len(seattle_titles)]
     elif any(k in lower_p for k in ["everest", "mountain", "himalaya"]):
         everest_titles = [
-            ("Khumbu High Serac Camp", "Wind-hardened expedition tent platform perched above colossal blue ice pinnacles", "Dawa Sherpa", "Veteran route-fixer securing safety lines across the icefall."),
-            ("Lhotse Face Traverses", "Sheer blue ice wall reflecting the sun with ascending fixed ropes", "Dr. Chen, High Altitude Medic", "Expedition doctor monitoring physiological adaptation."),
-            ("Hillary Step Rock Crest", "Knife-edge rock ridge between Nepal and Tibet under dark indigo sky", "Pasang the Guide", "Summit veteran pointing out the Kangchenjunga massif on the horizon."),
-            ("South Summit Cornice", "Windswept snow cornice overlooking the endless Himalayan sea of peaks", "Tashi, Cairn Chronicler", "Chronicler leaving prayer flags at the high vantage point."),
+            (f"{from_base_name} - {cardinal_name} Serac Camp", "Wind-hardened expedition tent platform perched above colossal blue ice pinnacles", "Dawa Sherpa", "Veteran route-fixer securing safety lines across the icefall."),
+            (f"{from_base_name} - {cardinal_name} Face Traverses", "Sheer blue ice wall reflecting the sun with ascending fixed ropes", "Dr. Chen, High Altitude Medic", "Expedition doctor monitoring physiological adaptation."),
+            (f"{from_base_name} - {cardinal_name} Rock Crest", "Knife-edge rock ridge between Nepal and Tibet under dark indigo sky", "Pasang the Guide", "Summit veteran pointing out the Kangchenjunga massif on the horizon."),
+            (f"{from_base_name} - {cardinal_name} Cornice", "Windswept snow cornice overlooking the endless Himalayan sea of peaks", "Tashi, Cairn Chronicler", "Chronicler leaving prayer flags at the high vantage point."),
         ]
         name, desc, npc_n, npc_p = everest_titles[(next_idx - 1) % len(everest_titles)]
     elif any(k in lower_p for k in ["giza", "pyramid", "sphinx", "egypt"]):
         giza_titles = [
-            ("Western Mastaba Field", "Ancient limestone offering chapels stretching into the sunlit western plateau", "Scribe Sennefer", "Chronicler recording sacred funerary liturgies upon carved limestone stelae."),
-            ("Causeway of Khafre", "Monumental stone processional roadway bridging the valley temple to the second pyramid", "Overseer Rahotep", "Architect surveying the astronomical alignment with the morning star."),
-            ("Valley Temple Porphyry Court", "Colossal monolithic red granite hall illuminated by clerestory sunlight", "Priestess Meritaten", "Keeper of the sacred libations and alabaster unguent jars."),
-            ("Plateau South Horizon", "Windswept desert sands surveying the southern pyramid horizons under the solar disc", "Pathfinder Tariq", "Desert navigator guiding caravans along the ancient trade routes."),
+            (f"{from_base_name} - {cardinal_name} Mastaba Colonnade", "Ancient limestone offering chapels stretching into the sunlit plateau", "Scribe Sennefer", "Chronicler recording sacred funerary liturgies upon carved limestone stelae."),
+            (f"{from_base_name} - {cardinal_name} Processional Causeway", "Monumental stone processional roadway bridging the valley temple to the horizon", "Overseer Rahotep", "Architect surveying the astronomical alignment with the morning star."),
+            (f"{from_base_name} - {cardinal_name} Porphyry Court", "Colossal monolithic red granite hall illuminated by clerestory sunlight", "Priestess Meritaten", "Keeper of the sacred libations and alabaster unguent jars."),
+            (f"{from_base_name} - {cardinal_name} Horizon Vista", "Windswept desert sands surveying the southern horizons under the solar disc", "Pathfinder Tariq", "Desert navigator guiding caravans along the ancient trade routes."),
         ]
         name, desc, npc_n, npc_p = giza_titles[(next_idx - 1) % len(giza_titles)]
     else:
-        cardinal_name = dir_lower.capitalize() if dir_lower in ["north", "south", "east", "west"] else "Quadrant"
-        name = f"{clean_prompt[:18]} - {cardinal_name} Sector {next_idx}"
-        desc = f"Newly expanded continuous natural quadrant within {clean_prompt}."
-        npc_n = f"Guardian of Sector {next_idx}"
-        npc_p = f"Resident scout charting the continuous 4-directional frontier of {clean_prompt}."
+        name = f"{from_base_name} - {cardinal_name} Sector {next_idx}"
+        desc = f"Newly expanded continuous natural quadrant connected directly from {from_base_name}."
+        npc_n = f"Guardian of {cardinal_name} Sector"
+        npc_p = f"Resident scout charting the continuous frontier leading from {from_base_name}."
 
     palette = generate_room_visual_palette(name, clean_prompt, theme)
     from_id = from_room.room_id if from_room else from_room_id
     adj_ids = [from_id] if from_id else []
 
-    safe_world = re.sub(r"[^a-zA-Z0-9_-]", "", world_id or "world_default")
-    safe_room = re.sub(r"[^a-zA-Z0-9_-]", "", new_room_id)
-
-    name_q = urllib.parse.quote(name)
-    prompt_q = urllib.parse.quote(clean_prompt[:80])
-    theme_q = urllib.parse.quote(theme)
-    sky_q = urllib.parse.quote(palette.sky_tone)
-    floor_q = urllib.parse.quote(palette.floor_tone)
-    pano_url = f"/cached_worlds/{theme}/panorama.webp?room={name_q}&prompt={prompt_q}&biome={theme_q}&sky={sky_q}&floor={floor_q}"
-    depth_url = f"/cached_worlds/{theme}/depth.png"
+    # Synthesize dedicated connected panorama and 16-bit depth map with reciprocal portal
+    pano_url, depth_url = synthesize_connected_room_assets(
+        world_id=world_id,
+        new_room_id=new_room_id,
+        new_room_name=name,
+        from_room=from_room,
+        direction=dir_lower,
+        target_x=new_x,
+        target_z=new_z,
+        biome_type=theme,
+        world_prompt=clean_prompt,
+    )
 
     new_node = NodeState(
         room_id=new_room_id,
@@ -604,9 +618,9 @@ def generate_expanded_room(
                 room_id=new_room_id,
                 persona_description=npc_p,
                 thought_log=[
-                    f"[MEMORY] Stationed in {name}.",
-                    "[REFLECTION] The world expands as traveler approaches the boundary.",
-                    f"[PLANNING] Counsel the traveler in {name}.",
+                    f"[MEMORY] Stationed at the entrance of {name}, directly connected from {from_base_name}.",
+                    f"[REFLECTION] Traveler approached across the {dir_lower} threshold from {from_base_name}.",
+                    f"[PLANNING] Counsel the traveler entering {name}.",
                     f"[ACTION] Welcome traveler to this newly charted sector.",
                 ],
                 active_plan=f"Survey {name}.",
@@ -630,23 +644,6 @@ def generate_expanded_room(
         topology_type=topo,
         visual_palette=palette,
     )
-
-    # Spawn asynchronous background panorama generation so user can walk into it
-    import threading
-    threading.Thread(
-        target=generate_room_panorama_and_depth,
-        kwargs={
-            "world_id": world_id,
-            "room_id": new_node.room_id,
-            "room_name": new_node.name,
-            "world_prompt": clean_prompt,
-            "biome_type": theme,
-            "room_idx": next_idx,
-            "ambient_color": palette.dominant_color,
-            "fog_color": palette.sky_tone,
-        },
-        daemon=True,
-    ).start()
 
     return new_node
 

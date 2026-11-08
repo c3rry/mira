@@ -1022,6 +1022,61 @@ function createPromptDrivenPanorama(url: string): THREE.Texture {
       ctx.lineTo(w, y);
       ctx.stroke();
     }
+
+    // Render reciprocal portal gateway leading directly back into parent room
+    const fromName = params.get("from");
+    const uBackStr = params.get("u_back");
+    if (fromName && uBackStr) {
+      const uBack = parseFloat(uBackStr);
+      if (!isNaN(uBack)) {
+        const portalCx = ((Math.round(uBack * w) % w) + w) % w;
+        const pHalfW = 90;
+        const pTopY = horizonY - 240;
+        const pBotY = horizonY + 115;
+
+        // Ground light spill pouring forward out of portal
+        const spillGrad = ctx.createLinearGradient(0, pBotY, 0, pBotY + 160);
+        spillGrad.addColorStop(0, "rgba(250, 204, 21, 0.42)");
+        spillGrad.addColorStop(1, "rgba(250, 204, 21, 0.0)");
+        ctx.fillStyle = spillGrad;
+        ctx.beginPath();
+        const sw = pHalfW * 2.2;
+        ctx.moveTo(portalCx - pHalfW, pBotY);
+        ctx.lineTo(portalCx + pHalfW, pBotY);
+        ctx.lineTo(portalCx + sw, pBotY + 160);
+        ctx.lineTo(portalCx - sw, pBotY + 160);
+        ctx.closePath();
+        ctx.fill();
+
+        // Portal interior glow revealing parent room
+        ctx.fillStyle = "rgba(234, 179, 8, 0.32)";
+        ctx.fillRect(portalCx - pHalfW + 20, pTopY + 20, pHalfW * 2 - 40, pBotY - pTopY - 20);
+
+        // Monumental stone/metallic pylons
+        ctx.fillStyle = "#d4af37";
+        ctx.fillRect(portalCx - pHalfW, pTopY, 24, pBotY - pTopY + 12);
+        ctx.fillRect(portalCx + pHalfW - 24, pTopY, 24, pBotY - pTopY + 12);
+
+        // Lintel & pediment
+        ctx.fillRect(portalCx - pHalfW - 14, pTopY - 28, pHalfW * 2 + 28, 28);
+        ctx.strokeStyle = "#fef08a";
+        ctx.lineWidth = 2.5;
+        ctx.strokeRect(portalCx - pHalfW - 14, pTopY - 28, pHalfW * 2 + 28, 28);
+
+        // Directional waypoint label plaque
+        ctx.fillStyle = "rgba(15, 23, 42, 0.88)";
+        ctx.fillRect(portalCx - 110, pTopY - 60, 220, 26);
+        ctx.strokeStyle = "#fbbf24";
+        ctx.lineWidth = 1.5;
+        ctx.strokeRect(portalCx - 110, pTopY - 60, 220, 26);
+        ctx.fillStyle = "#fef08a";
+        ctx.font = "bold 13px 'Times New Roman', serif";
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        const clippedFrom = fromName.length > 22 ? fromName.slice(0, 20) + ".." : fromName;
+        ctx.fillText(`← TO ${clippedFrom.toUpperCase()}`, portalCx, pTopY - 47);
+      }
+    }
   }
 
   const texture = new THREE.CanvasTexture(canvas);

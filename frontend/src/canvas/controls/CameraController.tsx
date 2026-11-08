@@ -74,8 +74,25 @@ export function CameraController({
   const walkBobPhase = useRef<number>(0);
 
   const prevTeleportTrigger = useRef(teleportTrigger);
+  const dollyRef = useRef<{
+    active: boolean;
+    startX: number;
+    startZ: number;
+    targetX: number;
+    targetZ: number;
+    startTime: number;
+    duration: number;
+  }>({
+    active: false,
+    startX: 0,
+    startZ: 0,
+    targetX: 0,
+    targetZ: 0,
+    startTime: 0,
+    duration: 800,
+  });
 
-  // move camera to the selected room's 3D world coordinates ONLY when explicitly teleported via HUD / Minimap
+  // smooth camera fly-through (dolly) to the selected room's 3D coordinates when teleported via HUD / Minimap / Portal
   useEffect(() => {
     if (prevTeleportTrigger.current === teleportTrigger) return;
     prevTeleportTrigger.current = teleportTrigger;
@@ -85,16 +102,33 @@ export function CameraController({
     const rx = targetRoom?.worldX || 0;
     const rz = targetRoom?.worldZ || 0;
 
-    if (worldGroupRef?.current) {
-      worldGroupRef.current.position.set(0, 0, 0);
-    }
-    if (skyboxGroupRef?.current) {
-      skyboxGroupRef.current.position.set(rx, 0, rz);
-    }
-    if (controlsRef.current) {
-      camera.position.set(rx, 0, rz + 0.5);
-      controlsRef.current.target.set(rx, 0, rz);
-      controlsRef.current.update();
+    const curTargetX = controlsRef.current ? controlsRef.current.target.x : rx;
+    const curTargetZ = controlsRef.current ? controlsRef.current.target.z : rz;
+    const dist = Math.hypot(rx - curTargetX, rz - curTargetZ);
+
+    if (dist > 1.5 && controlsRef.current) {
+      dollyRef.current = {
+        active: true,
+        startX: curTargetX,
+        startZ: curTargetZ,
+        targetX: rx,
+        targetZ: rz,
+        startTime: performance.now(),
+        duration: Math.min(1100, Math.max(650, dist * 3.2)),
+      };
+    } else {
+      dollyRef.current.active = false;
+      if (worldGroupRef?.current) {
+        worldGroupRef.current.position.set(0, 0, 0);
+      }
+      if (skyboxGroupRef?.current) {
+        skyboxGroupRef.current.position.set(rx, 0, rz);
+      }
+      if (controlsRef.current) {
+        camera.position.set(rx, 0, rz + 0.5);
+        controlsRef.current.target.set(rx, 0, rz);
+        controlsRef.current.update();
+      }
     }
   }, [teleportTrigger, camera, worldGroupRef, skyboxGroupRef]);
 
@@ -171,6 +205,35 @@ export function CameraController({
     const { forward, backward, left, right, sprint } = keysRef.current;
     const isMoving = forward || backward || left || right;
     const controls = controlsRef.current;
+
+    // smooth cinematic camera dolly fly-through between rooms
+    if (dollyRef.current.active) {
+      if (isMoving) {
+        // Player took manual control via WASD locomotion
+        dollyRef.current.active = false;
+      } else {
+        const elapsed = performance.now() - dollyRef.current.startTime;
+        const progress = Math.min(1.0, elapsed / dollyRef.current.duration);
+        const t = progress < 0.5
+          ? 4 * progress * progress * progress
+          : 1 - Math.pow(-2 * progress + 2, 3) / 2;
+
+        const curX = THREE.MathUtils.lerp(dollyRef.current.startX, dollyRef.current.targetX, t);
+        const curZ = THREE.MathUtils.lerp(dollyRef.current.startZ, dollyRef.current.targetZ, t);
+
+        const dX = curX - controls.target.x;
+        const dZ = curZ - controls.target.z;
+
+        camera.position.x += dX;
+        camera.position.z += dZ;
+        controls.target.x = curX;
+        controls.target.z = curZ;
+
+        if (progress >= 1.0) {
+          dollyRef.current.active = false;
+        }
+      }
+    }
 
     if (isMoving) {
       // brisk, responsive locomotion speed

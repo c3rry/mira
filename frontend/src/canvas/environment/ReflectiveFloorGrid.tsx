@@ -262,27 +262,14 @@ export function ReflectiveFloorGrid({
 
   return (
     <group position={[0, -6.0, 0]}>
-      {/* 3D perspective floor plane providing real ground optical flow under the player's feet */}
-      <mesh position={[0, 0, 0]} rotation={[-Math.PI / 2, 0, 0]}>
-        <circleGeometry args={[115, 64]} />
-        <meshStandardMaterial
-          map={floorTexture}
-          roughness={0.7}
-          metalness={0.12}
-          transparent={true}
-          opacity={isCurrentRoom ? 0.38 : 0.12}
-          depthWrite={false}
-        />
-      </mesh>
-
-      {/* subtle central compass ring at room origin */}
+      {/* subtle central compass ring at room origin - zero artificial floor plane slicing through panorama */}
       <mesh ref={ringRef} position={[0, 0.05, 0]} rotation={[-Math.PI / 2, 0, 0]}>
-        <ringGeometry args={[5.0, 5.8, 48]} />
+        <ringGeometry args={[4.2, 4.8, 48]} />
         <meshBasicMaterial
           color={palette.accent}
           side={THREE.DoubleSide}
           transparent={true}
-          opacity={isCurrentRoom ? 0.22 : 0.06}
+          opacity={isCurrentRoom ? 0.32 : 0.08}
           depthWrite={false}
         />
       </mesh>
