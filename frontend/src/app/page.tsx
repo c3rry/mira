@@ -12,7 +12,7 @@ import { DialogueModal } from "@/components/hud/DialogueModal";
 import { GodModePalette } from "@/components/GodModePalette";
 import { GodModeNarrativeDirector } from "@/components/director/GodModeNarrativeDirector";
 import { MinimapTopology } from "@/components/minimap/MinimapTopology";
-import { MutationControls } from "@/components/MutationControls";
+
 
 // dynamically import 3d canvas to prevent ssr webgl errors
 const WorldCanvas = dynamic(
@@ -743,10 +743,7 @@ export default function Home() {
             <MinimapTopology />
           </div>
 
-          {/* bottom-right collapsible lighting pill */}
-          <div className="absolute bottom-11 right-4 z-20 pointer-events-auto hidden lg:block">
-            <MutationControls />
-          </div>
+
 
           {/* dialogue modal (only appears when clicking an NPC) */}
           <DialogueModal />
