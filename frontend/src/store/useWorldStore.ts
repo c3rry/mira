@@ -697,6 +697,154 @@ export function inferRoomVisualPalette(roomName?: string, worldTitle?: string, b
   };
 }
 
+export function generateThematicRoomName(
+  worldTitle: string,
+  biome: string | undefined,
+  dir: string,
+  x: number,
+  z: number
+): string {
+  const t = `${worldTitle} ${biome || ""}`.toLowerCase();
+  const dirLabel = dir.charAt(0).toUpperCase() + dir.slice(1);
+
+  if (
+    t.includes("everest") ||
+    t.includes("himalaya") ||
+    t.includes("mountain") ||
+    t.includes("glacier") ||
+    t.includes("icefall")
+  ) {
+    const names: Record<string, string[]> = {
+      north: ["North Col High Seracs", "Rongbuk Glacier Crest", "Nuptse Face Overlook", "Lhotse Couloir Route"],
+      south: ["South Col Razor Ridge", "Western Cwm Glacial Basin", "Khumbu Icefall Traverse", "Hillary Step Crest"],
+      east: ["Kangshung Glacier Wall", "East Cirque Serac Field", "Chomo Lonzo Overlook", "Makalu Ridge Vista"],
+      west: ["West Rongbuk Basin", "Pumori Shoulder Vista", "Tibetan Plateau Threshold", "Lingtren Ice Cliff"],
+    };
+    const list = names[dir] || names.north;
+    const idx = Math.abs(Math.round((x * 3 + z * 7) / 220)) % list.length;
+    return list[idx];
+  }
+
+  if (
+    t.includes("giza") ||
+    t.includes("pyramid") ||
+    t.includes("sphinx") ||
+    t.includes("desert") ||
+    t.includes("egypt")
+  ) {
+    const names: Record<string, string[]> = {
+      north: ["Causeway of Khafre", "Northern Pyramid Enclosure", "Solar Boat Pit Terrace", "Limestone Pavement of Khufu"],
+      south: ["Plateau South Horizon", "Valley Temple Porphyry Court", "Southern Dune Causeway", "Sakkara Vista Corridor"],
+      east: ["Sanctuary of the Great Sphinx", "Nile Valley Harbor Basin", "Eastern Basalt Causeway", "Colonnade of Hathor"],
+      west: ["Western Mastaba Field", "Royal Offering Chapel", "Western Necropolis Terrace", "Giza Plateau Sandcrest"],
+    };
+    const list = names[dir] || names.north;
+    const idx = Math.abs(Math.round((x * 3 + z * 7) / 220)) % list.length;
+    return list[idx];
+  }
+
+  if (
+    t.includes("times square") ||
+    t.includes("manhattan") ||
+    t.includes("city") ||
+    t.includes("metropolis") ||
+    t.includes("broadway")
+  ) {
+    const names: Record<string, string[]> = {
+      north: ["Broadway Apex Plaza", "Duffy Square Red Steps", "47th Street Neon Crossing", "Marquis Center Esplanade"],
+      south: ["Seventh Avenue South Hub", "42nd Street Theater Way", "Times Square Subway Mezzanine", "One Times Square Forecourt"],
+      east: ["Sixth Avenue Promenade", "Rockefeller Plaza Corridor", "Midtown Neon Arcade", "Avenue of the Americas Crossing"],
+      west: ["Eighth Avenue Theater District", "Hell's Kitchen Broadway Way", "Shubert Alley Promenade", "Broadway Stage Threshold"],
+    };
+    const list = names[dir] || names.north;
+    const idx = Math.abs(Math.round((x * 3 + z * 7) / 220)) % list.length;
+    return list[idx];
+  }
+
+  if (
+    t.includes("seattle") ||
+    t.includes("emerald") ||
+    t.includes("sound") ||
+    t.includes("waterfront")
+  ) {
+    const names: Record<string, string[]> = {
+      north: ["Pike Place Waterfront Arcade", "Belltown Promenade", "Seattle Center Monorail Way"],
+      south: ["Pioneer Square Pergola Promenade", "Occidental Park Brick Crossing", "King Street Transit Hall"],
+      east: ["Westlake Transit Mall", "Capitol Hill Pine Corridor", "Convention Center Archway"],
+      west: ["Elliott Bay Pier Promenade", "Alaskan Way Cedar Boardwalk", "Puget Sound Ferry Slip"],
+    };
+    const list = names[dir] || names.north;
+    const idx = Math.abs(Math.round((x * 3 + z * 7) / 220)) % list.length;
+    return list[idx];
+  }
+
+  if (t.includes("subway") || t.includes("train") || t.includes("metro")) {
+    const carNum = Math.abs(Math.round(z / 220)) + 1;
+    if (dir === "forward") return `Carriage ${carNum}: Forward Passenger Coach`;
+    return `Carriage ${carNum}: Rear Observation Car`;
+  }
+
+  if (t.includes("plane") || t.includes("airplane") || t.includes("flight")) {
+    const secNum = Math.abs(Math.round(z / 220)) + 1;
+    if (dir === "forward") return `Section ${secNum}: Forward Avionics Deck`;
+    return `Section ${secNum}: Aft Cabin Lounge`;
+  }
+
+  if (
+    t.includes("space") ||
+    t.includes("orbital") ||
+    t.includes("observatory") ||
+    t.includes("station")
+  ) {
+    const names: Record<string, string[]> = {
+      north: ["Zenith Astrolabe Array", "Meridian Telescope Deck", "Polar Telemetry Spire"],
+      south: ["Nadir Earth-Viewing Cupola", "Southern Planetary Sensor Array", "Orbital Docking Corridor"],
+      east: ["Apogee Botanical Atrium", "Solar Array Gantry", "Starlight Observation Ring"],
+      west: ["Perigee Navigation Center", "Deep Space Telemetry Hub", "Celestial Archive Vault"],
+    };
+    const list = names[dir] || names.north;
+    const idx = Math.abs(Math.round((x * 3 + z * 7) / 220)) % list.length;
+    return list[idx];
+  }
+
+  if (
+    t.includes("rome") ||
+    t.includes("colosseum") ||
+    t.includes("forum") ||
+    t.includes("pantheon")
+  ) {
+    const names: Record<string, string[]> = {
+      north: ["Via Sacra Processional", "Senate Curia Steps", "Temple of Mars Ultor"],
+      south: ["Palatine Terraced Gardens", "Circus Maximus Overlook", "Imperial Domus Vestibule"],
+      east: ["Colosseum Arena Floor", "Arch of Constantine Plaza", "Ludus Magnus Colonnade"],
+      west: ["Pantheon Oculus Rotunda", "Forum Boarium Promenade", "Capitoline Hill Crest"],
+    };
+    const list = names[dir] || names.north;
+    const idx = Math.abs(Math.round((x * 3 + z * 7) / 220)) % list.length;
+    return list[idx];
+  }
+
+  if (
+    t.includes("forest") ||
+    t.includes("garden") ||
+    t.includes("sylvan") ||
+    t.includes("babylon")
+  ) {
+    const names: Record<string, string[]> = {
+      north: ["Upper Cedar Canopy", "Moonlit Waterfall Grotto", "Sylvan Grove Overlook"],
+      south: ["Sunken Fern Hollow", "River Euphrates Promenade", "Ancient Moss Glade"],
+      east: ["Ishtar Water Pavilion", "Pomegranate Peristyle Arbor", "Emerald Bamboo Terrace"],
+      west: ["Hanging Balustrade Vista", "Sacred Spring Basin", "Twilight Lotus Pond"],
+    };
+    const list = names[dir] || names.north;
+    const idx = Math.abs(Math.round((x * 3 + z * 7) / 220)) % list.length;
+    return list[idx];
+  }
+
+  const baseTitle = worldTitle.split("—")[0].trim();
+  return `${baseTitle} - ${dirLabel} Sector`;
+}
+
 export interface WorldState {
   currentRoomId: string;
   worldTitle: string;
@@ -739,6 +887,7 @@ export interface WorldState {
   setSimulatedProvider: (provider: "nemotron_70b" | "gemini_flash" | "offline_mock" | null) => void;
   toggleGodMode: () => void;
   hydrateFromMockWorld: (worldData: any) => void;
+  ensureNeighborZones: (roomId: string) => void;
   expandWorld: (fromRoomId?: string, direction?: string) => Promise<WorldRoom | null>;
   initializeSync: () => void;
 }
@@ -849,6 +998,9 @@ export const useWorldStore = create<WorldState>((set, get) => ({
             },
         teleportTrigger: walkedInto ? state.teleportTrigger : state.teleportTrigger + 1,
       }));
+
+      // immediately generate neighboring zones as soon as the user enters this environment!
+      get().ensureNeighborZones(roomId);
     }
   },
 
@@ -1089,6 +1241,123 @@ export const useWorldStore = create<WorldState>((set, get) => ({
       },
       teleportTrigger: state.teleportTrigger + 1,
     }));
+
+    // immediately ensure all adjacent neighboring zones exist upon entering the world
+    get().ensureNeighborZones(initialId);
+  },
+
+  ensureNeighborZones: (roomId: string) => {
+    const state = get();
+    const sourceRoom = state.rooms[roomId];
+    if (!sourceRoom) return;
+
+    const topo = (sourceRoom.topology_type || state.topologyType || "nature_open") as string;
+    const currentRooms = { ...state.rooms };
+    const currentNpcs = { ...state.npcs };
+    let modified = false;
+
+    interface CandidateOffset {
+      dir: "north" | "south" | "east" | "west" | "forward" | "backward";
+      dx: number;
+      dz: number;
+    }
+
+    const offsets: CandidateOffset[] = [];
+    if (topo === "linear") {
+      offsets.push({ dir: "forward", dx: 0, dz: -220 });
+      offsets.push({ dir: "backward", dx: 0, dz: 220 });
+    } else {
+      // Nature environment or city grid: NO LIMITS - ALWAYS GENERATE ALL 4 DIRECTIONS IMMEDIATELY!
+      offsets.push({ dir: "north", dx: 0, dz: -220 });
+      offsets.push({ dir: "south", dx: 0, dz: 220 });
+      offsets.push({ dir: "east", dx: 220, dz: 0 });
+      offsets.push({ dir: "west", dx: -220, dz: 0 });
+    }
+
+    const srcX = sourceRoom.worldX || 0;
+    const srcZ = sourceRoom.worldZ || 0;
+    const newAdjacent = new Set(sourceRoom.adjacent_room_ids || []);
+
+    for (const offset of offsets) {
+      const targetX = Math.round((srcX + offset.dx) / 10) * 10;
+      const targetZ = Math.round((srcZ + offset.dz) / 10) * 10;
+
+      // check if any room already exists within 65 units of target
+      const existing = Object.values(currentRooms).find(
+        (r) => Math.hypot((r.worldX || 0) - targetX, (r.worldZ || 0) - targetZ) < 65
+      );
+
+      if (existing) {
+        newAdjacent.add(existing.room_id);
+        if (!existing.adjacent_room_ids?.includes(sourceRoom.room_id)) {
+          currentRooms[existing.room_id] = {
+            ...existing,
+            adjacent_room_ids: [...(existing.adjacent_room_ids || []), sourceRoom.room_id],
+          };
+          modified = true;
+        }
+      } else {
+        // generate newly connected neighboring zone immediately!
+        const coordKey = `x${targetX >= 0 ? "p" : "m"}${Math.abs(targetX)}_z${targetZ >= 0 ? "p" : "m"}${Math.abs(targetZ)}`;
+        const safeId = `room_gen_${coordKey}`;
+        const name = generateThematicRoomName(state.worldTitle, sourceRoom.biome_type, offset.dir, targetX, targetZ);
+        const biome = sourceRoom.biome_type || "desert_oasis";
+        const pal = inferRoomVisualPalette(name, state.worldTitle, biome);
+
+        const newRoom: WorldRoom = {
+          room_id: safeId,
+          name,
+          panorama_url: `/cached_worlds/${biome}/panorama.webp?room=${encodeURIComponent(name)}&prompt=${encodeURIComponent(state.worldTitle)}&biome=${encodeURIComponent(biome)}&sky=${encodeURIComponent(pal.sky_tone)}&floor=${encodeURIComponent(pal.floor_tone)}`,
+          depth_url: `/cached_worlds/${biome}/depth.png`,
+          adjacent_room_ids: [sourceRoom.room_id],
+          mutation_level: 0,
+          biome_type: biome,
+          props: [
+            {
+              prop_id: `prop_${safeId}`,
+              name: `${name} Beacon`,
+              mesh_url: "/cached_worlds/models/terminal.glb",
+              position: { r: 500, theta: 0.38, phi: 1.7 },
+              scale: 1.0,
+              interactive: true,
+            },
+          ],
+          worldX: targetX,
+          worldZ: targetZ,
+          topology_type: topo,
+          visual_palette: pal,
+        };
+
+        const npcId = `npc_${safeId}`;
+        currentNpcs[npcId] = {
+          npc_id: npcId,
+          name: `Guardian of ${name.split(" ")[0]}`,
+          room_id: safeId,
+          persona_description: `Resident scout guarding and surveying ${name}.`,
+          thought_log: [
+            `[MEMORY] Surveying ${name}.`,
+            `[REFLECTION] Explorer has arrived at the threshold.`,
+            `[ACTION] Welcome traveler to ${name}.`,
+          ],
+          active_plan: `Survey sector ${name}.`,
+          inventory: ["waypoint_marker"],
+          hp: 100,
+          position: { r: 500, theta: -0.22, phi: 1.65 },
+        };
+
+        currentRooms[safeId] = newRoom;
+        newAdjacent.add(safeId);
+        modified = true;
+      }
+    }
+
+    if (modified) {
+      currentRooms[roomId] = {
+        ...sourceRoom,
+        adjacent_room_ids: Array.from(newAdjacent),
+      };
+      set({ rooms: currentRooms, npcs: currentNpcs });
+    }
   },
 
   expandWorld: async (fromRoomId?: string, direction?: string) => {
@@ -1208,17 +1477,20 @@ export const useWorldStore = create<WorldState>((set, get) => ({
       else newZ = fromZ - 220;
     }
 
-    const fallbackId = `room_expanded_${nextIdx}`;
-    const fallbackName = `${state.worldTitle.split("—")[0].trim()} - Sector ${nextIdx}`;
+    const fallbackDir = direction || (topo === "linear" ? "forward" : "north");
+    const fallbackId = `room_gen_x${newX >= 0 ? "p" : "m"}${Math.abs(newX)}_z${newZ >= 0 ? "p" : "m"}${Math.abs(newZ)}`;
+    const fallbackName = generateThematicRoomName(state.worldTitle, sourceRoom?.biome_type, fallbackDir, newX, newZ);
+    const fallbackBiome = sourceRoom?.biome_type || "desert_oasis";
+    const fallbackPal = inferRoomVisualPalette(fallbackName, state.worldTitle, fallbackBiome);
 
     const fallbackRoom: WorldRoom = {
       room_id: fallbackId,
       name: fallbackName,
-      panorama_url: sourceRoom?.panorama_url || "/cached_worlds/desert_oasis/panorama.webp",
-      depth_url: sourceRoom?.depth_url || "/cached_worlds/desert_oasis/depth.png",
+      panorama_url: `/cached_worlds/${fallbackBiome}/panorama.webp?room=${encodeURIComponent(fallbackName)}&prompt=${encodeURIComponent(state.worldTitle)}&biome=${encodeURIComponent(fallbackBiome)}&sky=${encodeURIComponent(fallbackPal.sky_tone)}&floor=${encodeURIComponent(fallbackPal.floor_tone)}`,
+      depth_url: `/cached_worlds/${fallbackBiome}/depth.png`,
       adjacent_room_ids: [sourceRoomId],
       mutation_level: 0,
-      biome_type: sourceRoom?.biome_type || "desert_oasis",
+      biome_type: fallbackBiome,
       props: [],
       worldX: newX,
       worldZ: newZ,

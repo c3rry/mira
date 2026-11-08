@@ -575,12 +575,20 @@ def generate_expanded_room(
     safe_world = re.sub(r"[^a-zA-Z0-9_-]", "", world_id or "world_default")
     safe_room = re.sub(r"[^a-zA-Z0-9_-]", "", new_room_id)
 
+    name_q = urllib.parse.quote(name)
+    prompt_q = urllib.parse.quote(clean_prompt[:80])
+    theme_q = urllib.parse.quote(theme)
+    sky_q = urllib.parse.quote(palette.sky_tone)
+    floor_q = urllib.parse.quote(palette.floor_tone)
+    pano_url = f"/cached_worlds/{theme}/panorama.webp?room={name_q}&prompt={prompt_q}&biome={theme_q}&sky={sky_q}&floor={floor_q}"
+    depth_url = f"/cached_worlds/{theme}/depth.png"
+
     new_node = NodeState(
         room_id=new_room_id,
         name=name,
         biome_type=theme,
-        panorama_url=f"/generated_worlds/{safe_world}/{safe_room}_panorama.webp",
-        depth_url=f"/generated_worlds/{safe_world}/{safe_room}_depth.png",
+        panorama_url=pano_url,
+        depth_url=depth_url,
         adjacent_room_ids=adj_ids,
         mutation_level=0.0,
         lighting=LightingConfig(

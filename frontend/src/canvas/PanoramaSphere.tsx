@@ -43,7 +43,7 @@ const skyFragmentShader = `
     vec3 a = texture2D(uTexA, vUv).rgb;
     vec3 b = texture2D(uTexB, vUv).rgb;
     float blend = smoothstep(0.0, 1.0, uMix);
-    vec3 col = mix(a, b, blend);
+    vec3 col = max(mix(a, b, blend), vec3(0.04, 0.05, 0.08));
     vec3 grain = vec3(hash21(vUv * 512.0 + uTime), hash21(vUv * 512.0 + uTime + 1.3), hash21(vUv * 512.0 + uTime + 2.9));
     col = mix(col, grain, clamp(uNoise * 0.9, 0.0, 0.92));
     col = mix(col, col * vec3(1.12, 0.95, 0.82), uMutation * 0.45);
@@ -64,11 +64,26 @@ export function PanoramaSphere({
   const setDiffusionProgress = useWorldStore((state) => state.setDiffusionProgress);
 
   const material = useMemo(
-    () =>
-      new THREE.ShaderMaterial({
+    () => {
+      // Create baseline non-null placeholder texture so WebGL never renders black before targetTex resolves
+      let baselineTex: THREE.Texture | null = null;
+      if (typeof document !== "undefined") {
+        const canvas = document.createElement("canvas");
+        canvas.width = 64;
+        canvas.height = 32;
+        const ctx = canvas.getContext("2d");
+        if (ctx) {
+          ctx.fillStyle = "#1e293b";
+          ctx.fillRect(0, 0, 64, 32);
+        }
+        baselineTex = new THREE.CanvasTexture(canvas);
+        baselineTex.colorSpace = THREE.SRGBColorSpace;
+      }
+
+      return new THREE.ShaderMaterial({
         uniforms: {
-          uTexA: { value: null },
-          uTexB: { value: null },
+          uTexA: { value: baselineTex },
+          uTexB: { value: baselineTex },
           uMix: { value: 1.0 },
           uNoise: { value: 0.65 },
           uMutation: { value: 0.0 },
@@ -78,7 +93,8 @@ export function PanoramaSphere({
         fragmentShader: skyFragmentShader,
         side: THREE.DoubleSide,
         depthWrite: false,
-      }),
+      });
+    },
     []
   );
 

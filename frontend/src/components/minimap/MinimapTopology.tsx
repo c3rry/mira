@@ -188,10 +188,10 @@ export function MinimapTopology() {
       {/* top CAD / radar header with live coordinate and continuous expand button */}
       <div className="flex items-center justify-between z-10 pointer-events-none">
         <span
-          className="text-[9px] font-bold uppercase tracking-[0.16em] px-1.5 py-0.5 border bg-black/80"
+          className="text-[9px] font-bold uppercase tracking-[0.14em] px-1.5 py-0.5 border bg-black/80 truncate max-w-[240px]"
           style={{ borderColor: `${theme.panelBorder}66`, color: theme.accentColor }}
         >
-          {activeTopology === "linear" ? "TRANSIT CAD" : isNature ? "NATURE TOPO (4-WAY)" : "FLOORPLAN CAD"} ({Math.round(playerPosition.x)}, {Math.round(playerPosition.z)})
+          {activeTopology === "linear" ? "TRANSIT LINE (1D)" : isNature ? "NATURE EXPEDITION (4-WAY)" : "FLOORPLAN CAD (2D)"} • {worldTitle.split("—")[0].trim().toUpperCase()}
         </span>
         <div className="flex items-center gap-1 pointer-events-auto">
           <button
@@ -608,10 +608,73 @@ export function MinimapTopology() {
                   );
                 })}
 
-                {/* exact NPC positions inside room */}
+                {/* environmental biome glyph badge in room center */}
+                <text
+                  x={cx}
+                  y={cy - (expanded ? 7 : 4)}
+                  textAnchor="middle"
+                  fill={isCurrent ? "#ffffff" : pal.accent_color}
+                  fontSize={expanded ? "13" : "10"}
+                  fontWeight="bold"
+                  opacity={isCurrent ? "1.0" : "0.85"}
+                  style={{ textShadow: `0px 0px 6px ${pal.accent_color}88` }}
+                >
+                  {(() => {
+                    const t = `${room.name} ${room.biome_type || ""}`.toLowerCase();
+                    if (t.includes("everest") || t.includes("mountain") || t.includes("glacier") || t.includes("summit") || t.includes("icefall")) return "▲";
+                    if (t.includes("giza") || t.includes("pyramid") || t.includes("sphinx") || t.includes("desert") || t.includes("oasis")) return "△";
+                    if (t.includes("subway") || t.includes("train") || t.includes("metro")) return "🚆";
+                    if (t.includes("plane") || t.includes("flight")) return "✈";
+                    if (t.includes("city") || t.includes("broadway") || t.includes("times square") || t.includes("neon") || t.includes("metropolis")) return "✦";
+                    if (t.includes("space") || t.includes("orbital") || t.includes("observatory") || t.includes("station")) return "🪐";
+                    if (t.includes("rome") || t.includes("colosseum") || t.includes("forum")) return "🏛";
+                    if (t.includes("forest") || t.includes("garden") || t.includes("sylvan") || t.includes("grove")) return "🌿";
+                    return "◈";
+                  })()}
+                </text>
+
+                {/* prominent, highly legible room name across center */}
+                {(() => {
+                  const clean = room.name.replace(/^The\s+/i, "");
+                  const words = clean.split(" ");
+                  const line1 = words.slice(0, 2).join(" ");
+                  const line2 = words.slice(2, 4).join(" ");
+                  return (
+                    <g>
+                      <text
+                        x={cx}
+                        y={cy + (expanded ? 4 : 3)}
+                        textAnchor="middle"
+                        fill="#ffffff"
+                        fontSize={expanded ? "7.5" : "6"}
+                        fontWeight="bold"
+                        letterSpacing="0.02em"
+                        style={{ textShadow: "0px 1px 3px #000, 0px 0px 4px #000" }}
+                      >
+                        {line1}
+                      </text>
+                      {line2 && (
+                        <text
+                          x={cx}
+                          y={cy + (expanded ? 12 : 9)}
+                          textAnchor="middle"
+                          fill={pal.accent_color}
+                          fontSize={expanded ? "6.5" : "5"}
+                          fontWeight="bold"
+                          opacity="0.92"
+                          style={{ textShadow: "0px 1px 2px #000" }}
+                        >
+                          {line2}
+                        </text>
+                      )}
+                    </g>
+                  );
+                })()}
+
+                {/* exact NPC resident beacon pin */}
                 {roomNpcs.map((npc, nIdx) => {
                   const rawTheta = npc.position?.theta ?? -0.22 + nIdx * 0.45;
-                  const npcDist = 20.0 * spatialLayout.scale;
+                  const npcDist = 18.0 * spatialLayout.scale;
                   const nx = cx + npcDist * Math.sin(rawTheta);
                   const ny = cy - npcDist * Math.cos(rawTheta);
                   return (
@@ -628,44 +691,15 @@ export function MinimapTopology() {
                       <circle
                         cx={nx}
                         cy={ny}
-                        r={expanded ? 4.4 : 3.5}
+                        r={expanded ? 3.2 : 2.4}
                         fill="#f59e0b"
                         stroke="#ffffff"
-                        strokeWidth="1.2"
+                        strokeWidth="1"
                       />
-                      {expanded && (
-                        <text
-                          x={nx}
-                          y={ny - 6}
-                          textAnchor="middle"
-                          fill="#fde68a"
-                          fontSize="6.5"
-                          fontWeight="bold"
-                          style={{ textShadow: "0px 1px 2px #000" }}
-                        >
-                          {npc.name.split(",")[0]}
-                        </text>
-                      )}
+                      <title>{npc.name}: Click to converse</title>
                     </g>
                   );
                 })}
-
-                {/* room number & structural title */}
-                <text
-                  x={cx}
-                  y={
-                    rTopo === "linear"
-                      ? cy + carH / 2 - 5
-                      : cy + roomRadiusSvg - (expanded ? 8 : 6)
-                  }
-                  textAnchor="middle"
-                  fill="#ffffff"
-                  fontSize={expanded ? "8.5" : "7"}
-                  fontWeight="bold"
-                  style={{ textShadow: "0px 1px 3px #000, 0px 0px 4px #000" }}
-                >
-                  {idx + 1}. {room.name.length > 17 ? room.name.slice(0, 15) + ".." : room.name}
-                </text>
               </g>
             );
           })}

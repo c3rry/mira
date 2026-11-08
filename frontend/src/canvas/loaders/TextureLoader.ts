@@ -1073,68 +1073,32 @@ export function loadPanoramaTexture(
       },
       undefined,
       () => {
-        // First fallback: attempt fallbackUrl
-        const cleanFallback = fallbackUrl.split("?")[0];
-        if (cleanFallback !== cleanFileUrl) {
+        // First fallback: attempt fallbackUrl if specified and different
+        const cleanFallback = fallbackUrl ? fallbackUrl.split("?")[0] : "";
+        if (cleanFallback && cleanFallback !== cleanFileUrl) {
           loader.load(
             cleanFallback,
             (fallbackTexture) => {
               const configured = configureTexture(fallbackTexture);
               configured.userData.isFallback = true;
+              textureCache.set(url, configured);
               resolve(configured);
             },
             undefined,
             () => {
-              // Guaranteed secondary fallback: confirmed high-res photorealistic asset
-              loader.load(
-                defaultFallbackUrl,
-                (emergencyTexture) => {
-                  const configured = configureTexture(emergencyTexture);
-                  configured.userData.isFallback = true;
-                  resolve(configured);
-                },
-                undefined,
-                () => {
-                  // Final safeguard: plain dark neutral environment texture (never cartoon 2D shapes)
-                  const fallbackCanvas = document.createElement("canvas");
-                  fallbackCanvas.width = 16;
-                  fallbackCanvas.height = 16;
-                  const ctx = fallbackCanvas.getContext("2d");
-                  if (ctx) {
-                    ctx.fillStyle = "#1e293b";
-                    ctx.fillRect(0, 0, 16, 16);
-                  }
-                  const safeTex = new THREE.CanvasTexture(fallbackCanvas);
-                  safeTex.userData.isFallback = true;
-                  resolve(safeTex);
-                }
-              );
+              // High-resolution bespoke procedural panorama synthesized synchronously — NEVER a black screen!
+              const synthesizedTex = createPromptDrivenPanorama(url);
+              synthesizedTex.userData.isFallback = true;
+              textureCache.set(url, synthesizedTex);
+              resolve(synthesizedTex);
             }
           );
         } else {
-          // If cleanFallback is the same, load defaultFallbackUrl
-          loader.load(
-            defaultFallbackUrl,
-            (emergencyTexture) => {
-              const configured = configureTexture(emergencyTexture);
-              configured.userData.isFallback = true;
-              resolve(configured);
-            },
-            undefined,
-            () => {
-              const fallbackCanvas = document.createElement("canvas");
-              fallbackCanvas.width = 16;
-              fallbackCanvas.height = 16;
-              const ctx = fallbackCanvas.getContext("2d");
-              if (ctx) {
-                ctx.fillStyle = "#1e293b";
-                ctx.fillRect(0, 0, 16, 16);
-              }
-              const safeTex = new THREE.CanvasTexture(fallbackCanvas);
-              safeTex.userData.isFallback = true;
-              resolve(safeTex);
-            }
-          );
+          // Immediately synthesize high-resolution bespoke procedural panorama — NEVER a black screen!
+          const synthesizedTex = createPromptDrivenPanorama(url);
+          synthesizedTex.userData.isFallback = true;
+          textureCache.set(url, synthesizedTex);
+          resolve(synthesizedTex);
         }
       }
     );

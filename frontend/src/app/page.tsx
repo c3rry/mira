@@ -823,51 +823,22 @@ export default function Home() {
               Continuous Walk: <strong style={{ color: theme.accentColor }}>WASD / Arrows</strong> (Shift Sprint) • Drag to Look • Click NPCs to Talk
             </div>
 
-            <div className="flex flex-wrap gap-1.5 items-center mx-auto sm:mx-0">
+            <div className="flex items-center gap-3 text-[11px]">
               <span
-                className="text-[10px] uppercase tracking-widest mr-1 font-bold"
+                className="text-[10px] uppercase tracking-widest font-bold"
                 style={{ color: theme.accentColor }}
               >
-                Zones:
+                Sector:
               </span>
-              {Object.keys(rooms).map((rId, idx) => (
-                <button
-                  key={rId}
-                  onClick={(e) => {
-                    e.currentTarget.blur();
-                    startTransition(() => {
-                      setCurrentRoom(rId);
-                    });
-                  }}
-                  className="px-2 py-0.5 text-[11px] border uppercase tracking-wider transition-all"
-                  style={{
-                    backgroundColor:
-                      rId === currentRoomId ? theme.buttonBg : "rgba(0,0,0,0.45)",
-                    color: rId === currentRoomId ? theme.buttonText : theme.accentText,
-                    borderColor:
-                      rId === currentRoomId ? theme.accentColor : `${theme.panelBorder}55`,
-                    fontWeight: rId === currentRoomId ? "bold" : "normal",
-                  }}
-                >
-                  {idx + 1}. {rooms[rId]?.name || rId}
-                </button>
-              ))}
-              <button
-                onClick={(e) => {
-                  e.currentTarget.blur();
-                  expandWorld(currentRoomId);
-                }}
-                disabled={isExpanding}
-                className="px-2 py-0.5 text-[11px] border uppercase tracking-wider transition-all font-bold hover:opacity-90"
-                style={{
-                  backgroundColor: "rgba(20,25,35,0.75)",
-                  color: isExpanding ? theme.mutedText : theme.accentColor,
-                  borderColor: `${theme.panelBorder}88`,
-                }}
-                title="Continuously expand into new room [E]"
+              <span className="font-semibold text-white/90 truncate max-w-[280px]">
+                {rooms[currentRoomId]?.name || "Active Sector"}
+              </span>
+              <span
+                className="text-[10px] uppercase tracking-widest px-1.5 py-0.5 border bg-black/60 font-mono"
+                style={{ borderColor: `${theme.panelBorder}66`, color: theme.accentText }}
               >
-                {isExpanding ? "Synthesizing..." : "+ Expand [E]"}
-              </button>
+                ({Math.round(rooms[currentRoomId]?.worldX || 0)}, {Math.round(rooms[currentRoomId]?.worldZ || 0)})
+              </span>
             </div>
           </footer>
         </>

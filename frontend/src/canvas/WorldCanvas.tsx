@@ -23,10 +23,11 @@ export function WorldCanvas(_props: WorldCanvasProps) {
 
   const allRooms = useMemo(() => Object.values(rooms), [rooms]);
 
-  // first room of the world is synthesized synchronously, so use it as the same-world placeholder sky
-  const worldFallbackPano = allRooms[0]?.panorama_url;
-  const panoramaUrl =
-    currentRoom?.panorama_url || worldFallbackPano || "/generated_worlds/archive_giza_necropolis/giza_forecourt_panorama.webp";
+  // guaranteed existing fallback panorama based on active biome
+  const themeCat = currentRoom?.biome_type || "desert_oasis";
+  const defaultBiomePano = `/cached_worlds/${themeCat}/panorama.webp`;
+  const worldFallbackPano = allRooms[0]?.panorama_url || defaultBiomePano;
+  const panoramaUrl = currentRoom?.panorama_url || worldFallbackPano;
   const mutationLevel = currentRoom?.mutation_level || 0.0;
 
   return (
