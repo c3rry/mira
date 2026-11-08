@@ -287,25 +287,49 @@ export function loadPanoramaTexture(
       },
       undefined,
       () => {
-        // If the primary generated panorama is not found, load the photorealistic fallback panorama!
-        const cleanFallback = (fallbackUrl || defaultFallbackUrl).split("?")[0];
-        loader.load(
-          cleanFallback,
-          (fallbackTexture) => {
-            const configured = configureTexture(fallbackTexture);
-            configured.userData = { isFallback: false, originalUrl: cleanFallback };
-            textureCache.set(url, configured);
-            resolve(configured);
-          },
-          undefined,
-          () => {
-            // High-resolution bespoke procedural panorama synthesized immediately
-            const synthesizedTex = createPromptDrivenPanorama(url);
-            synthesizedTex.userData = { isFallback: false };
-            textureCache.set(url, synthesizedTex);
-            resolve(synthesizedTex);
+        // High-resolution bespoke procedural panorama synthesized immediately — NEVER reuse Room 0's static image!
+        const synthesizedTex = createPromptDrivenPanorama(url);
+        synthesizedTex.userData.isFallback = true;
+        textureCache.set(url, synthesizedTex);
+        resolve(synthesizedTex);
+
+        // Periodically verify if on-disk diffusion panorama has completed writing, swapping seamlessly when ready
+        const checkDisk = () => {
+          loader.load(
+            cleanFileUrl,
+            (realTex) => {
+              const configured = configureTexture(realTex);
+              textureCache.set(url, configured);
+              synthesizedTex.image = configured.image;
+              synthesizedTex.needsUpdate = true;
+              synthesizedTex.userData.isFallback = false;
+            },
+            undefined,
+            () => {}
+          );
+        };
+        let pollCount = 0;
+        const maxPolls = 60; // 60 * 800ms = 48s
+        const intervalId = setInterval(() => {
+          pollCount++;
+          if (pollCount > maxPolls || !synthesizedTex.userData.isFallback) {
+            clearInterval(intervalId);
+            return;
           }
-        );
+          loader.load(
+            cleanFileUrl,
+            (realTex) => {
+              clearInterval(intervalId);
+              const configured = configureTexture(realTex);
+              textureCache.set(url, configured);
+              synthesizedTex.image = configured.image;
+              synthesizedTex.needsUpdate = true;
+              synthesizedTex.userData.isFallback = false;
+            },
+            undefined,
+            () => {}
+          );
+        }, 800);
       }
     );
   });
