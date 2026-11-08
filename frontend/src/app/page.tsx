@@ -533,12 +533,7 @@ export default function Home() {
               </div>
 
                 <div className="space-y-3">
-                  {savedWorlds.length === 0 && (
-                    <div className="py-12 text-center text-xs tracking-wider border border-dashed p-6" style={{ borderColor: `${theme.panelBorder}44`, color: theme.mutedText }}>
-                      No archived chronicles recorded in local memory. Enter the world to explore or use Mira Director to create new sectors.
-                    </div>
-                  )}
-                  {savedWorlds.map((entry, idx) => {
+                  {(savedWorlds.length > 0 ? savedWorlds : BUILTIN_ARCHIVES).map((entry, idx) => {
                     const isCurrent = entry.title === worldTitle;
                     const roomCount = entry.world_data?.rooms?.length || 0;
                     const roomNames = (entry.world_data?.rooms || [])
@@ -647,14 +642,34 @@ export default function Home() {
                 M I R A
               </button>
 
+              <select
+                value={worldTitle}
+                onChange={(e) => {
+                  const target = BUILTIN_ARCHIVES.find((w) => w.title === e.target.value);
+                  if (target) loadArchivedWorld(target);
+                }}
+                className="px-2.5 py-0.5 border text-[11px] uppercase tracking-wider font-bold bg-black/85 cursor-pointer focus:outline-none"
+                style={{
+                  borderColor: theme.accentColor,
+                  color: theme.accentColor,
+                }}
+                title="Select from 10 Expansive Realms"
+              >
+                {BUILTIN_ARCHIVES.map((w, idx) => (
+                  <option key={w.world_id} value={w.title} className="bg-[#0f172a] text-white">
+                    {idx + 1}. {w.title}
+                  </option>
+                ))}
+              </select>
+
               <div
-                className="px-2.5 py-0.5 text-[11px] border uppercase tracking-wider"
+                className="px-2.5 py-0.5 text-[11px] border uppercase tracking-wider hidden sm:block"
                 style={{
                   borderColor: `${theme.panelBorder}55`,
                   color: theme.accentText,
                 }}
               >
-                {worldTitle} : <span style={{ color: theme.accentColor }}>{activeRoom?.name || currentRoomId}</span>
+                Chamber: <span style={{ color: theme.accentColor }}>{activeRoom?.name || currentRoomId}</span>
               </div>
             </div>
 

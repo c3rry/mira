@@ -2142,7 +2142,7 @@ export const useWorldStore = create<WorldState>((set, get) => ({
 
     // Reset store state to clean initial scratch state
     set({
-      savedWorlds: [],
+      savedWorlds: BUILTIN_ARCHIVES,
       checkpoints: [],
       activeCheckpoint: null,
       storyGraph: null,

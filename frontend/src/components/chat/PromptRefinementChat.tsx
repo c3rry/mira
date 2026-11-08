@@ -2,7 +2,7 @@
 "use client";
 
 import { useState } from "react";
-import { resolveAdaptiveTheme, useWorldStore } from "@/store/useWorldStore";
+import { BUILTIN_ARCHIVES, resolveAdaptiveTheme, useWorldStore } from "@/store/useWorldStore";
 
 const ARCHITECTURAL_PRESETS = [
   {
@@ -214,11 +214,17 @@ export function PromptRefinementChat() {
               <button
                 key={chip.label}
                 onClick={() => {
-                  const match = savedWorlds.find(
-                    (w) =>
-                      w.title.toLowerCase().includes(chip.label.toLowerCase()) ||
-                      chip.label.toLowerCase().includes(w.title.toLowerCase())
-                  );
+                  const match =
+                    BUILTIN_ARCHIVES.find(
+                      (w) =>
+                        w.title.toLowerCase().includes(chip.label.toLowerCase()) ||
+                        chip.label.toLowerCase().includes(w.title.toLowerCase())
+                    ) ||
+                    savedWorlds.find(
+                      (w) =>
+                        w.title.toLowerCase().includes(chip.label.toLowerCase()) ||
+                        chip.label.toLowerCase().includes(w.title.toLowerCase())
+                    );
                   if (match) {
                     loadArchivedWorld(match);
                     setIsOpen(false);
