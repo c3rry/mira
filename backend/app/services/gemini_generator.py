@@ -488,16 +488,7 @@ def enrich_and_normalize_graph(
                     ]
 
         if not room.props:
-            room.props = [
-                PropEntity(
-                    prop_id=f"prop_{room.room_id}_monument",
-                    name=f"{room.name} Obelisk",
-                    mesh_url="/cached_worlds/models/terminal.glb",
-                    position=SphericalCoord(r=500.0, theta=0.42, phi=1.70),
-                    scale=1.0,
-                    interactive=True,
-                )
-            ]
+            room.props = []
 
     if graph.rooms and graph.initial_room_id not in room_ids:
         graph.initial_room_id = graph.rooms[0].room_id
@@ -707,16 +698,7 @@ def generate_expanded_room(
                 position=SphericalCoord(r=500.0, theta=-0.22, phi=1.65),
             )
         ],
-        props=[
-            PropEntity(
-                prop_id=f"prop_{new_room_id}",
-                name=f"{name} Terminal",
-                mesh_url="/cached_worlds/models/terminal.glb",
-                position=SphericalCoord(r=500.0, theta=0.38, phi=1.70),
-                scale=1.0,
-                interactive=True,
-            )
-        ],
+        props=[],
         worldX=round(new_x, 1),
         worldZ=round(new_z, 1),
         topology_type=topo,
@@ -875,16 +857,7 @@ def synthesize_prompt_world_graph(
                         position=SphericalCoord(r=500.0, theta=-0.22, phi=1.65),
                     )
                 ],
-                props=[
-                    PropEntity(
-                        prop_id=f"prop_{digest}_{i+1}",
-                        name=f"{r_name} Pillar",
-                        mesh_url="/cached_worlds/models/terminal.glb",
-                        position=SphericalCoord(r=500.0, theta=0.38, phi=1.70),
-                        scale=1.0,
-                        interactive=True,
-                    )
-                ],
+                props=[],
             )
         )
 

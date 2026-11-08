@@ -1056,6 +1056,7 @@ export function generateThematicRoomName(
 export interface WorldState {
   currentRoomId: string;
   worldTitle: string;
+  worldPrompt: string;
   topologyType: string;
   isExpanding: boolean;
   rooms: Record<string, WorldRoom>;
@@ -1111,6 +1112,7 @@ const expansionQueue: Array<{
 export const useWorldStore = create<WorldState>((set, get) => ({
   currentRoomId: "noise_origin",
   worldTitle: "Continuous Latent Expanse",
+  worldPrompt: "Continuous multi-dimensional procedural noise chamber with iridescent quantum interference fields and harmonic manifolds",
   topologyType: "nature_open",
   isExpanding: false,
   rooms: {},
@@ -1194,6 +1196,7 @@ export const useWorldStore = create<WorldState>((set, get) => ({
     get().hydrateFromMockWorld(entry.world_data);
     set({
       worldTitle: entry.title,
+      worldPrompt: entry.prompt || entry.title,
       activeScreen: "game",
     });
   },
@@ -1454,8 +1457,11 @@ export const useWorldStore = create<WorldState>((set, get) => ({
 
     const initialRoom = roomsMap[initialId];
 
+    const rawPrompt = worldData.prompt || worldData.title || rawTitle;
+
     set((state) => ({
       worldTitle: rawTitle,
+      worldPrompt: rawPrompt,
       topologyType: topo,
       currentRoomId: initialId,
       rooms: roomsMap,

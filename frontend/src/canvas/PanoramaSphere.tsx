@@ -32,11 +32,16 @@ const skyFragmentShader = `
   uniform float uNoise;
   uniform float uMutation;
   uniform float uTime;
+  uniform float uRainbowFog;
   uniform vec3 uTransitionDir;
   varying vec2 vUv;
 
   const float PI = 3.141592653589793;
   const float TWO_PI = 6.283185307179586;
+
+  vec3 spectralRainbow(float t) {
+    return 0.5 + 0.5 * cos(TWO_PI * (t + vec3(0.0, 0.3333333, 0.6666667)));
+  }
 
   vec3 uvToDir(vec2 uv) {
     float theta = (uv.x - 0.5) * TWO_PI;
@@ -139,6 +144,30 @@ const skyFragmentShader = `
 
     vec3 col = max(mix(a, b, blend), vec3(0.04, 0.05, 0.08));
 
+    // Volumetric shimmering iridescent rainbow fog transition
+    if (uRainbowFog > 0.001) {
+      float fogSpeed = uTime * 0.28;
+      vec3 p1 = dir * 2.8 + vec3(fogSpeed * 0.35, sin(fogSpeed * 0.6) * 0.25, fogSpeed * 0.45);
+      vec3 p2 = dir * 5.6 - vec3(fogSpeed * 0.25, cos(fogSpeed * 0.5) * 0.3, fogSpeed * 0.15);
+      float n1 = snoise(p1);
+      float n2 = snoise(p2);
+      float n3 = snoise(dir * 11.0 + vec3(0.0, fogSpeed * 0.75, 0.0));
+
+      float combinedNoise = (n1 * 0.5 + 0.5) * 0.52 + (n2 * 0.5 + 0.5) * 0.32 + (n3 * 0.5 + 0.5) * 0.16;
+      float chromaticPhase = combinedNoise * 1.6 + dir.y * 0.45 + sin(dir.x * 2.4 + uTime * 0.32) * 0.28;
+      vec3 rainbowCol = spectralRainbow(chromaticPhase);
+
+      // Iridescent glints & luminous sheen
+      float glint = pow(clamp(n3 * 0.5 + 0.5, 0.0, 1.0), 3.0) * 0.55;
+      rainbowCol = rainbowCol * (0.85 + glint) + vec3(glint * 0.65);
+
+      vec3 deepMist = mix(vec3(0.05, 0.04, 0.12), vec3(0.02, 0.07, 0.14), dir.y * 0.5 + 0.5);
+      vec3 fullRainbowFog = mix(deepMist, rainbowCol, clamp(combinedNoise * 1.35, 0.28, 1.0));
+
+      float fogWeight = smoothstep(0.0, 1.0, uRainbowFog);
+      col = mix(col, fullRainbowFog, fogWeight);
+    }
+
     // Continuous procedural 3D noise modulation
     if (uNoise > 0.005) {
       float n = fbm(dir * 3.2 + vec3(0.0, uTime * 0.12, uTime * 0.08));
@@ -162,6 +191,7 @@ export function PanoramaSphere({
 }: PanoramaSphereProps) {
   const [targetTex, setTargetTex] = useState<THREE.Texture | null>(null);
   const noiseRef = useRef<number>(0.65);
+  const rainbowFogRef = useRef<number>(1.0);
   const mixRef = useRef<number>(1.0);
   const isCompilingWorld = useWorldStore((state) => state.isCompilingWorld);
   const setDiffusionProgress = useWorldStore((state) => state.setDiffusionProgress);
@@ -189,6 +219,7 @@ export function PanoramaSphere({
           uTexB: { value: baselineTex },
           uMix: { value: 1.0 },
           uNoise: { value: 0.65 },
+          uRainbowFog: { value: 1.0 },
           uMutation: { value: 0.0 },
           uTime: { value: 0.0 },
           uTransitionDir: { value: new THREE.Vector3(0, 0, -1) },
@@ -252,18 +283,24 @@ export function PanoramaSphere({
       u.uMix.value = mixRef.current;
     }
 
-    if (isCompilingWorld) {
+    const isFallback = Boolean(targetTex?.userData?.isFallback);
+    const isReady = !isCompilingWorld && targetTex !== null && !isFallback;
+
+    if (!isReady) {
+      // Noisily transition into the shimmering iridescent rainbow fog
+      rainbowFogRef.current = Math.min(1.0, rainbowFogRef.current + delta * 2.5);
       noiseRef.current = Math.min(0.98, noiseRef.current + delta * 1.8);
     } else {
+      // Immediately transform into the sharp neural environment once it is ready
+      rainbowFogRef.current = Math.max(0.0, rainbowFogRef.current - delta * 3.8);
       const minNoise = mutationFactor > 0.0 ? Math.min(0.4, mutationFactor * 0.85) : 0.0;
       if (noiseRef.current > minNoise) {
-        noiseRef.current = Math.max(minNoise, noiseRef.current - delta * 0.34);
-      } else if (noiseRef.current < minNoise) {
-        noiseRef.current = Math.min(minNoise, noiseRef.current + delta * 0.34);
+        noiseRef.current = Math.max(minNoise, noiseRef.current - delta * 2.2);
       }
     }
+    u.uRainbowFog.value = rainbowFogRef.current;
     u.uNoise.value = noiseRef.current;
-    setDiffusionProgress(Math.round((1.0 - noiseRef.current) * 100));
+    setDiffusionProgress(Math.round((1.0 - rainbowFogRef.current) * 100));
   });
 
   return (

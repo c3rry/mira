@@ -17,7 +17,7 @@ interface WorldCanvasProps {
 }
 
 export function WorldCanvas(_props: WorldCanvasProps) {
-  const { currentRoomId, rooms, npcs, worldTitle, transitionDirection, setCurrentRoom } = useWorldStore();
+  const { currentRoomId, rooms, npcs, worldTitle, worldPrompt, transitionDirection, setCurrentRoom } = useWorldStore();
   const currentRoom = rooms[currentRoomId];
   const worldGroupRef = useRef<THREE.Group>(null);
   const skyboxGroupRef = useRef<THREE.Group>(null);
@@ -121,13 +121,11 @@ export function WorldCanvas(_props: WorldCanvasProps) {
           {currentRoom && (
             <group position={[currentRoom.worldX || 0, 0, currentRoom.worldZ || 0]} name={`room-zone-${currentRoom.room_id}`}>
               <ReflectiveFloorGrid roomName={currentRoom.name} biomeType={currentRoom.biome_type} isCurrentRoom={true} />
-              <PropSpawner
-                propsList={currentRoom.props || []}
-                roomContext={`${currentRoom.biome_type || ""} ${currentRoom.name || ""} ${worldTitle || ""}`}
-              />
               <CharacterSpawner
                 npcs={Object.values(npcs).filter((n) => n.room_id === currentRoom.room_id)}
                 roomContext={`${currentRoom.biome_type || ""} ${currentRoom.name || ""} ${worldTitle || ""}`}
+                worldPrompt={worldPrompt || worldTitle || ""}
+                visualPalette={currentRoom.visual_palette}
               />
             </group>
           )}

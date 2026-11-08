@@ -166,6 +166,7 @@ export function PromptRefinementChat() {
       if (res.ok) {
         const data = await res.json();
         if (data.world_graph && Array.isArray(data.world_graph.rooms) && data.world_graph.rooms.length > 0) {
+          data.world_graph.prompt = activePrompt;
           hydrateFromMockWorld(data.world_graph);
           saveWorldToArchive({
             world_id: data.world_graph.world_id || `world_${Date.now()}`,
